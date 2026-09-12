@@ -24,8 +24,24 @@ import Link from 'next/link';
 
 type ViewMode = 'SPLIT' | 'PETA' | 'CHAT';
 
+// Helper to get or create a persistent, isolated client ID for this browser instance
+const getBrowserDeviceId = (): string => {
+  if (typeof window === 'undefined') return 'guest_default';
+  try {
+    let id = localStorage.getItem('dkpp_browser_device_id');
+    if (!id || id === 'guest' || id.startsWith('sess-')) {
+      id = 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
+      localStorage.setItem('dkpp_browser_device_id', id);
+    }
+    return id;
+  } catch {
+    return 'guest_' + Date.now();
+  }
+};
+
 export const ChatDKPPApp: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('SPLIT');
+  const [viewMode, setViewMode] = useState<ViewMode>('CHAT');
+  const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -35,7 +51,7 @@ export const ChatDKPPApp: React.FC = () => {
   const mainScrollRef = useRef<HTMLElement | null>(null);
 
   const GUEST_DEFAULT: UserProfile = {
-    id: 'guest',
+    id: 'guest_init',
     email: '',
     full_name: 'Pengunjung Tamu',
     role: 'GUEST',
@@ -48,17 +64,41 @@ export const ChatDKPPApp: React.FC = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
 
-  // Load session from storage and listen to Supabase Auth changes (including Google OAuth)
+  // Mobile detection & ViewMode guard (Mobile only allows CHAT or PETA, never SPLIT)
   useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setViewMode((prev) => {
+        if (mobile && prev === 'SPLIT') return 'CHAT';
+        return prev;
+      });
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Load user session from browser storage (isolated per browser) & listen to Supabase Auth changes
+  useEffect(() => {
+    const browserId = getBrowserDeviceId();
+    let initialUser: UserProfile = {
+      ...GUEST_DEFAULT,
+      id: browserId,
+    };
+
     try {
       const saved = sessionStorage.getItem('dkpp_user_session');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.role)) {
-          setCurrentUser(parsed);
+          initialUser = parsed;
         }
       }
     } catch {}
+
+    setCurrentUser(initialUser);
+    fetchSessions(initialUser.id);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
@@ -78,6 +118,7 @@ export const ChatDKPPApp: React.FC = () => {
         };
         setCurrentUser(profile);
         sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+        fetchSessions(profile.id);
       }
     });
 
@@ -94,46 +135,57 @@ export const ChatDKPPApp: React.FC = () => {
   const handleAuthSuccess = (user: UserProfile) => {
     setCurrentUser(user);
     sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
+    fetchSessions(user.id);
   };
 
   const handleLogout = async () => {
     sessionStorage.removeItem('dkpp_user_session');
-    setCurrentUser(GUEST_DEFAULT);
+    // Rotate to a fresh browser device guest ID to ensure total memory isolation for subsequent visits
+    const freshGuestId = 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
+    try {
+      localStorage.setItem('dkpp_browser_device_id', freshGuestId);
+    } catch {}
+
+    const freshGuest: UserProfile = {
+      ...GUEST_DEFAULT,
+      id: freshGuestId,
+    };
+    setCurrentUser(freshGuest);
+    setSessions([]);
+    setMessages([]);
+    setActiveSessionId(null);
     try {
       await supabase.auth.signOut();
     } catch {}
   };
 
-  // Load chat sessions on mount
-  useEffect(() => {
-    fetchSessions();
-  }, [currentUser.id]);
+  // Load chat sessions strictly scoped to the active user/browser
+  const fetchSessions = async (targetId?: string) => {
+    const userId = targetId || currentUser.id;
+    if (!userId || userId === 'guest' || userId === 'guest_init') {
+      setSessions([]);
+      setMessages([]);
+      setActiveSessionId(null);
+      return;
+    }
 
-  const fetchSessions = async () => {
     try {
-      const res = await fetch(`/api/sessions?userId=${currentUser.id}`);
+      const res = await fetch(`/api/sessions?userId=${encodeURIComponent(userId)}`);
       const data = await res.json();
       if (data.sessions && data.sessions.length > 0) {
         setSessions(data.sessions);
-        if (!activeSessionId) {
-          setActiveSessionId(data.sessions[0].id);
-          loadMessages(data.sessions[0].id);
-        }
+        setActiveSessionId(data.sessions[0].id);
+        loadMessages(data.sessions[0].id);
       } else {
-        // Create initial default session
-        handleNewChat();
+        // Clean fresh state for this user/browser (no leakage from other users)
+        setSessions([]);
+        setMessages([]);
+        setActiveSessionId(null);
       }
     } catch {
-      // Fallback local session if API unavailable
-      const defaultSession: ChatSession = {
-        id: 'sess-default-1',
-        user_id: currentUser.id,
-        title: 'Menampilkan Peta GIS',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setSessions([defaultSession]);
-      setActiveSessionId(defaultSession.id);
+      setSessions([]);
+      setMessages([]);
+      setActiveSessionId(null);
     }
   };
 
@@ -222,10 +274,32 @@ export const ChatDKPPApp: React.FC = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    // Ensure session exists or create on the fly strictly for this user/browser
+    let currentSessId = activeSessionId;
+    if (!currentSessId) {
+      const autoTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
+      try {
+        const sRes = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id, title: autoTitle }),
+        });
+        const sData = await sRes.json();
+        if (sData.session) {
+          currentSessId = sData.session.id;
+          setActiveSessionId(sData.session.id);
+          setSessions((prev) => [sData.session, ...prev.slice(0, 9)]);
+        }
+      } catch {
+        currentSessId = `sess-${Date.now()}`;
+        setActiveSessionId(currentSessId);
+      }
+    }
+
     // Optimistically add user message
     const tempUserMsg: ChatMessage = {
       id: `temp-${Date.now()}`,
-      session_id: activeSessionId || 'default',
+      session_id: currentSessId || 'default',
       role: 'user',
       content: text,
       created_at: new Date().toISOString(),
@@ -235,9 +309,9 @@ export const ChatDKPPApp: React.FC = () => {
     setIsLoading(true);
 
     // Update session title if it's the first message
-    if (messages.length === 0 && activeSessionId) {
+    if (messages.length === 0 && currentSessId) {
       const autoTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
-      handleRenameSession(activeSessionId, autoTitle);
+      handleRenameSession(currentSessId, autoTitle);
     }
 
     try {
@@ -245,7 +319,7 @@ export const ChatDKPPApp: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId: activeSessionId,
+          sessionId: currentSessId,
           message: text,
           userEmail: currentUser.email,
           userId: currentUser.id,
@@ -258,7 +332,7 @@ export const ChatDKPPApp: React.FC = () => {
       if (data.content) {
         const aiMsg: ChatMessage = {
           id: data.assistantMessageId || `ai-${Date.now()}`,
-          session_id: activeSessionId || 'default',
+          session_id: currentSessId || 'default',
           role: 'assistant',
           content: data.content,
           sources: data.sources || [],
@@ -269,7 +343,7 @@ export const ChatDKPPApp: React.FC = () => {
 
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Dispatch map action if any (dengan unique _id agar aksi dieksekusi tepat 1x)
+        // Dispatch map action if any
         if (data.map_actions && data.map_actions.length > 0) {
           setLastMapAction({
             ...data.map_actions[0],
@@ -280,7 +354,7 @@ export const ChatDKPPApp: React.FC = () => {
     } catch {
       const fallbackMsg: ChatMessage = {
         id: `err-${Date.now()}`,
-        session_id: activeSessionId || 'default',
+        session_id: currentSessId || 'default',
         role: 'assistant',
         content: 'AI sedang tidak tersedia. Silakan coba kembali.',
         sources: [{ type: 'LOCAL DATA', title: 'DKPP Cilegon Offline Fallback' }],
@@ -293,7 +367,7 @@ export const ChatDKPPApp: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#fbfbfb] dark:bg-[#131417] text-gray-900 dark:text-gray-100 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-[#f8fafc] text-gray-900 overflow-hidden font-sans">
       {/* Sidebar */}
       <ChatSidebar
         sessions={sessions}
@@ -312,57 +386,86 @@ export const ChatDKPPApp: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Navigation Bar */}
-        <header className="h-14 px-4 flex items-center justify-between border-b border-gray-200/80 dark:border-gray-800 bg-white/80 dark:bg-[#17181c]/80 backdrop-blur-md shrink-0 z-10">
-          <div className="flex items-center gap-3">
+        <header className="h-14 px-3 sm:px-4 flex items-center justify-between border-b border-gray-200/90 bg-white/95 backdrop-blur-md shrink-0 z-20">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               title="Toggle Sidebar"
             >
               <PanelLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900 dark:text-white text-sm hidden sm:inline">
+              <span className="font-bold text-gray-900 text-sm hidden sm:inline tracking-tight">
                 DKPP-INFO
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-medium hidden md:inline">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold hidden md:inline">
                 Kota Cilegon
               </span>
             </div>
           </div>
 
-          {/* Mode Switcher Buttons [SPLIT] [PETA] [CHAT] (Matching Mockup) */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800/90 p-1 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm text-xs font-semibold">
+          {/* Mobile View Switcher: ONLY 2 View Modes (Chat & Peta GIS) - SPLIT Dihapus di Mobile */}
+          <div className="flex md:hidden items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-xs text-xs font-bold">
             <button
+              type="button"
+              onClick={() => setViewMode('CHAT')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'CHAT'
+                  ? 'bg-white text-emerald-700 shadow-xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('PETA')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'PETA'
+                  ? 'bg-white text-emerald-700 shadow-xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <MapIcon className="w-3.5 h-3.5" />
+              <span>Peta GIS</span>
+            </button>
+          </div>
+
+          {/* Desktop View Switcher: 3 Modes [SPLIT] [PETA] [CHAT] */}
+          <div className="hidden md:flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 shadow-xs text-xs font-semibold">
+            <button
+              type="button"
               onClick={() => setViewMode('SPLIT')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
                 viewMode === 'SPLIT'
-                  ? 'bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Grid className="w-3.5 h-3.5" />
               <span>SPLIT</span>
             </button>
-
             <button
+              type="button"
               onClick={() => setViewMode('PETA')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
                 viewMode === 'PETA'
-                  ? 'bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <MapIcon className="w-3.5 h-3.5" />
               <span>PETA</span>
             </button>
-
             <button
+              type="button"
               onClick={() => setViewMode('CHAT')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
                 viewMode === 'CHAT'
-                  ? 'bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -370,20 +473,20 @@ export const ChatDKPPApp: React.FC = () => {
             </button>
           </div>
 
-          {/* Right Header: Log in & Sign up for free (Capture 1 for Guests) */}
+          {/* Right Header: Log in & Sign up for free (Guests) / Profile (Logged in) */}
           {currentUser.role === 'GUEST' ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleOpenAuth('login')}
-                className="bg-black hover:bg-neutral-800 text-white text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
+                className="bg-black hover:bg-neutral-800 text-white text-xs sm:text-sm font-semibold px-3.5 sm:px-4 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
               >
                 Log in
               </button>
               <button
                 type="button"
                 onClick={() => handleOpenAuth('signup')}
-                className="bg-white hover:bg-neutral-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-600 shadow-xs transition-all hidden sm:inline-flex cursor-pointer"
+                className="bg-white hover:bg-neutral-50 text-neutral-800 text-xs sm:text-sm font-semibold px-3.5 sm:px-4 py-1.5 rounded-full border border-neutral-300 shadow-xs transition-all hidden sm:inline-flex cursor-pointer"
               >
                 Sign up for free
               </button>
@@ -393,13 +496,13 @@ export const ChatDKPPApp: React.FC = () => {
               {currentUser.email?.toLowerCase() === 'ridwansugiarto.mail@gmail.com' && (
                 <Link
                   href="/admin"
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 hover:bg-amber-200 transition-colors flex items-center gap-1"
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors flex items-center gap-1"
                 >
-                  <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <Shield className="w-3 h-3 text-amber-600" />
                   <span>Portal Admin</span>
                 </Link>
               )}
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-800/90 text-xs font-medium border border-gray-200/60 dark:border-gray-700/60 shadow-xs">
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-100 text-xs font-medium border border-gray-200/80 shadow-xs">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-[10px]">
                   {currentUser.full_name ? currentUser.full_name.substring(0, 2).toUpperCase() : 'DK'}
                 </div>
@@ -419,18 +522,18 @@ export const ChatDKPPApp: React.FC = () => {
           )}
         </header>
 
-        {/* Workspace Layout */}
+        {/* Workspace Layout: Bersih, Terang, Responsif */}
         <main
           ref={mainScrollRef}
-          className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden p-2 sm:p-3 gap-3"
+          className="flex-1 flex flex-col md:flex-row overflow-hidden p-2 sm:p-3 gap-3"
         >
-          {/* Chat Assistant Pane (Default Fullscreen di atas untuk Mobile, di Kanan untuk Desktop) */}
-          {(viewMode === 'SPLIT' || viewMode === 'CHAT') && (
+          {/* Chat Assistant Pane (Default Fullscreen di Mobile, atau di Kanan saat Desktop SPLIT) */}
+          {((isMobile && viewMode === 'CHAT') || (!isMobile && (viewMode === 'SPLIT' || viewMode === 'CHAT'))) && (
             <div
-              className={`flex flex-col bg-white dark:bg-[#17181c] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-sm overflow-hidden min-w-0 order-1 md:order-2 ${
-                viewMode === 'CHAT'
+              className={`flex flex-col bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden min-w-0 ${
+                viewMode === 'CHAT' || isMobile
                   ? 'w-full h-full'
-                  : 'w-full md:w-1/2 h-[calc(100dvh-4.75rem)] md:h-full shrink-0'
+                  : 'w-full md:w-1/2 h-full shrink-0 order-2'
               }`}
             >
               <ChatContainer
@@ -439,29 +542,7 @@ export const ChatDKPPApp: React.FC = () => {
                 onSuggestionClick={handleSendMessage}
               />
 
-              {/* Petunjuk Mobile: Peta Spasial GIS berada di bawah (scroll down) */}
-              {viewMode === 'SPLIT' && (
-                <div className="md:hidden flex items-center justify-between px-3 py-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 border-t border-emerald-100 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-medium shrink-0">
-                  <span className="flex items-center gap-1">
-                    <MapIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Peta GIS Cilegon (407 Poligon Sawah & Lengas) di bawah
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const mapEl = document.getElementById('gis-map-section');
-                      if (mapEl) {
-                        mapEl.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-600 text-white rounded-md text-[10px] font-bold hover:bg-emerald-700 transition-colors shadow-xs"
-                  >
-                    Lihat Peta ↓
-                  </button>
-                </div>
-              )}
-
-              <div className="p-3 border-t border-gray-100 dark:border-gray-800/80 bg-white/60 dark:bg-[#17181c]/60 backdrop-blur-sm shrink-0">
+              <div className="p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm shrink-0">
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   isLoading={isLoading}
@@ -470,35 +551,17 @@ export const ChatDKPPApp: React.FC = () => {
             </div>
           )}
 
-          {/* GIS Map Pane (Di bawah Chatbot pada Mobile saat SPLIT, di Kiri pada Desktop) */}
-          {(viewMode === 'SPLIT' || viewMode === 'PETA') && (
+          {/* GIS Map Pane (Fullscreen di Mobile saat mode PETA, atau di Kiri saat Desktop SPLIT) */}
+          {((isMobile && viewMode === 'PETA') || (!isMobile && (viewMode === 'SPLIT' || viewMode === 'PETA'))) && (
             <div
               id="gis-map-section"
-              className={`transition-all duration-200 order-2 md:order-1 ${
-                viewMode === 'PETA'
-                  ? 'w-full h-full min-h-[500px]'
-                  : 'w-full md:w-1/2 h-[75vh] md:h-full shrink-0'
+              className={`transition-all duration-200 ${
+                viewMode === 'PETA' || isMobile
+                  ? 'w-full h-full min-h-[350px]'
+                  : 'w-full md:w-1/2 h-full shrink-0 order-1'
               }`}
             >
-              {/* Mobile Quick Navigation Bar */}
-              {viewMode === 'SPLIT' && (
-                <div className="md:hidden flex items-center justify-between px-3 py-2 bg-slate-900 text-white rounded-t-2xl border-t border-x border-slate-700">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                    <MapIcon className="w-3.5 h-3.5" />
-                    <span>Peta Spasial GIS Kota Cilegon</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="flex items-center gap-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg transition-colors shadow-xs"
-                  >
-                    <span>↑ Kembali ke Chat</span>
-                  </button>
-                </div>
-              )}
-              <div className={`w-full ${viewMode === 'SPLIT' ? 'h-[calc(100%-37px)] md:h-full' : 'h-full'}`}>
+              <div className="w-full h-full">
                 <SplitMapPane
                   lastAction={lastMapAction}
                   onSelectKelurahan={(kel) =>
@@ -511,7 +574,7 @@ export const ChatDKPPApp: React.FC = () => {
         </main>
       </div>
 
-      {/* Modal Autentikasi (Capture 3 UI/UX Style) */}
+      {/* Modal Autentikasi (Layer z-[99999] agar tidak pernah tertumpuk oleh Leaflet Map) */}
       <AuthModal
         isOpen={authModalOpen}
         initialMode={authModalMode}

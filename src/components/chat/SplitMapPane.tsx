@@ -34,7 +34,10 @@ export const SplitMapPane: React.FC<SplitMapPaneProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-sm border border-gray-200/80 dark:border-gray-800/80 ${className}`}>
+    <div 
+      style={{ isolation: 'isolate' }}
+      className={`relative z-0 isolate w-full h-full rounded-2xl overflow-hidden shadow-sm border border-gray-200/80 ${className}`}
+    >
       <AIIntelligenceMap
         activeTab="split"
         mapAction={lastAction as any}

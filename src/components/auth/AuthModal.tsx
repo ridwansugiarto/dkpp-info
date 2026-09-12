@@ -216,10 +216,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       {/* Modal Card (Persis Capture 3 Style) */}
       <div 
-        className="relative w-full max-w-[420px] bg-white dark:bg-[#18191e] rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-200/80 dark:border-gray-800 text-gray-900 dark:text-gray-100 animate-in zoom-in-95 duration-200"
+        className="relative z-[100000] w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-200 text-gray-900 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}

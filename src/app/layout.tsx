@@ -186,9 +186,10 @@ export default function RootLayout({
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
   return (
-    <html lang="id">
+    <html lang="id" className="light" style={{ colorScheme: 'light' }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8FAFC]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8FAFC] text-[#1E293B]`}
+        style={{ colorScheme: 'light' }}
       >
         {gaId && (
           <>

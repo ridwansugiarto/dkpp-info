@@ -4,7 +4,10 @@ import { supabaseAdmin, pruneOldSessions, resolveUserAuth } from '@/lib/supabase
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || 'guest';
+    const userId = searchParams.get('userId');
+    if (!userId || userId === 'guest') {
+      return NextResponse.json({ sessions: [] });
+    }
 
     const { data: sessions, error } = await supabaseAdmin
       .from('chat_sessions')
