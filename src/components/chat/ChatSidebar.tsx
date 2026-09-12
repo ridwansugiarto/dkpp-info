@@ -237,55 +237,75 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </div>
 
-        {/* User Status / Profile Footer */}
-        <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                {user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'DK'}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                  {user.full_name || 'Tamu Cilegon'}
-                </span>
-                <div className="flex items-center gap-1">
-                  {user.role === 'ADMIN' ? (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 font-medium">
-                      <ShieldCheck className="w-2.5 h-2.5" /> Admin
-                    </span>
-                  ) : user.is_verified_employee ? (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-medium">
-                      <UserCheck className="w-2.5 h-2.5" /> Pegawai
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-gray-400">Mode Tamu (Publik)</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              {user.role === 'ADMIN' && (
-                <Link
-                  href="/admin"
-                  title="Portal Admin"
-                  className="p-1.5 text-gray-500 hover:text-emerald-600 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <Settings className="w-4 h-4" />
-                </Link>
-              )}
-              {user.role === 'GUEST' ? (
-                <Link
-                  href="/verify"
-                  title="Verifikasi Pegawai DKPP"
-                  className="p-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                >
-                  <UserCheck className="w-4 h-4" />
-                </Link>
-              ) : null}
+        {/* User Status / Profile Footer (Capture 2 saat Guest) */}
+        {user.role === 'GUEST' ? (
+          /* Capture 2: Get responses tailored to you Card */
+          <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+              <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-1 leading-snug">
+                Get responses tailored to you
+              </h4>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
+                Log in to get answers based on saved chats, plus create images and upload files.
+              </p>
+              <button
+                type="button"
+                onClick={onLoginClick}
+                className="w-full py-2 px-3 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-colors shadow-xs text-center block"
+              >
+                Log in
+              </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                  {user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'DK'}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                    {user.full_name}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {user.role === 'ADMIN' ? (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 font-medium">
+                        <ShieldCheck className="w-2.5 h-2.5" /> Super Admin
+                      </span>
+                    ) : user.is_verified_employee ? (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-medium">
+                        <UserCheck className="w-2.5 h-2.5" /> Pegawai DKPP
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-gray-400">Pengguna Terdaftar</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {user.role === 'ADMIN' && (
+                  <Link
+                    href="/admin"
+                    title="Portal Tata Kelola Admin"
+                    className="p-1.5 text-gray-500 hover:text-emerald-600 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={onLogoutClick}
+                  title="Keluar / Ganti Akun"
+                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
     </>
   );

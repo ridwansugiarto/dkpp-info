@@ -17,6 +17,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { SplitMapPane } from './SplitMapPane';
 import { ChatContainer } from './ChatContainer';
 import { ChatInput } from './ChatInput';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { ChatSession, ChatMessage, UserProfile, MapAction } from '@/types/dkpp';
 import Link from 'next/link';
 
@@ -32,15 +33,47 @@ export const ChatDKPPApp: React.FC = () => {
   const [lastMapAction, setLastMapAction] = useState<MapAction | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
 
-  // User state (Default guest or verified user)
-  const [currentUser, setCurrentUser] = useState<UserProfile>({
+  const GUEST_DEFAULT: UserProfile = {
     id: 'guest',
-    email: 'guest@cilegon.go.id',
-    full_name: 'Ridwan S.',
-    role: 'ADMIN',
-    is_verified_employee: true,
-    can_access_sensitive: true,
-  });
+    email: '',
+    full_name: 'Pengunjung Tamu',
+    role: 'GUEST',
+    is_verified_employee: false,
+    can_access_sensitive: false,
+  };
+
+  // User state (Default Guest with option to Login / Sign up)
+  const [currentUser, setCurrentUser] = useState<UserProfile>(GUEST_DEFAULT);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+
+  // Load session from storage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('dkpp_user_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.email || parsed.role)) {
+          setCurrentUser(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleOpenAuth = (mode: 'login' | 'signup') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('dkpp_user_session');
+    setCurrentUser(GUEST_DEFAULT);
+  };
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -242,8 +275,8 @@ export const ChatDKPPApp: React.FC = () => {
         user={currentUser}
         isOpen={sidebarOpen}
         onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
-        onLoginClick={() => {}}
-        onLogoutClick={() => {}}
+        onLoginClick={() => handleOpenAuth('login')}
+        onLogoutClick={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -307,17 +340,53 @@ export const ChatDKPPApp: React.FC = () => {
             </button>
           </div>
 
-          {/* Right Header Avatar (Matching Mockup) */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
-              <div className="w-7 h-7 rounded-full bg-slate-400 dark:bg-slate-600 text-white flex items-center justify-center font-bold text-xs">
-                RS
-              </div>
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                {currentUser.full_name}
-              </span>
+          {/* Right Header: Log in & Sign up for free (Capture 1 for Guests) */}
+          {currentUser.role === 'GUEST' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleOpenAuth('login')}
+                className="bg-black hover:bg-neutral-800 text-white text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenAuth('signup')}
+                className="bg-white hover:bg-neutral-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-600 shadow-xs transition-all hidden sm:inline-flex cursor-pointer"
+              >
+                Sign up for free
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {currentUser.email?.toLowerCase() === 'ridwansugiarto.mail@gmail.com' && (
+                <Link
+                  href="/admin"
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 hover:bg-amber-200 transition-colors flex items-center gap-1"
+                >
+                  <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <span>Portal Admin</span>
+                </Link>
+              )}
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-800/90 text-xs font-medium border border-gray-200/60 dark:border-gray-700/60 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-[10px]">
+                  {currentUser.full_name ? currentUser.full_name.substring(0, 2).toUpperCase() : 'DK'}
+                </div>
+                <span className="max-w-[120px] truncate hidden sm:inline font-semibold">
+                  {currentUser.full_name}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Keluar / Ganti Akun"
+                  className="p-1 hover:text-red-500 rounded transition-colors text-gray-400 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* Workspace Layout */}
@@ -411,6 +480,18 @@ export const ChatDKPPApp: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Modal Autentikasi (Capture 3 UI/UX Style) */}
+      <AuthModal
+        isOpen={authModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+        onContinueAsGuest={() => {
+          handleLogout();
+          setAuthModalOpen(false);
+        }}
+      />
     </div>
   );
 };
