@@ -9,6 +9,7 @@ const hargaSagonPath = path.join(process.cwd(), 'migrate_harga_sagon_harian.sql'
 const giziSkpgPath = path.join(process.cwd(), 'migrate_gizi_balita_skpg.sql');
 const giziKelurahanPath = path.join(process.cwd(), 'migrate_gizi_balita_skpg_kelurahan.sql');
 const intervensiPath = path.join(process.cwd(), 'migrate_intervensi_kelurahan.sql');
+const matangPath = path.join(process.cwd(), 'migrate_matang.sql');
 const fsvaPath = path.join(process.cwd(), 'migrate_fsva_2024_2025.sql');
 const kpiPath = path.join(process.cwd(), 'migrate_kpi.sql');
 
@@ -29,7 +30,8 @@ const files = [
   { name: '7. Gizi Balita SKPG Kelurahan', path: giziKelurahanPath },
   { name: '8. Intervensi Kelurahan', path: intervensiPath },
   { name: '9. KPI Data', path: kpiPath },
-  { name: '10. FSVA 2024-2025', path: fsvaPath }
+  { name: '10. FSVA & SKPG Matang (Tabel Dasar)', path: matangPath },
+  { name: '11. FSVA 2024-2025 (Data Indikator)', path: fsvaPath }
 ];
 
 for (const f of files) {
