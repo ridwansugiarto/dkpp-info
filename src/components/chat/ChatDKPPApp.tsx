@@ -19,6 +19,7 @@ import { ChatContainer } from './ChatContainer';
 import { ChatInput } from './ChatInput';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ChatSession, ChatMessage, UserProfile, MapAction } from '@/types/dkpp';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 type ViewMode = 'SPLIT' | 'PETA' | 'CHAT';
@@ -47,7 +48,7 @@ export const ChatDKPPApp: React.FC = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
 
-  // Load session from storage on mount
+  // Load session from storage and listen to Supabase Auth changes (including Google OAuth)
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('dkpp_user_session');
@@ -58,6 +59,31 @@ export const ChatDKPPApp: React.FC = () => {
         }
       }
     } catch {}
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const email = session.user.email?.toLowerCase() || '';
+        const isAdmin = email === 'ridwansugiarto.mail@gmail.com';
+        const profile: UserProfile = {
+          id: session.user.id,
+          email: email,
+          full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : email.split('@')[0]),
+          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
+          role: isAdmin ? 'ADMIN' : 'EMPLOYEE',
+          is_verified_employee: isAdmin,
+          can_access_sensitive: isAdmin,
+          nip: isAdmin ? '197610182002121002' : undefined,
+          department: isAdmin ? 'Pimpinan DKPP' : undefined,
+          position: isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined,
+        };
+        setCurrentUser(profile);
+        sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleOpenAuth = (mode: 'login' | 'signup') => {
@@ -70,9 +96,12 @@ export const ChatDKPPApp: React.FC = () => {
     sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     sessionStorage.removeItem('dkpp_user_session');
     setCurrentUser(GUEST_DEFAULT);
+    try {
+      await supabase.auth.signOut();
+    } catch {}
   };
 
   // Load chat sessions on mount
