@@ -1,0 +1,928 @@
+"use client";
+
+import { useState, useEffect, useRef } from 'react';
+import { 
+  BookOpen, 
+  UploadCloud, 
+  FileText, 
+  Trash2, 
+  Loader2, 
+  CheckCircle2, 
+  AlertCircle, 
+  Search, 
+  RefreshCw, 
+  FileSpreadsheet, 
+  FileCode,
+  Sparkles,
+  HelpCircle,
+  Pencil,
+  X,
+  Save,
+  FileCheck,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown
+} from 'lucide-react';
+
+interface KnowledgeDoc {
+  id: string;
+  judul: string;
+  deskripsi: string;
+  jenis: string;
+  file_name: string | null;
+  total_chunks: number;
+  created_at: string;
+}
+
+type SortField = 'jenis' | 'judul' | 'deskripsi' | 'total_chunks' | 'created_at';
+type SortDirection = 'asc' | 'desc';
+
+interface TestSearchResult {
+  id: string;
+  doc_title: string;
+  chunk_index: number;
+  content: string;
+  rank?: number;
+}
+
+export default function AdminKnowledgePanel() {
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; msg: string }>({ type: '', msg: '' });
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'created_at' || field === 'total_chunks' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedDocs = [...docs].sort((a, b) => {
+    let cmp = 0;
+    if (sortField === 'total_chunks') {
+      cmp = (a.total_chunks || 0) - (b.total_chunks || 0);
+    } else if (sortField === 'created_at') {
+      cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    } else if (sortField === 'jenis') {
+      cmp = (a.jenis || '').localeCompare(b.jenis || '', 'id-ID');
+    } else if (sortField === 'judul') {
+      cmp = (a.judul || '').localeCompare(b.judul || '', 'id-ID');
+    } else if (sortField === 'deskripsi') {
+      cmp = (a.deskripsi || '').localeCompare(b.deskripsi || '', 'id-ID');
+    }
+    return sortDirection === 'asc' ? cmp : -cmp;
+  });
+
+  // Form input state
+  const [inputType, setInputType] = useState<'file' | 'text'>('file');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [rawText, setRawText] = useState('');
+  const [judul, setJudul] = useState('');
+  const [deskripsi, setDeskripsi] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Test Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<TestSearchResult[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Edit Modal State
+  const [editingDoc, setEditingDoc] = useState<KnowledgeDoc | null>(null);
+  const [editJudul, setEditJudul] = useState('');
+  const [editDeskripsi, setEditDeskripsi] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const fetchDocs = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/knowledge');
+      const data = await res.json();
+      if (res.ok) {
+        setDocs(data.docs || []);
+      }
+    } catch (err) {
+      console.error('Error fetching knowledge docs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocs();
+  }, []);
+
+  const MAX_FILE_SIZE_BYTES = 4.5 * 1024 * 1024; // 4.5 MB
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      if (!judul) {
+        // Auto fill judul dari nama file tanpa ekstensi
+        setJudul(file.name.replace(/\.[^/.]+$/, ''));
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setStatusMessage({
+          type: 'error',
+          msg: `Peringatan: Ukuran file "${file.name}" (${(file.size / (1024 * 1024)).toFixed(2)} MB) melebihi batas toleransi sistem (maksimal 4.5 MB - serverless free-tier). Harap kompres file sebelum mengunggah.`
+        });
+      } else {
+        setStatusMessage({ type: '', msg: '' });
+      }
+    }
+  };
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputType === 'file' && !selectedFile) {
+      setStatusMessage({ type: 'error', msg: 'Pilih file dokumen terlebih dahulu.' });
+      return;
+    }
+    if (inputType === 'file' && selectedFile && selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setStatusMessage({
+        type: 'error',
+        msg: `Gagal mengunggah: Ukuran file "${selectedFile.name}" (${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB) melebihi batas toleransi sistem (maksimal 4.5 MB pada environment free-tier). Silakan kompres berkas Anda terlebih dahulu.`
+      });
+      return;
+    }
+    if (inputType === 'text' && !rawText.trim()) {
+      setStatusMessage({ type: 'error', msg: 'Teks dokumen tidak boleh kosong.' });
+      return;
+    }
+    if (!judul.trim()) {
+      setStatusMessage({ type: 'error', msg: 'Judul dokumen wajib diisi.' });
+      return;
+    }
+
+    setIsUploading(true);
+    setStatusMessage({ type: '', msg: '' });
+
+    try {
+      const formData = new FormData();
+      formData.append('judul', judul.trim());
+      formData.append('deskripsi', deskripsi.trim());
+
+      if (inputType === 'file' && selectedFile) {
+        formData.append('file', selectedFile);
+      } else {
+        formData.append('rawText', rawText.trim());
+      }
+
+      const res = await fetch('/api/knowledge/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatusMessage({
+          type: 'success',
+          msg: data.message || `Berhasil mengindeks dokumen menjadi ${data.totalChunks} potongan pengetahuan AI!`
+        });
+        // Reset form
+        setSelectedFile(null);
+        setRawText('');
+        setJudul('');
+        setDeskripsi('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        fetchDocs();
+      } else {
+        setStatusMessage({
+          type: 'error',
+          msg: data.error || 'Gagal memproses dan mengunggah dokumen.'
+        });
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setStatusMessage({ type: 'error', msg: 'Terjadi kesalahan jaringan saat mengunggah.' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDelete = async (docId: string, docTitle: string) => {
+    if (!confirm(`Hapus dokumen "${docTitle}" beserta seluruh indeks pengetahuannya?`)) return;
+
+    try {
+      const res = await fetch(`/api/knowledge?id=${docId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMessage({ type: 'success', msg: `Dokumen "${docTitle}" berhasil dihapus.` });
+        fetchDocs();
+      } else {
+        setStatusMessage({ type: 'error', msg: data.error || 'Gagal menghapus dokumen.' });
+      }
+    } catch {
+      setStatusMessage({ type: 'error', msg: 'Terjadi kesalahan saat menghapus.' });
+    }
+  };
+
+  const handleOpenEdit = (doc: KnowledgeDoc) => {
+    setEditingDoc(doc);
+    setEditJudul(doc.judul);
+    setEditDeskripsi(doc.deskripsi || '');
+  };
+
+  const handleCloseEdit = () => {
+    setEditingDoc(null);
+    setEditJudul('');
+    setEditDeskripsi('');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+    if (!editJudul.trim()) {
+      alert('Judul dokumen tidak boleh kosong.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch('/api/knowledge', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingDoc.id,
+          judul: editJudul.trim(),
+          deskripsi: editDeskripsi.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDocs(prev => prev.map(d => d.id === editingDoc.id ? { ...d, judul: editJudul.trim(), deskripsi: editDeskripsi.trim() } : d));
+        setStatusMessage({ type: 'success', msg: `Dokumen "${editJudul}" berhasil diperbarui.` });
+        handleCloseEdit();
+      } else {
+        alert(data.error || 'Gagal memperbarui dokumen.');
+      }
+    } catch (err) {
+      console.error('Error updating document:', err);
+      alert('Terjadi kesalahan koneksi saat menyimpan perubahan.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleTestSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      const res = await fetch('/api/knowledge/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery.trim(), limit: 4 })
+      });
+      const data = await res.json();
+      setSearchResults(data.results || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const renderFileIcon = (fileName: string | null, jenis: string) => {
+    const fn = (fileName || '').toLowerCase();
+    const j = (jenis || '').toLowerCase();
+
+    if (j === 'pdf' || fn.endsWith('.pdf')) {
+      return <FileText className="w-8 h-8 text-rose-500" />;
+    }
+    if (j === 'excel' || j === 'csv' || fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.csv')) {
+      return <FileSpreadsheet className="w-8 h-8 text-emerald-600" />;
+    }
+    if (j === 'docx' || j === 'doc' || fn.endsWith('.docx') || fn.endsWith('.doc')) {
+      return <FileText className="w-8 h-8 text-blue-600" />;
+    }
+    if (j === 'pptx' || j === 'ppt' || fn.endsWith('.pptx') || fn.endsWith('.ppt')) {
+      return <FileCheck className="w-8 h-8 text-amber-500" />;
+    }
+    if (j === 'gambar' || fn.endsWith('.jpg') || fn.endsWith('.jpeg') || fn.endsWith('.png') || fn.endsWith('.webp')) {
+      return <Sparkles className="w-8 h-8 text-purple-600" />;
+    }
+    return <FileCode className="w-8 h-8 text-slate-500" />;
+  };
+
+  const renderTypeBadge = (jenis: string) => {
+    const j = (jenis || '').toLowerCase();
+    let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
+    let label = jenis;
+
+    if (j === 'pdf') {
+      colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
+      label = 'PDF';
+    } else if (j === 'excel' || j === 'csv') {
+      colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      label = j === 'csv' ? 'CSV' : 'EXCEL';
+    } else if (j === 'docx' || j === 'doc') {
+      colorClass = 'bg-blue-100 text-blue-700 border-blue-200';
+      label = j.toUpperCase();
+    } else if (j === 'pptx' || j === 'ppt') {
+      colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+      label = j.toUpperCase();
+    } else if (j === 'gambar') {
+      colorClass = 'bg-purple-100 text-purple-700 border-purple-200';
+      label = 'GAMBAR / OCR';
+    } else if (j === 'teks') {
+      colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
+      label = 'TEKS';
+    }
+
+    return (
+      <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${colorClass}`}>
+        {label}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Top Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-emerald-950 p-6 rounded-2xl text-white shadow-md relative overflow-hidden border border-emerald-800/40">
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-black tracking-wider uppercase mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            RAG AI Knowledge Base
+          </div>
+          <h2 className="text-xl font-black tracking-wide">Pusat Pengetahuan & Dokumen AI</h2>
+          <p className="text-xs text-emerald-100/80 mt-1 leading-relaxed">
+            Upload dokumen resmi (PDF peraturan/UU, Word .docx/.doc, PPT .pptx/.ppt, Excel .xlsx/.xls, CSV, Gambar/Infografis OCR, atau catatan teknis). Dokumen akan diekstrak, dipotong (*chunking*), dan diindeks secara otomatis ke Supabase agar AI Intelligence dapat mengutip isinya secara presisi saat menjawab pertanyaan.
+          </p>
+        </div>
+      </div>
+
+      {/* Alert Status */}
+      {statusMessage.msg && (
+        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in duration-200 border ${
+          statusMessage.type === 'success' 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50 border-rose-200 text-rose-800'
+        }`}>
+          {statusMessage.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <span className="text-xs font-bold leading-relaxed">{statusMessage.msg}</span>
+        </div>
+      )}
+
+      {/* Grid: Upload Form (Left) & Test Search / Quick Tips (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* FORM UPLOAD */}
+        <div className="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <UploadCloud className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-extrabold text-slate-800 text-sm tracking-wide">Tambah Dokumen Baru</h3>
+            </div>
+            
+            {/* Mode switch: File vs Text */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setInputType('file')}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  inputType === 'file' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Upload File
+              </button>
+              <button
+                type="button"
+                onClick={() => setInputType('text')}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  inputType === 'text' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Input Teks
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleUploadSubmit} className="space-y-4">
+            
+            {/* File Dropzone or Textarea */}
+            {inputType === 'file' ? (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    File Dokumen (PDF, Word .docx/.doc, PPT .pptx/.ppt, Excel .xlsx/.xls, CSV, Gambar, TXT)
+                  </label>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                    Maks. 4.5 MB
+                  </span>
+                </div>
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all text-center group ${
+                    selectedFile && selectedFile.size > MAX_FILE_SIZE_BYTES
+                      ? 'border-rose-400 bg-rose-50/40 hover:bg-rose-50/60'
+                      : 'border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/30'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.pptx,.ppt,.jpg,.jpeg,.png,.webp,.txt,.md"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  {selectedFile ? (
+                    <div className="flex items-center gap-3">
+                      {renderFileIcon(selectedFile.name, '')}
+                      <div className="text-left">
+                        <p className="text-xs font-extrabold text-slate-800 max-w-[280px] truncate">{selectedFile.name}</p>
+                        {selectedFile.size > MAX_FILE_SIZE_BYTES ? (
+                          <p className="text-[11px] text-rose-600 font-bold mt-0.5">
+                            ❌ {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB — Melebihi batas toleransi sistem (Maks. 4.5 MB)
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                            ✅ {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · Ukuran berkas valid (Klik untuk ganti)
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-8 h-8 text-slate-400 group-hover:text-emerald-600 transition-colors mb-2" />
+                      <p className="text-xs font-bold text-slate-700">
+                        Klik untuk memilih file dokumen
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        PDF Peraturan, Word Dokumen, PPT Slide, Gambar/Infografis OCR, Excel Data Statistik
+                      </p>
+                      <p className="text-[10px] text-amber-600/90 font-bold mt-2 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60 inline-flex items-center gap-1">
+                        <span>⚠️ Ukuran maksimal berkas: 4.5 MB (Batas Serverless Free-Tier)</span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Isi Teks / Peraturan / Catatan Kebijakan
+                </label>
+                <textarea
+                  rows={5}
+                  value={rawText}
+                  onChange={e => setRawText(e.target.value)}
+                  placeholder="Paste isi peraturan, keputusan walikota, atau catatan teknis ketahanan pangan di sini..."
+                  className="w-full text-xs font-medium p-3 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                />
+              </div>
+            )}
+
+            {/* Judul Dokumen */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Judul Dokumen / Peraturan <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={judul}
+                onChange={e => setJudul(e.target.value)}
+                placeholder="Contoh: Perda No. 3 Tahun 2020 tentang Penyelenggaraan Ketahanan Pangan"
+                className="w-full text-xs font-semibold p-2.5 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                required
+              />
+            </div>
+
+            {/* Deskripsi / Keterangan */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Deskripsi Singkat / Kategori (Opsional)
+              </label>
+              <input
+                type="text"
+                value={deskripsi}
+                onChange={e => setDeskripsi(e.target.value)}
+                placeholder="Contoh: Regulasi cadangan beras pemerintah daerah & distribusi pangan"
+                className="w-full text-xs font-medium p-2.5 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isUploading}
+              className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Sedang mengekstrak & memproses chunking (~5-15 detik)...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Indeks Dokumen ke AI Knowledge Base</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* TEST SEARCH / SIMULATION (Right) */}
+        <div className="lg:col-span-5 space-y-4">
+          
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">
+                Uji Coba Pencarian Knowledge Base
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
+              Cek apakah potongan teks dokumen Anda dapat ditemukan oleh sistem pencarian AI sebelum ditanyakan di menu chat.
+            </p>
+
+            <form onSubmit={handleTestSearch} className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cari kata kunci (misal: cadangan beras, pasal 5)..."
+                className="flex-1 text-xs p-2 border border-slate-300 rounded-xl outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={isSearching || !searchQuery.trim()}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl disabled:opacity-50 cursor-pointer"
+              >
+                {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Cari'}
+              </button>
+            </form>
+
+            {/* Results */}
+            {hasSearched && (
+              <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar">
+                {searchResults.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic text-center py-2">
+                    Tidak ada potongan teks yang cocok dengan kata kunci tersebut.
+                  </p>
+                ) : (
+                  searchResults.map((res, i) => (
+                    <div key={i} className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-left">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black text-emerald-700 truncate max-w-[180px]">
+                          📚 {res.doc_title}
+                        </span>
+                        <span className="text-[9px] font-semibold text-slate-400">
+                          Chunk #{res.chunk_index}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 line-clamp-3 leading-snug font-medium">
+                        {res.content}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Info Box */}
+          <div className="bg-emerald-50/60 border border-emerald-200/80 p-4 rounded-2xl">
+            <div className="flex items-start gap-2.5">
+              <HelpCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-emerald-900 leading-relaxed space-y-1">
+                <p className="font-bold">Bagaimana AI menggunakan dokumen ini?</p>
+                <p className="text-slate-600">
+                  Saat user bertanya di <strong>AI Intelligence</strong>, sistem secara otomatis mencari <strong>4 hingga 8 potongan teks paling relevan</strong> dari database dan menyisipkannya ke konteks prompt Gemini, sehingga AI dapat menjawab dengan mengutip pasal, angka, atau isi dokumen resmi secara akurat.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* LIST DOKUMEN YANG SUDAH DI-INDEX */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <BookOpen className="w-5 h-5 text-emerald-600" />
+            <div>
+              <h3 className="font-black text-slate-800 text-sm tracking-wide">Daftar Dokumen Knowledge Base</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Total {docs.length} Dokumen Terindeks
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={fetchDocs}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-600 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="py-12 flex flex-col items-center justify-center text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin mb-2" />
+            <span className="text-xs font-bold">Memuat daftar dokumen...</span>
+          </div>
+        ) : docs.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 space-y-2">
+            <BookOpen className="w-10 h-10 mx-auto text-slate-300" />
+            <p className="text-xs font-bold text-slate-600">Belum ada dokumen yang diupload.</p>
+            <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+              Silakan upload file PDF peraturan, dokumen Word, slide presentasi, gambar OCR, atau tabel Excel melalui formulir di atas.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs table-auto">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-black tracking-wider">
+                  <th className="py-3 px-3 w-24">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('jenis')}
+                      className={`group inline-flex items-center gap-1.5 cursor-pointer font-black uppercase text-[10px] tracking-wider transition-colors hover:text-slate-800 select-none ${
+                        sortField === 'jenis' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}
+                      title="Urutkan berdasarkan jenis dokumen"
+                    >
+                      <span>Jenis</span>
+                      {sortField === 'jenis' ? (
+                        sortDirection === 'asc' ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 min-w-[220px] max-w-[340px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('judul')}
+                      className={`group inline-flex items-center gap-1.5 cursor-pointer font-black uppercase text-[10px] tracking-wider transition-colors hover:text-slate-800 select-none ${
+                        sortField === 'judul' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}
+                      title="Urutkan berdasarkan judul dokumen"
+                    >
+                      <span>Judul Dokumen</span>
+                      {sortField === 'judul' ? (
+                        sortDirection === 'asc' ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 min-w-[180px] max-w-[300px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('deskripsi')}
+                      className={`group inline-flex items-center gap-1.5 cursor-pointer font-black uppercase text-[10px] tracking-wider transition-colors hover:text-slate-800 select-none ${
+                        sortField === 'deskripsi' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}
+                      title="Urutkan berdasarkan deskripsi"
+                    >
+                      <span>Deskripsi</span>
+                      {sortField === 'deskripsi' ? (
+                        sortDirection === 'asc' ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 text-center w-32 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('total_chunks')}
+                      className={`group inline-flex items-center justify-center gap-1.5 cursor-pointer font-black uppercase text-[10px] tracking-wider transition-colors hover:text-slate-800 select-none mx-auto ${
+                        sortField === 'total_chunks' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}
+                      title="Urutkan berdasarkan jumlah chunk"
+                    >
+                      <span>Jumlah Chunk</span>
+                      {sortField === 'total_chunks' ? (
+                        sortDirection === 'asc' ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 w-36 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('created_at')}
+                      className={`group inline-flex items-center gap-1.5 cursor-pointer font-black uppercase text-[10px] tracking-wider transition-colors hover:text-slate-800 select-none ${
+                        sortField === 'created_at' ? 'text-emerald-700' : 'text-slate-500'
+                      }`}
+                      title="Urutkan berdasarkan tanggal upload"
+                    >
+                      <span>Tanggal Upload</span>
+                      {sortField === 'created_at' ? (
+                        sortDirection === 'asc' ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 text-right w-24 shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedDocs.map(doc => (
+                  <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-3 align-top">
+                      {renderTypeBadge(doc.jenis)}
+                    </td>
+                    <td className="py-3 px-3 align-top">
+                      <div className="min-w-[220px] max-w-[340px] break-words whitespace-normal space-y-0.5">
+                        <p className="font-extrabold text-slate-800 leading-snug break-words">{doc.judul}</p>
+                        {doc.file_name && (
+                          <p className="text-[10px] text-slate-400 font-semibold break-all">{doc.file_name}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 align-top">
+                      <div className="min-w-[180px] max-w-[300px] break-words whitespace-normal text-slate-500 font-medium leading-relaxed">
+                        {doc.deskripsi ? doc.deskripsi : <span className="text-slate-300 italic">-</span>}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center align-top font-black text-emerald-700 whitespace-nowrap">
+                      {doc.total_chunks} <span className="text-[10px] font-semibold text-slate-400">potongan</span>
+                    </td>
+                    <td className="py-3 px-3 text-slate-400 font-semibold text-[11px] align-top whitespace-nowrap">
+                      {new Date(doc.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </td>
+                    <td className="py-3 px-3 text-right align-top whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(doc)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit judul & deskripsi dokumen"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc.id, doc.judul)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Hapus dokumen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* EDIT MODAL DIALOG */}
+      {editingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
+            
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800">Edit Metadata Dokumen</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">Perbarui judul dan keterangan dokumen untuk mempermudah pencarian AI</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseEdit}
+                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Edit */}
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Judul Dokumen <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={editJudul}
+                  onChange={e => setEditJudul(e.target.value)}
+                  placeholder="Masukkan judul dokumen..."
+                  className="w-full text-xs font-semibold p-2.5 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Deskripsi / Ringkasan Dokumen
+                </label>
+                <textarea
+                  rows={3}
+                  value={editDeskripsi}
+                  onChange={e => setEditDeskripsi(e.target.value)}
+                  placeholder="Masukkan ringkasan atau keterangan dokumen..."
+                  className="w-full text-xs font-medium p-2.5 border border-slate-300 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                />
+              </div>
+
+              {/* Info Tambahan */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-400">Jenis: </span>
+                  <span className="font-bold text-slate-700 uppercase">{editingDoc.jenis}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-400">Total Chunk: </span>
+                  <span className="font-bold text-emerald-700">{editingDoc.total_chunks} potongan</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  disabled={isSavingEdit}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan Perubahan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+

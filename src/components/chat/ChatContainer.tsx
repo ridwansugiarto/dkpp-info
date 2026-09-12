@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   Sparkles, 
   MapPin, 
@@ -8,19 +9,31 @@ import {
   BookOpen, 
   Globe, 
   ExternalLink, 
-  Database,
-  Calendar,
-  Compass,
-  TrendingUp,
-  FileText,
-  Activity
+  Database, 
+  Compass, 
+  TrendingUp, 
+  Activity,
+  Copy,
+  Check,
+  ThumbsUp,
+  ThumbsDown,
+  Share2
 } from 'lucide-react';
 import { ChatMessage, SourceCitation } from '@/types/dkpp';
+import { cleanResponseText } from '@/lib/gemini';
+import type { ChartConfig } from '@/components/ChatChart';
+
+// Dynamic import ChatChart for interactive Recharts
+const ChatChart = dynamic(
+  () => import('@/components/ChatChart'),
+  { ssr: false, loading: () => <div className="h-48 flex items-center justify-center text-xs text-gray-400">Memuat grafik...</div> }
+);
 
 interface ChatContainerProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onSuggestionClick: (prompt: string) => void;
+  onSelectKelurahan?: (kel: string) => void;
 }
 
 const SUGGESTIONS = [
@@ -50,59 +63,285 @@ const SUGGESTIONS = [
   },
 ];
 
+// Helper: parse bold, italic, and code inlines
+function parseInlineFormatting(text: string): React.ReactNode {
+  // Handle `code`, **bold**, and *italic*
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={i} className="font-bold text-gray-950 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**') && part.length > 2) {
+      return (
+        <em key={i} className="italic text-gray-700 dark:text-gray-300">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+}
+
 export const ChatContainer: React.FC<ChatContainerProps> = ({
   messages,
   isLoading,
   onSuggestionClick,
+  onSelectKelurahan,
 }) => {
   const scrollEndRef = useRef<HTMLDivElement>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [feedbackState, setFeedbackState] = useState<Record<number, 'like' | 'dislike'>>({});
 
   useEffect(() => {
     scrollEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Format simple markdown into clean HTML/React nodes
+  const handleCopy = (text: string, idx: number) => {
+    const cleaned = cleanResponseText(text);
+    navigator.clipboard.writeText(cleaned);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const toggleFeedback = (idx: number, type: 'like' | 'dislike') => {
+    setFeedbackState((prev) => ({
+      ...prev,
+      [idx]: prev[idx] === type ? (null as any) : type,
+    }));
+  };
+
+  // Format clean markdown into rich HTML/React elements
   const renderFormattedContent = (content: string) => {
-    const lines = content.split('\n');
-    return (
-      <div className="space-y-2 text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-normal">
-        {lines.map((line, idx) => {
-          if (line.startsWith('### ')) {
-            return (
-              <h3 key={idx} className="font-bold text-base text-gray-900 dark:text-white pt-2 pb-1">
-                {line.replace('### ', '')}
-              </h3>
-            );
+    const cleanedContent = cleanResponseText(content);
+    const lines = cleanedContent.split('\n');
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // 1. Deteksi Blok Visualisasi Recharts (```json:chart atau ```chart)
+      if (
+        trimmed.startsWith('```json:chart') ||
+        trimmed.startsWith('```chart') ||
+        trimmed.startsWith('```json')
+      ) {
+        const isChartTag = trimmed.startsWith('```json:chart') || trimmed.startsWith('```chart');
+        const codeLines: string[] = [];
+        i++;
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        if (i < lines.length && lines[i].trim().startsWith('```')) {
+          i++; // skip closing ```
+        }
+
+        const rawCode = codeLines.join('\n').trim();
+        let parsedChart: ChartConfig | null = null;
+        try {
+          const jsonObj = JSON.parse(rawCode);
+          if (jsonObj && (jsonObj.data || jsonObj.type || jsonObj.xAxisKey || isChartTag)) {
+            parsedChart = {
+              type: jsonObj.type || 'line',
+              title: jsonObj.title || 'Visualisasi Data',
+              description: jsonObj.description || '',
+              xAxisKey: jsonObj.xAxisKey || Object.keys(jsonObj.data?.[0] || {})[0] || 'label',
+              series: jsonObj.series || [
+                {
+                  key: Object.keys(jsonObj.data?.[0] || {}).find((k) => k !== jsonObj.xAxisKey) || 'value',
+                  label: 'Nilai',
+                },
+              ],
+              data: jsonObj.data || [],
+              showTrendline: jsonObj.showTrendline ?? true,
+            };
           }
-          if (line.startsWith('## ')) {
-            return (
-              <h2 key={idx} className="font-bold text-lg text-gray-900 dark:text-white pt-3 pb-1 border-b border-gray-200 dark:border-gray-700">
-                {line.replace('## ', '')}
-              </h2>
-            );
-          }
-          if (line.startsWith('# ')) {
-            return (
-              <h1 key={idx} className="font-extrabold text-xl text-emerald-700 dark:text-emerald-400 pt-3 pb-1">
-                {line.replace('# ', '')}
-              </h1>
-            );
-          }
-          if (line.startsWith('- ') || line.startsWith('* ')) {
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-2">
-                <span className="text-emerald-500 text-base leading-none">•</span>
-                <span>{line.substring(2)}</span>
-              </div>
-            );
-          }
-          if (line.trim() === '') {
-            return <div key={idx} className="h-1" />;
-          }
-          return <p key={idx}>{line}</p>;
-        })}
-      </div>
-    );
+        } catch {
+          parsedChart = null;
+        }
+
+        if (parsedChart && parsedChart.data && parsedChart.data.length > 0) {
+          elements.push(
+            <div key={`chart-${i}`} className="my-3">
+              <ChatChart config={parsedChart} />
+            </div>
+          );
+          continue;
+        } else {
+          elements.push(
+            <pre key={`code-${i}`} className="my-2 p-3 bg-slate-900 text-slate-100 rounded-xl text-xs overflow-x-auto font-mono">
+              <code>{rawCode}</code>
+            </pre>
+          );
+          continue;
+        }
+      }
+
+      // 2. Deteksi Tabel Markdown (| Kolom 1 | Kolom 2 |)
+      if (
+        trimmed.startsWith('|') &&
+        trimmed.endsWith('|') &&
+        i + 1 < lines.length &&
+        lines[i + 1].trim().startsWith('|') &&
+        lines[i + 1].includes('---')
+      ) {
+        const tableLines: string[] = [];
+        while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+          tableLines.push(lines[i].trim());
+          i++;
+        }
+
+        if (tableLines.length >= 2) {
+          const headerCols = tableLines[0].split('|').slice(1, -1).map((c) => c.trim());
+          const rowLines = tableLines.slice(2);
+
+          elements.push(
+            <div key={`table-${i}`} className="my-3 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs">
+              <table className="min-w-full text-xs text-left border-collapse bg-white dark:bg-[#1b1d22]">
+                <thead className="bg-emerald-700 text-white font-bold uppercase text-[10.5px] tracking-wider">
+                  <tr>
+                    {headerCols.map((col, ci) => (
+                      <th key={ci} className="px-3 py-2 border-b border-emerald-800 whitespace-nowrap">
+                        {parseInlineFormatting(col)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-800 dark:text-gray-200">
+                  {rowLines.map((r, ri) => {
+                    const cells = r.split('|').slice(1, -1).map((c) => c.trim());
+                    return (
+                      <tr
+                        key={ri}
+                        className={
+                          ri % 2 === 0
+                            ? 'bg-white dark:bg-[#1b1d22]'
+                            : 'bg-gray-50/70 dark:bg-gray-800/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30'
+                        }
+                      >
+                        {cells.map((cell, cidx) => (
+                          <td key={cidx} className="px-3 py-2 whitespace-normal leading-relaxed">
+                            {parseInlineFormatting(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+          continue;
+        }
+      }
+
+      // 3. Headings
+      if (trimmed.startsWith('#### ')) {
+        elements.push(
+          <h4 key={i} className="text-xs font-bold text-gray-800 dark:text-gray-200 mt-2.5 mb-1 uppercase tracking-wide">
+            {parseInlineFormatting(trimmed.replace(/^####\s*/, ''))}
+          </h4>
+        );
+        i++;
+        continue;
+      }
+      if (trimmed.startsWith('### ')) {
+        elements.push(
+          <h3 key={i} className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400 mt-3 mb-1 uppercase tracking-wide border-b border-emerald-100 dark:border-emerald-900/60 pb-0.5">
+            {parseInlineFormatting(trimmed.replace(/^###\s*/, ''))}
+          </h3>
+        );
+        i++;
+        continue;
+      }
+      if (trimmed.startsWith('## ')) {
+        elements.push(
+          <h2 key={i} className="text-base font-black text-gray-900 dark:text-white mt-3.5 mb-1">
+            {parseInlineFormatting(trimmed.replace(/^##\s*/, ''))}
+          </h2>
+        );
+        i++;
+        continue;
+      }
+      if (trimmed.startsWith('# ')) {
+        elements.push(
+          <h1 key={i} className="text-lg font-black text-gray-900 dark:text-white mt-3.5 mb-1.5">
+            {parseInlineFormatting(trimmed.replace(/^#\s*/, ''))}
+          </h1>
+        );
+        i++;
+        continue;
+      }
+
+      // 4. Bullet lists
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
+        const itemText = trimmed.replace(/^[-*•]\s*/, '');
+        elements.push(
+          <div key={i} className="flex gap-2 my-1 ml-1 items-start text-xs sm:text-sm">
+            <span className="text-emerald-500 font-bold mt-0.5 shrink-0">•</span>
+            <span className="text-gray-800 dark:text-gray-200 leading-relaxed">
+              {parseInlineFormatting(itemText)}
+            </span>
+          </div>
+        );
+        i++;
+        continue;
+      }
+
+      // 5. Numbered lists
+      const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+      if (numMatch) {
+        elements.push(
+          <div key={i} className="flex gap-2 my-1 ml-1 items-start text-xs sm:text-sm">
+            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-xs shrink-0 mt-0.5">
+              {numMatch[1]}.
+            </span>
+            <span className="text-gray-800 dark:text-gray-200 leading-relaxed">
+              {parseInlineFormatting(numMatch[2])}
+            </span>
+          </div>
+        );
+        i++;
+        continue;
+      }
+
+      // 6. Horizontal Rules
+      if (trimmed === '---' || trimmed === '***') {
+        elements.push(<hr key={i} className="my-2.5 border-gray-200 dark:border-gray-800" />);
+        i++;
+        continue;
+      }
+
+      // 7. Empty lines
+      if (trimmed === '') {
+        elements.push(<div key={i} className="h-1" />);
+        i++;
+        continue;
+      }
+
+      // 8. Normal Paragraph
+      elements.push(
+        <p key={i} className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1.5">
+          {parseInlineFormatting(line)}
+        </p>
+      );
+      i++;
+    }
+
+    return <div className="space-y-0.5">{elements}</div>;
   };
 
   return (
@@ -145,26 +384,30 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         </div>
       ) : (
         /* Messages Thread */
-        <div className="max-w-3xl mx-auto space-y-6">
-          {messages.map((msg) => {
+        <div className="max-w-3xl mx-auto space-y-5">
+          {messages.map((msg, idx) => {
             const isUser = msg.role === 'user';
 
             return (
               <div
-                key={msg.id}
+                key={msg.id || idx}
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
+                {/* Assistant Sleek Avatar (No raw "DK" text) */}
                 {!isUser && (
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-sm font-bold text-xs shrink-0 mt-0.5">
-                    DK
+                  <div
+                    className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0 mt-0.5"
+                    title="DKPP-INFO Intelligence Assistant"
+                  >
+                    <Sparkles className="w-4 h-4" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                  className={`max-w-[88%] sm:max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
                     isUser
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-br-none'
-                      : 'bg-white dark:bg-[#1e2025] border border-gray-200/80 dark:border-gray-800 rounded-bl-none'
+                      ? 'bg-emerald-600 text-white rounded-tr-xs'
+                      : 'bg-white dark:bg-[#1a1c22] border border-gray-200/80 dark:border-gray-800 rounded-tl-xs'
                   }`}
                 >
                   {/* Tool Calls Status Chips */}
@@ -184,14 +427,61 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                   {/* Message Body */}
                   {isUser ? (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   ) : (
                     renderFormattedContent(msg.content)
                   )}
 
+                  {/* Interactive Action Bar on Assistant Responses */}
+                  {!isUser && (
+                    <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-gray-100 dark:border-gray-800 text-gray-400 text-xs">
+                      <button
+                        onClick={() => handleCopy(msg.content, idx)}
+                        className="flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 transition-colors p-1 rounded"
+                        title="Salin jawaban bersih"
+                      >
+                        {copiedIndex === idx ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">Tersalin</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Salin</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => toggleFeedback(idx, 'like')}
+                        className={`p-1 rounded transition-colors ${
+                          feedbackState[idx] === 'like'
+                            ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                            : 'hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                        title="Jawaban Akurat"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => toggleFeedback(idx, 'dislike')}
+                        className={`p-1 rounded transition-colors ${
+                          feedbackState[idx] === 'dislike'
+                            ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/40'
+                            : 'hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                        title="Perlu Koreksi"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Source Citations */}
                   {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3.5 pt-2.5 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-1.5">
+                    <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-1.5">
                       <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                         <BookOpen className="w-3 h-3" />
                         <span>Sumber Rujukan ({msg.sources.length})</span>
@@ -237,16 +527,16 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex gap-3 justify-start items-center">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-sm font-bold text-xs shrink-0">
-                DK
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0">
+                <Sparkles className="w-4 h-4 animate-spin" />
               </div>
-              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1e2025] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
                 </div>
-                <span>DKPP-INFO sedang menganalisis data spasial & ketahanan pangan...</span>
+                <span>DKPP-INFO sedang menganalisis data spasial & menghitung neraca pangan...</span>
               </div>
             </div>
           )}

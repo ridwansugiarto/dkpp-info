@@ -1,0 +1,989 @@
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { TrendingUp, ArrowLeft, RefreshCw, AlertTriangle, Info, ShieldAlert, Sparkles, CheckCircle2, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import CommodityIcon from './CommodityIcon';
+
+const COMMODITY_MAP: Record<string, string> = {
+  harga_beras: 'Beras Medium',
+  harga_bawang_merah: 'Bawang Merah',
+  harga_bawang_putih: 'Bawang Putih Bonggol',
+  harga_cabai_merah: 'Cabe Merah Besar',
+  harga_cabai_merah_keriting: 'Cabe Merah Keriting',
+  harga_cabai_rawit_merah: 'Cabe Rawit Merah',
+  harga_cabai_rawit_hijau: 'Cabe Rawit Hijau',
+  harga_cabai_rawit: 'Cabe Rawit Merah',
+  harga_daging_sapi: 'Daging Sapi Murni',
+  harga_daging_ayam_ras: 'Daging Ayam Ras',
+  harga_telur_ayam_ras: 'Telur Ayam Ras',
+  harga_gula_pasir: 'Gula Pasir',
+  harga_minyak_goreng: 'Minyak Goreng Kemasan',
+  harga_tepung_terigu: 'Tepung Terigu Kemasan'
+};
+
+const COMMODITY_ORDER = [
+  'harga_beras',
+  'harga_bawang_merah',
+  'harga_bawang_putih',
+  'harga_cabai_merah',
+  'harga_cabai_merah_keriting',
+  'harga_cabai_rawit_merah',
+  'harga_cabai_rawit_hijau',
+  'harga_daging_sapi',
+  'harga_daging_ayam_ras',
+  'harga_telur_ayam_ras',
+  'harga_gula_pasir',
+  'harga_minyak_goreng',
+  'harga_tepung_terigu'
+];
+
+const SHORT_KEY_MAP: Record<string, string> = {
+  harga_beras: 'beras',
+  harga_bawang_merah: 'bawang_merah',
+  harga_bawang_putih: 'bawang_putih',
+  harga_cabai_merah: 'cabe_merah',
+  harga_cabai_merah_keriting: 'cabe_merah_keriting',
+  harga_cabai_rawit_merah: 'cabe_rawit_merah',
+  harga_cabai_rawit_hijau: 'cabe_rawit_hijau',
+  harga_cabai_rawit: 'cabe_rawit_merah',
+  harga_daging_sapi: 'daging_sapi',
+  harga_daging_ayam_ras: 'daging_ayam',
+  harga_telur_ayam_ras: 'telur',
+  harga_gula_pasir: 'gula_pasir',
+  harga_minyak_goreng: 'minyak_goreng_kemasan',
+  harga_tepung_terigu: 'tepung_terigu'
+};
+
+const getIndonesianMonthName = (monthIndex: number): string => {
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  return months[monthIndex];
+};
+
+const getBaselineMonthStr = (): string => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return `${getIndonesianMonthName(d.getMonth()).toUpperCase()} ${d.getFullYear()}`;
+};
+
+const getT1MonthStr = (): string => {
+  const d = new Date();
+  return `${getIndonesianMonthName(d.getMonth()).toUpperCase()} ${d.getFullYear()}`;
+};
+
+const getT3MonthStr = (): string => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 2);
+  return `${getIndonesianMonthName(d.getMonth()).toUpperCase()} ${d.getFullYear()}`;
+};
+
+interface ForecastViewProps {
+  onBack: () => void;
+  livePrices?: Record<string, number> | null;
+}
+
+export default function ForecastView({ onBack, livePrices }: ForecastViewProps) {
+  const [selectedCommodity, setSelectedCommodity] = useState<string>('harga_beras');
+  const [activeTooltip, setActiveTooltip] = useState<{ title: string; content: string } | null>(null);
+
+  const [forecasts, setForecasts] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [training, setTraining] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+  // Fetch forecast results and historical data
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: fcData, error: fcError } = await supabase
+        .from('forecast_result')
+        .select('*');
+        
+      if (fcError) {
+        if (fcError.message.includes('does not exist')) {
+          throw new Error('Tabel forecast_result belum dibuat di database. Silakan jalankan migrasi migrate_forecast_result.sql terlebih dahulu.');
+        }
+        throw fcError;
+      }
+      const mappedFcData = (fcData || []).map((item: any) => {
+        if (item.status_forecast === 'Turun') {
+          return {
+            ...item,
+            status_cv: 'AMAN',
+            status_skpg: 'AMAN',
+            narasi: `Tren harga diproyeksikan mengalami penurunan sebesar ${Math.abs(item.perubahan_pct).toFixed(1)}% dalam 1 bulan ke depan. Dari sudut pandang konsumen, penurunan ini sangat kondusif dan memperkuat aksesibilitas pangan masyarakat. Volatilitas (CV) dan kerentanan (SKPG) dinilai AMAN seiring dengan tren penurunan harga komoditas ini.`,
+            rekomendasi: [
+              "Lanjutkan pemantauan pasokan agar kestabilan harga tetap terjaga.",
+              "Optimalkan penyerapan hasil panen petani lokal untuk menjaga harga di tingkat produsen agar tidak anjlok terlalu dalam.",
+              "Pertahankan distribusi normal ke pasar-pasar rakyat."
+            ]
+          };
+        }
+        return item;
+      });
+      setForecasts(mappedFcData);
+
+      const { data: histData, error: histError } = await supabase
+        .from('forecast_dataset')
+        .select('*')
+        .order('tahun', { ascending: true })
+        .order('bulan', { ascending: true });
+
+      if (histError) throw histError;
+      setHistory(histData || []);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Gagal memuat data peramalan.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionActive = typeof window !== 'undefined' && sessionStorage.getItem('adminSession') === 'active';
+      setIsAdmin(!!session?.user && sessionActive);
+    };
+    checkAuth();
+    const interval = setInterval(checkAuth, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleTrainModel = async () => {
+    const sessionActive = typeof window !== 'undefined' && sessionStorage.getItem('adminSession') === 'active';
+    if (!sessionActive) {
+      alert("Akses Terbatas: Mode tamu tidak memiliki izin untuk melatih ulang model EWS.");
+      return;
+    }
+
+    setError(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      alert("Sesi Admin Supabase tidak ditemukan. Silakan login kembali di portal admin.");
+      window.location.href = '/entry';
+      return;
+    }
+
+    setTraining(true);
+    try {
+      const token = session?.access_token || '';
+      const res = await fetch('/api/ml/train', { 
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const json = await res.json();
+      
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Terjadi kesalahan saat melatih ulang model.');
+      }
+      
+      await loadData();
+      alert('Model Machine Learning berhasil dilatih ulang dan EWS diperbarui!');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setTraining(false);
+    }
+  };
+
+  const getMonthName = (monthNum: number) => {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return months[monthNum - 1] || `${monthNum}`;
+  };
+
+  const getOverallStatus = (statusForecast: string, statusCV: string, statusSKPG: string) => {
+    if (statusForecast === 'Turun') return 'Aman';
+    if (statusCV === 'RENTAN' || statusSKPG === 'RENTAN') return 'Rentan';
+    if (statusCV === 'WASPADA' || statusSKPG === 'WASPADA' || statusForecast === 'Naik') return 'Waspada';
+    return 'Aman';
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'rentan':
+        return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'waspada':
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+      case 'aman':
+      default:
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    }
+  };
+
+  const getStatusDot = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'rentan':
+        return 'bg-rose-500';
+      case 'waspada':
+        return 'bg-amber-500';
+      case 'aman':
+      default:
+        return 'bg-emerald-500';
+    }
+  };
+
+  const getStatusBgColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'rentan':
+        return 'bg-rose-50/70 border-rose-200 text-rose-950';
+      case 'waspada':
+        return 'bg-amber-50/70 border-amber-200 text-amber-950';
+      case 'aman':
+      default:
+        return 'bg-emerald-50/70 border-emerald-200 text-emerald-950';
+    }
+  };
+
+  const getChartData = () => {
+    if (history.length === 0) return [];
+    
+    const getRowVal = (row: any) => {
+      if (row[selectedCommodity] !== null && row[selectedCommodity] > 0) {
+        return Number(row[selectedCommodity]);
+      }
+      if (selectedCommodity === 'harga_cabai_rawit_merah' && row.harga_cabai_rawit) {
+        return Math.round(row.harga_cabai_rawit * 0.98);
+      }
+      if (selectedCommodity === 'harga_cabai_rawit_hijau' && row.harga_cabai_rawit) {
+        return Math.round(row.harga_cabai_rawit * 0.82);
+      }
+      if (selectedCommodity === 'harga_cabai_merah_keriting' && row.harga_cabai_merah) {
+        return Math.round(row.harga_cabai_merah * 0.96);
+      }
+      if (selectedCommodity === 'harga_tepung_terigu') {
+        return 13500;
+      }
+      return null;
+    };
+
+    const commodityHistory = history
+      .filter(row => getRowVal(row) !== null)
+      .slice(-12)
+      .map(row => ({
+        name: `${getMonthName(row.bulan)} ${String(row.tahun).slice(-2)}`,
+        price: getRowVal(row),
+        forecast: null as number | null,
+        lower_bound: null as number | null,
+        upper_bound: null as number | null
+      }));
+      
+    if (commodityHistory.length === 0) return [];
+    
+    const f = forecasts.find(row => row.komoditas === selectedCommodity);
+    if (!f) return commodityHistory;
+    
+    const anchor = commodityHistory[commodityHistory.length - 1];
+    const latestRow = history.filter(row => getRowVal(row) !== null).slice(-1)[0];
+    if (!latestRow) return commodityHistory;
+    
+    const currentMonth = latestRow.bulan;
+    const currentYear = latestRow.tahun;
+    
+    let m1 = currentMonth + 1;
+    let y1 = currentYear;
+    if (m1 > 12) { m1 = 1; y1++; }
+    
+    let m3 = currentMonth + 3;
+    let y3 = currentYear;
+    if (m3 > 12) { m3 = m3 - 12; y3++; }
+    
+    const combined = [...commodityHistory];
+    
+    combined.push({
+      name: anchor.name,
+      price: null,
+      forecast: anchor.price,
+      lower_bound: anchor.price,
+      upper_bound: anchor.price
+    });
+    
+    combined.push({
+      name: `${getMonthName(m1)} ${String(y1).slice(-2)}`,
+      price: null,
+      forecast: f.forecast_1m,
+      lower_bound: f.lower_bound,
+      upper_bound: f.upper_bound
+    });
+    
+    combined.push({
+      name: `${getMonthName(m3)} ${String(y3).slice(-2)}`,
+      price: null,
+      forecast: f.forecast_3m,
+      lower_bound: f.lower_bound * 0.95,
+      upper_bound: f.upper_bound * 1.05
+    });
+    
+    return combined;
+  };
+
+  const tableRows = COMMODITY_ORDER.map(comm => {
+    const f = forecasts.find(item => item.komoditas === comm);
+
+    const hargaKini = Number(f?.harga_aktual) || 0;
+    const forecast1m = Number(f?.forecast_1m) || 0;
+    const forecast3m = Number(f?.forecast_3m) || 0;
+    
+    let statusForecast = f?.status_forecast || 'Stabil';
+    const statusCV = f?.status_cv || 'AMAN';
+    const statusSKPG = f?.status_skpg || 'AMAN';
+    const cv = f?.cv !== undefined && f?.cv !== null ? Number(f.cv) : 0;
+    const growthYoY = f?.growth_yoy !== undefined && f?.growth_yoy !== null ? Number(f.growth_yoy) : 0;
+    const confidence = f?.confidence || 0;
+    
+    const perubahanPct = (hargaKini > 0 && forecast1m > 0)
+      ? ((forecast1m - hargaKini) / hargaKini) * 100
+      : (f?.perubahan_pct !== undefined && f?.perubahan_pct !== null ? Number(f.perubahan_pct) : 0);
+
+    if (perubahanPct > 3) {
+      statusForecast = 'Naik';
+    } else if (perubahanPct < -3) {
+      statusForecast = 'Turun';
+    } else {
+      statusForecast = 'Stabil';
+    }
+
+    const overallStatus = getOverallStatus(statusForecast, statusCV, statusSKPG);
+
+    return {
+      key: comm,
+      name: COMMODITY_MAP[comm] || comm,
+      hargaKini,
+      forecast1m,
+      forecast3m,
+      statusForecast,
+      statusCV,
+      statusSKPG,
+      cv,
+      growthYoY,
+      confidence,
+      perubahanPct,
+      overallStatus
+    };
+  });
+
+  const activeTableRow = tableRows.find(r => r.key === selectedCommodity);
+  const activeForecast = forecasts.find(f => f.komoditas === selectedCommodity) || (activeTableRow ? {
+    komoditas: activeTableRow.key,
+    harga_aktual: activeTableRow.hargaKini,
+    forecast_1m: activeTableRow.forecast1m,
+    forecast_3m: activeTableRow.forecast3m,
+    status_forecast: activeTableRow.statusForecast,
+    status_cv: activeTableRow.statusCV,
+    status_skpg: activeTableRow.statusSKPG,
+    cv: activeTableRow.cv,
+    growth_yoy: activeTableRow.growthYoY,
+    confidence: activeTableRow.confidence,
+    perubahan_pct: activeTableRow.perubahanPct,
+    drivers: ["1. Tren harga 3 bulan terakhir", "2. Pola pasokan sentra produksi", "3. Stabilitas inflasi dan iklim makro"],
+    rekomendasi: [
+      "Monitoring berkala stabilitas pasokan dan harga di pasar tradisional.",
+      "Pertahankan kelancaran jalur distribusi dari sentra produksi."
+    ]
+  } : undefined);
+
+  return (
+    <div className="space-y-1.5 sm:space-y-6 w-full animate-in fade-in duration-300">
+      
+      {/* Navigation Hyperlink - Compact spacing to save vertical space */}
+      <div className="-mt-1 sm:mt-0 mb-0.5">
+        <button 
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-600 hover:underline font-extrabold text-[11px] sm:text-xs uppercase tracking-wider transition-colors cursor-pointer active:scale-95 group py-0.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:-translate-x-1 stroke-[2.5]" />
+          <span>Kembali ke Dashboard Utama</span>
+        </button>
+      </div>
+
+      {/* Error Notification */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-rose-800 text-sm">Terjadi Kesalahan</h3>
+            <p className="text-xs text-rose-700 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 2-Panel Layout: Forecast Table (75%) & EWS Panel (25%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+        
+        {/* Panel Kiri: Forecast Table (75% / col-span-3) */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          {/* Header Forecast Table (Sage Green #9DC183) - Sticky on mobile so it stays docked like Capture 2 */}
+          <div className="p-3 px-4 sm:p-3.5 sm:px-5 bg-[#9DC183] border-b border-[#8eb574] rounded-t-2xl flex justify-between items-center flex-wrap gap-2 text-white sticky -top-4 sm:static z-20 shadow-sm">
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-white flex items-center gap-2 drop-shadow-sm">
+              <Sparkles className="w-4 h-4 text-white" />
+              Forecast Table
+            </h3>
+            
+            {/* Tombol Latih Ulang & Update EWS: Hijau muda terang, teks gelap jelas, tanpa teks 'tamu' */}
+            <button
+              onClick={handleTrainModel}
+              disabled={training || loading || !isAdmin}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-wider shadow-sm transition-all active:scale-95 border ${
+                training ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed' : 
+                !isAdmin ? 'bg-[#DCFCE7] hover:bg-[#D1FAE5] text-[#064E3B] border-emerald-300/80 cursor-not-allowed shadow-none' :
+                'bg-[#DCFCE7] hover:bg-emerald-200 text-[#064E3B] border-emerald-400 hover:shadow cursor-pointer'
+              }`}
+              title={!isAdmin ? 'Fitur ini hanya dapat diakses oleh Administrator' : 'Latih Ulang & Update EWS'}
+            >
+              {isAdmin ? (
+                <RefreshCw className={`w-3.5 h-3.5 text-[#064E3B] ${training ? 'animate-spin' : ''}`} />
+              ) : (
+                <ShieldAlert className="w-3.5 h-3.5 text-[#064E3B]" />
+              )}
+              <span>{training ? 'Updating EWS...' : 'Latih Ulang & Update EWS'}</span>
+            </button>
+          </div>
+          
+          {/* Table Container - Scrollable vertically with sticky header on both mobile & desktop */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[440px] sm:max-h-[520px] flex-1 rounded-b-2xl overscroll-y-auto [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {loading ? (
+              <div className="p-16 flex justify-center items-center text-slate-450 font-bold text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin mr-3 text-emerald-600" />
+                Mengambil data intelijen pangan...
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+                  <tr className="bg-slate-50 text-slate-700 font-extrabold uppercase tracking-wide text-[11px]">
+                    <th className="p-3 whitespace-normal">Komoditas</th>
+                    <th className="p-3 text-right whitespace-normal">
+                      <div className="leading-tight">Harga Aktual</div>
+                      <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">{getBaselineMonthStr()}</div>
+                    </th>
+                    <th className="p-3 text-right whitespace-normal">
+                      <div className="leading-tight">Peramalan +1 Bulan</div>
+                      <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">{getT1MonthStr()}</div>
+                    </th>
+                    <th className="p-3 text-right whitespace-normal">
+                      <div className="leading-tight">Peramalan +3 Bulan</div>
+                      <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">{getT3MonthStr()}</div>
+                    </th>
+                    <th className="p-3 text-center whitespace-normal">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="leading-tight text-center">
+                          <div>ARAH TREN +1 BULAN</div>
+                          <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">(L1)</div>
+                        </div>
+                        <button 
+                          onClick={() => setActiveTooltip({
+                            title: 'Arah Tren +1 Bulan (L1)',
+                            content: 'Menunjukkan arah pergerakan harga komoditas pangan dalam 1 bulan ke depan berdasarkan model Machine Learning. Status berupa:\n• NAIK: Harga diproyeksikan naik.\n• TURUN: Harga diproyeksikan turun (menguntungkan bagi konsumen).\n• STABIL: Fluktuasi harga minor di bawah batas toleransi 2%.'
+                          })}
+                          className="text-amber-500 hover:text-amber-600 transition-all transform hover:scale-110 active:scale-95 cursor-pointer mt-0.5"
+                          title="Penjelasan Arah Tren +1 Bulan (L1)"
+                        >
+                          <Lightbulb className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                    <th className="p-3 text-center whitespace-normal">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="leading-tight text-center">
+                          <div>KOEFISIEN VARIASI</div>
+                          <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">(L2)</div>
+                        </div>
+                        <button 
+                          onClick={() => setActiveTooltip({
+                            title: 'Koefisien Variasi (L2)',
+                            content: 'Tingkat kestabilan harga historis selama 12 bulan terakhir. Diukur dengan rumus: (Standar Deviasi / Rata-rata) * 100.\n• Bulatan Hijau (Aman): Fluktuasi harga sangat rendah (< 10%).\n• Bulatan Kuning (Waspada): Fluktuasi harga sedang (10-20%).\n• Bulatan Merah (Rentan): Fluktuasi harga tinggi (> 20%).\n*Catatan: Jika tren diproyeksikan Turun, maka status CV dinilai AMAN untuk melindungi daya beli konsumen.'
+                          })}
+                          className="text-amber-500 hover:text-amber-600 transition-all transform hover:scale-110 active:scale-95 cursor-pointer mt-0.5"
+                          title="Penjelasan Koefisien Variasi (L2)"
+                        >
+                          <Lightbulb className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                    <th className="p-3 text-center whitespace-normal">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="leading-tight text-center">
+                          <div>PERUBAHAN YoY</div>
+                          <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">(L3)</div>
+                        </div>
+                        <button 
+                          onClick={() => setActiveTooltip({
+                            title: 'Perubahan YoY (L3)',
+                            content: 'Indikator kerentanan pangan sektoral berbasis perbandingan pertumbuhan harga bulanan terhadap tahun lalu (Year-on-Year Growth).\n• Bulatan Hijau (Aman): Pertumbuhan harga tahunan rendah/terkendali (< 5-10%).\n• Bulatan Kuning (Waspada): Pertumbuhan harga tahunan mulai meningkat (5-15%).\n• Bulatan Merah (Rentan): Lonjakan harga tahunan di atas ambang batas (> 10-15%).\n*Catatan: Jika tren diproyeksikan Turun, maka status SKPG dinilai AMAN untuk melindungi daya beli konsumen.'
+                          })}
+                          className="text-amber-500 hover:text-amber-600 transition-all transform hover:scale-110 active:scale-95 cursor-pointer mt-0.5"
+                          title="Penjelasan Perubahan YoY (L3)"
+                        >
+                          <Lightbulb className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                    <th className="p-3 text-center whitespace-normal">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="leading-tight">Akurasi (100%-MAPE)</span>
+                        <button 
+                          onClick={() => setActiveTooltip({
+                            title: 'Akurasi Model (100% - MAPE)',
+                            content: 'Skor presisi peramalan Machine Learning yang dihitung dengan rumus: 100% - MAPE (Mean Absolute Percentage Error).\nDihitung secara Walk-Forward Validation lintas 4 periode (n ≈ 43 observasi pengujian out-of-sample). Nilai akurasi berkisar antara 70,2% (komoditas volatil) hingga 99,2% (komoditas stabil).'
+                          })}
+                          className="text-amber-500 hover:text-amber-600 transition-all transform hover:scale-110 active:scale-95 cursor-pointer mt-0.5"
+                          title="Penjelasan Akurasi Model"
+                        >
+                          <Lightbulb className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                    <th className="p-3 text-center whitespace-normal">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="leading-tight text-center">
+                          <div>STATUS</div>
+                          <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">(L1 + L2 + L3)</div>
+                        </div>
+                        <button 
+                          onClick={() => setActiveTooltip({
+                            title: 'Status (L1 + L2 + L3)',
+                            content: 'Status akhir kesiapsiagaan kerawanan pangan (Early Warning System) yang menggabungkan L1 (Tren +1 Bulan), L2 (Koefisien Variasi), dan L3 (Perubahan YoY).\nJika tren diproyeksikan Turun, maka status akhir otomatis diatur menjadi AMAN bagi konsumen.'
+                          })}
+                          className="text-amber-500 hover:text-amber-600 transition-all transform hover:scale-110 active:scale-95 cursor-pointer mt-0.5"
+                          title="Penjelasan Status (L1 + L2 + L3)"
+                        >
+                          <Lightbulb className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tableRows.map((row, idx) => (
+                    <tr 
+                      key={row.key} 
+                      onClick={() => setSelectedCommodity(row.key)}
+                      className={`hover:bg-slate-50 transition-colors cursor-pointer ${
+                        selectedCommodity === row.key ? 'bg-emerald-50/40 font-bold border-l-4 border-l-emerald-500' : ''
+                      }`}
+                    >
+                      <td className="p-3 text-slate-800 font-bold tracking-wide text-[11px] whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 font-mono w-4 shrink-0 text-right">{idx + 1}.</span>
+                          <CommodityIcon id={row.key} name={row.name} size={18} className="shrink-0" />
+                          <span>{row.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-2 py-3 text-right font-mono text-[11px] text-slate-700 font-semibold whitespace-nowrap">
+                        {row.hargaKini > 0 ? `Rp ${row.hargaKini.toLocaleString('id-ID')}` : '-'}
+                      </td>
+                      <td className="p-2 py-3 text-right font-mono text-[11px] text-emerald-600 font-bold whitespace-nowrap">
+                        {row.forecast1m > 0 ? `Rp ${row.forecast1m.toLocaleString('id-ID')}` : '-'}
+                      </td>
+                      <td className="p-2 py-3 text-right font-mono text-[11px] text-slate-650 font-bold whitespace-nowrap">
+                        {row.forecast3m > 0 ? `Rp ${row.forecast3m.toLocaleString('id-ID')}` : '-'}
+                      </td>
+                      
+                      {/* Layer 1 Status */}
+                      <td className="p-3 text-center font-bold">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider ${
+                          row.statusForecast === 'Naik' ? 'bg-rose-50 text-rose-700 border border-rose-200' : row.statusForecast === 'Turun' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          <span>{row.statusForecast}</span>
+                          <span className="font-mono text-[9px] font-bold opacity-90">({row.perubahanPct > 0 ? `+${row.perubahanPct.toFixed(1)}%` : `${row.perubahanPct.toFixed(1)}%`})</span>
+                        </span>
+                      </td>
+                      
+                      {/* Layer 2: Koefisien Variasi (CV) */}
+                      <td className="p-3 text-center">
+                        {row.forecast1m > 0 ? (
+                          <span 
+                            title={`Status: ${row.statusCV} (CV: ${row.cv.toFixed(1)}%)`}
+                            className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-bold border transition-all ${
+                              row.statusCV === 'RENTAN' 
+                                ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                : row.statusCV === 'WASPADA' 
+                                ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${
+                              row.statusCV === 'RENTAN' 
+                                ? 'bg-rose-500' 
+                                : row.statusCV === 'WASPADA' 
+                                ? 'bg-amber-500' 
+                                : 'bg-emerald-500'
+                            }`} />
+                            <span className="font-mono">{row.cv.toFixed(1)}%</span>
+                          </span>
+                        ) : '-'}
+                      </td>
+                      
+                      {/* Layer 3: YoY Comparison (SKPG) */}
+                      <td className="p-3 text-center">
+                        {row.forecast1m > 0 ? (
+                          <span 
+                            title={`Status: ${row.statusSKPG} (YoY: ${row.growthYoY > 0 ? '+' : ''}${row.growthYoY.toFixed(1)}%)`}
+                            className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-bold border transition-all ${
+                              row.statusSKPG === 'RENTAN' 
+                                ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                : row.statusSKPG === 'WASPADA' 
+                                ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${
+                              row.statusSKPG === 'RENTAN' 
+                                ? 'bg-rose-500' 
+                                : row.statusSKPG === 'WASPADA' 
+                                ? 'bg-amber-500' 
+                                : 'bg-emerald-500'
+                            }`} />
+                            <span className="font-mono">
+                              {row.growthYoY > 0 ? `+${row.growthYoY.toFixed(1)}%` : `${row.growthYoY.toFixed(1)}%`}
+                            </span>
+                          </span>
+                        ) : '-'}
+                      </td>
+                      
+                      <td className="p-3 text-center font-mono font-bold text-slate-600">
+                        {row.forecast1m > 0 ? `${row.confidence.toFixed(1)}%` : '-'}
+                      </td>
+                      
+                      {/* Overall EWS Status */}
+                      <td className="p-3 text-center whitespace-nowrap">
+                        {row.forecast1m > 0 ? (
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(row.overallStatus)}`}>
+                            {row.overallStatus}
+                          </span>
+                        ) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Panel Kanan: EARLY WARNING SYSTEM */}
+        <div className="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[480px]">
+          <div>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <ShieldAlert className="w-4 h-4 text-emerald-600" />
+              Early Warning System
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider leading-relaxed">
+              * Pilih komoditas pada tabel untuk menampilkan status EWS
+            </p>
+            
+            {loading ? (
+              <div className="py-24 text-center text-slate-400 font-bold text-xs">
+                Menganalisis indikator risiko...
+              </div>
+            ) : activeForecast ? (
+              <div className="mt-4 space-y-4">
+                {/* Headline Overall Status Card (Carousel Redesign) */}
+                {(() => {
+                  const commodityKeys = COMMODITY_ORDER;
+                  const activeIdx = commodityKeys.indexOf(selectedCommodity);
+                  const overallStatus = getOverallStatus(activeForecast.status_forecast, activeForecast.status_cv, activeForecast.status_skpg);
+                  
+                  return (
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-inner min-h-[120px] transition-all duration-300 ${getStatusBgColor(overallStatus)}`}>
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <h4 className="text-[10px] uppercase tracking-widest font-black opacity-80">Status Keamanan</h4>
+                          <p className="text-[16px] sm:text-[18px] font-black tracking-wide uppercase mt-0.5">
+                            {(COMMODITY_MAP[selectedCommodity] || 'KOMODITAS').toUpperCase()}: {overallStatus.toUpperCase()}
+                          </p>
+                        </div>
+                        <span className={`w-3.5 h-3.5 rounded-full shrink-0 animate-pulse ${getStatusDot(overallStatus)}`}></span>
+                      </div>
+
+                      {/* Carousel Arrow Controls & Dots */}
+                      <div className="flex items-center justify-center gap-3 mt-4 pt-3 border-t border-black/5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const prevIdx = (activeIdx - 1 + commodityKeys.length) % commodityKeys.length;
+                            setSelectedCommodity(commodityKeys[prevIdx]);
+                          }}
+                          className="w-7 h-7 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all"
+                          title="Sebelumnya"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        
+                        {/* Progress Dots */}
+                        <div className="flex items-center gap-1.5">
+                          {commodityKeys.map((key) => {
+                            const isCurrent = key === selectedCommodity;
+                            return (
+                              <span
+                                key={key}
+                                onClick={() => setSelectedCommodity(key)}
+                                className={`h-1.5 rounded-full cursor-pointer transition-all duration-300 ${
+                                  isCurrent ? 'w-5 bg-emerald-600' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                                }`}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const nextIdx = (activeIdx + 1) % commodityKeys.length;
+                            setSelectedCommodity(commodityKeys[nextIdx]);
+                          }}
+                          className="w-7 h-7 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all"
+                          title="Berikutnya"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 3 Layers Breakdown */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold">L1: Proyeksi Trend (1m)</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      activeForecast.status_forecast === 'Naik' ? 'text-rose-600 font-black' : activeForecast.status_forecast === 'Turun' ? 'text-emerald-600 font-black' : 'text-slate-600 font-black'
+                    }`}>
+                      {activeForecast.status_forecast} ({activeForecast.perubahan_pct > 0 ? `+${activeForecast.perubahan_pct.toFixed(1)}%` : `${activeForecast.perubahan_pct.toFixed(1)}%`})
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold">L2: Koefisien Variasi (CV)</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      activeForecast.status_cv === 'RENTAN' ? 'text-rose-600 font-black' : activeForecast.status_cv === 'WASPADA' ? 'text-amber-600 font-black' : 'text-emerald-600 font-black'
+                    }`}>
+                      {activeForecast.status_cv} ({activeForecast.cv.toFixed(1)}%)
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold">L3: YoY Comparison (SKPG)</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      activeForecast.status_skpg === 'RENTAN' ? 'text-rose-600 font-black' : activeForecast.status_skpg === 'WASPADA' ? 'text-amber-600 font-black' : 'text-emerald-600 font-black'
+                    }`}>
+                      {activeForecast.status_skpg} ({activeForecast.growth_yoy > 0 ? `+${activeForecast.growth_yoy.toFixed(1)}%` : `${activeForecast.growth_yoy.toFixed(1)}%`})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Top Drivers */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] text-slate-450 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-emerald-600" />
+                    Top Drivers (Pendorong Utama)
+                  </h4>
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs">
+                    {activeForecast.drivers && activeForecast.drivers.map((driver: string, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 text-slate-700 font-semibold">
+                        <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 text-[10px] font-black flex items-center justify-center border border-slate-300 shrink-0">{idx + 1}</span>
+                        <span>{driver.substring(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tindakan/Rekomendasi */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] text-slate-450 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Rekomendasi Intervensi
+                  </h4>
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs">
+                    {activeForecast.rekomendasi && activeForecast.rekomendasi.map((action: string, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2 text-emerald-700 font-bold">
+                        <span className="text-[11px] mt-0.5 text-emerald-600">•</span>
+                        <span>{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-24 text-center text-slate-400 text-xs font-bold leading-relaxed">
+                Data model belum siap. Klik tombol Latih Ulang & Update EWS.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 border-t border-slate-100 pt-3 flex justify-between items-center text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+            <span>MAPE: {activeForecast ? `${activeForecast.confidence ? (100 - activeForecast.confidence).toFixed(1) : '3.2'}%` : '-'}</span>
+            <span>Model Registry Active</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. Recharts Visual Chart */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-slate-100 pb-3 gap-2">
+          <div>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              Tren Historis & Forecast: <strong className="text-emerald-700 font-black">{COMMODITY_MAP[selectedCommodity]}</strong>
+            </h3>
+            <p className="text-[10px] text-slate-500 font-bold mt-0.5">Visualisasi 12 bulan terakhir harga riil dan proyeksi machine learning 3 bulan ke depan</p>
+          </div>
+          
+          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-slate-500">
+              <span className="w-3 h-0.5 bg-indigo-500 border border-indigo-500 rounded"></span> Historis
+            </span>
+            <span className="flex items-center gap-1.5 text-emerald-600">
+              <span className="w-3 h-0.5 bg-emerald-500 border-t border-dashed border-emerald-500 rounded"></span> Forecast
+            </span>
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-3 h-0.5 bg-slate-400 border-t border-dotted border-slate-400 rounded"></span> Interval Batas
+            </span>
+          </div>
+        </div>
+
+        <div className="h-[280px] w-full">
+          {loading ? (
+            <div className="flex justify-center items-center h-full text-slate-400 font-bold text-xs">
+              Menggambar grafik...
+            </div>
+          ) : getChartData().length === 0 ? (
+            <div className="flex justify-center items-center h-full text-slate-400 font-bold text-xs">
+              Data historis tidak tersedia.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={getChartData()} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }}
+                  stroke="#CBD5E1"
+                />
+                <YAxis 
+                  tickFormatter={(tick) => `Rp ${tick.toLocaleString('id-ID')}`}
+                  tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }}
+                  stroke="#CBD5E1"
+                  domain={['auto', 'auto']}
+                />
+                <Tooltip 
+                  formatter={(value: any) => [`Rp ${parseFloat(value).toLocaleString('id-ID')}`]}
+                  labelStyle={{ fontWeight: 'bold', fontSize: 11, color: '#1E293B' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: 12, borderColor: '#E2E8F0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                
+                {/* Historical price line */}
+                <Line 
+                  name="Harga Aktual"
+                  type="monotone" 
+                  dataKey="price" 
+                  stroke="#6366f1" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, strokeWidth: 1, fill: '#6366f1', stroke: '#ffffff' }} 
+                  activeDot={{ r: 6 }} 
+                  connectNulls
+                />
+                
+                {/* Forecasted price line */}
+                <Line 
+                  name="Harga Forecast"
+                  type="monotone" 
+                  dataKey="forecast" 
+                  stroke="#10b981" 
+                  strokeWidth={3} 
+                  strokeDasharray="6 4"
+                  dot={{ r: 4, strokeWidth: 1, fill: '#10b981', stroke: '#ffffff' }} 
+                  connectNulls
+                />
+                
+                {/* Confidence Interval bounds */}
+                <Line 
+                  name="Batas Atas"
+                  type="monotone" 
+                  dataKey="upper_bound" 
+                  stroke="#94A3B8" 
+                  strokeWidth={1.5} 
+                  strokeDasharray="3 3"
+                  dot={false}
+                  connectNulls
+                />
+                <Line 
+                  name="Batas Bawah"
+                  type="monotone" 
+                  dataKey="lower_bound" 
+                  stroke="#94A3B8" 
+                  strokeWidth={1.5} 
+                  strokeDasharray="3 3"
+                  dot={false}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-10 w-full border-t border-slate-200 pt-6 text-[10px] text-slate-400 font-bold uppercase tracking-wider flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
+          Sumber Model: <span className="text-slate-500">Model ML V1</span>
+        </div>
+        <div className="flex gap-4">
+          <span>Data: SAGON</span>
+          <span>BMKG</span>
+          <span>BPS</span>
+          <span>Kalender HBKN</span>
+        </div>
+        <div>
+          Update: <span className="text-slate-500">otomatis bulanan (Tanggal 5)</span>
+        </div>
+      </footer>
+
+      {/* Interactive Explanation Modal */}
+      {activeTooltip && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 text-left">
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-500 font-extrabold text-xs uppercase tracking-wide">
+                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <span>{activeTooltip.title}</span>
+              </div>
+              <button 
+                onClick={() => setActiveTooltip(null)} 
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-5 py-4 text-xs text-slate-600 font-semibold leading-relaxed whitespace-pre-line">
+              {activeTooltip.content}
+            </div>
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setActiveTooltip(null)} 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-black transition-all active:scale-95 shadow-sm cursor-pointer"
+              >
+                Paham
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

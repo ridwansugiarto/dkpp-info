@@ -1,4 +1,4 @@
-﻿import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
+import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
 
@@ -240,8 +240,10 @@ Type tersedia: "line", "bar", "area", "pie". Gunakan data riil dari konteks.
 ## INSTRUKSI TAG WILAYAH INTERAKTIF:
 Saat menyebut wilayah yang perlu di-highlight pada peta: [KELURAHAN:NamaKelurahan] atau [KECAMATAN:NamaKecamatan].
 
-## LARANGAN:
-- DILARANG menampilkan LaTeX mentah ($\\rightarrow$). Gunakan -> dan x.
+## FORMATTING TEKS & LARANGAN KERAS:
+- DILARANG KERAS menggunakan sintaks LaTeX atau tanda dollar ($...$ atau $$...$$ atau \\text{} atau \\times)! Tulis rumus matematika langsung dalam teks biasa: contoh: Produksi Beras = 10.461 Ton × 64,02% = 6.697,13 Ton Beras.
+- DILARANG menaruh tanda peluru (• atau - atau *) sendirian di baris baru. Setiap tanda peluru harus langsung diikuti spasi dan teks poinnya dalam satu baris: contoh: • **Produksi Gabah (GKG)**: 10.461 Ton.
+- DILARANG memberi baris kosong di antara baris tabel Markdown (| baris 1 |\n| baris 2 |). Tabel harus rapat tanpa jeda baris kosong agar render tabel sempurna.
 - DILARANG template "Ringkasan Eksekutif" generik. Sajikan langsung data berbobot.
 - DILARANG halusinasi. Jika data tidak tersedia, jelaskan berbasis data makro terdekat.
 
@@ -386,21 +388,41 @@ function extractWilayahHighlights(text: string): string[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bersihkan tag internal & LaTeX dari teks respons AI
+// Bersihkan tag internal, LaTeX mentah, peluru berdiri sendiri & format tabel
 // ─────────────────────────────────────────────────────────────────────────────
-function cleanResponseText(text: string): string {
+export function cleanResponseText(text: string): string {
   if (!text) return '';
-  return text
+  let cleaned = text
+    // 1. Bersihkan LaTeX \text{...} wrappers & font modifiers
+    .replace(/\\text\{([^}]+)\}/g, '$1')
+    .replace(/\\mathrm\{([^}]+)\}/g, '$1')
+    .replace(/\\mathbf\{([^}]+)\}/g, '$1')
+    .replace(/\\mathit\{([^}]+)\}/g, '$1')
+    // 2. Bersihkan LaTeX simbol matematika
+    .replace(/\\times/g, '×')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\rightarrow/g, '→')
+    .replace(/\\to/g, '→')
+    .replace(/\\le(q)?/g, '≤')
+    .replace(/\\ge(q)?/g, '≥')
+    .replace(/\\%/g, '%')
+    // 3. Bersihkan pembatas rumus dollar math ($...$ atau $$...$$)
+    .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
+    .replace(/\$([^\$\n]+)\$/g, '$1')
+    // 4. Perbaiki peluru / bullet yang berdiri sendiri di satu baris (misal: "•\n**Text**")
+    .replace(/(?:^|\n)\s*[•\-\*]\s*\n+\s*/g, '\n• ')
+    // 5. Rapatkan baris kosong di dalam tabel Markdown (agar tabel tidak rusak menjadi paragraf terpisah)
+    .replace(/(\|[^\n]+\|)\n\s*\n+(?=\|[^\n]+\|)/g, '$1\n')
+    // 6. Bersihkan tag internal [KELURAHAN:Name] -> **Name**
     .replace(/\[(WILAYAH|KECAMATAN|KELURAHAN):([^\]]+)\]/g, (_match, _type, name) => `**${name.trim()}**`)
-    .replace(/\$\\rightarrow\$/g, '->')
-    .replace(/\$\\to\$/g, '->')
-    .replace(/\$\\times\$/g, 'x')
-    .replace(/\\rightarrow/g, '->')
-    .replace(/\\times/g, 'x')
-    .replace(/\$\s*([^$]+)\s*\$/g, '$1')
+    // 7. Bersihkan garis batas berulang yang berlebihan
+    .replace(/\n\s*---\s*\n/g, '\n\n')
     .replace(/#{4,}\s*/g, '#### ')
     .trim();
+
+  return cleaned;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Evaluasi query filter spasial natural language
