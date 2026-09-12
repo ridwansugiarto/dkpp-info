@@ -186,12 +186,18 @@ async function getDynamicSupabaseContext(): Promise<string> {
 // ─────────────────────────────────────────────────────────────────────────────
 // System Prompt komprehensif — meniru persis algoritma dashboard-ketapang
 // ─────────────────────────────────────────────────────────────────────────────
-function buildSystemPrompt(dynamicDbContext: string, userRole: string, isVerified: boolean, memoryContext: string): string {
+function buildSystemPrompt(
+  dynamicDbContext: string,
+  userRole: string,
+  isVerified: boolean,
+  memoryContext: string,
+  knowledgeContext: string = ''
+): string {
   return `# SYSTEM PROMPT — DKPP-INFO: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
 Anda adalah AI Intelligence resmi **DKPP-INFO** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
 1. **DATA BERANDA & DATABASE SUPABASE** (KPI, IKP, POU, FSVA, SKPG, EWS, FORECASTING HARGA, PANEL HARGA HARIAN SAGON)
 2. **PETA SPASIAL GIS** (Sawah Baku 407 Petak, ECMWF Lengas Tanah, Nelayan, Budidaya Kolam, KWT, Ternak, Pohon Sukun)
-3. **BASIS DATA AGREGAT** (Susenas 2023, DKB Penduduk 2025, Realisasi DKPP 2014-2025, Neraca Pangan, Kemandirian Komoditas)
+3. **BASIS DATA AGREGAT & KNOWLEDGE BASE 54 DOKUMEN** (Juknis Bapanas, Susenas 2023, DKB Penduduk 2025, Realisasi DKPP 2014-2025, Neraca Pangan, Kemandirian Komoditas)
 
 ## ALGORITMA BERPIKIR SINTESIS NERACA PANGAN (7 LANGKAH WAJIB):
 1. **Identifikasi Komoditas & Waktu**: Tentukan komoditas dan tahun rujukan.
@@ -248,7 +254,8 @@ Saat menyebut wilayah yang perlu di-highlight pada peta: [KELURAHAN:NamaKeluraha
 - DILARANG halusinasi. Jika data tidak tersedia, jelaskan berbasis data makro terdekat.
 
 [USER CONTEXT]: Role: ${userRole} | Verified Employee: ${isVerified}
-${memoryContext ? `[USER MEMORY]:\n${memoryContext}` : ''}
+${memoryContext ? `[USER MEMORY]:\n${memoryContext}\n` : ''}
+${knowledgeContext ? `${knowledgeContext}\n` : ''}
 
 ================================================================
 BASIS DATA TERPADU KETAHANAN PANGAN KOTA CILEGON
@@ -708,16 +715,50 @@ export async function generateChatResponse(params: {
   // 1. Ambil konteks dinamis Supabase
   const dynamicDbContext = await getDynamicSupabaseContext().catch(() => '');
 
+  // 1b. Ambil kutipan dokumen relevan dari 54 Dokumen Knowledge Base (RAG)
+  let knowledgeContext = '';
+  const matchingDocSources: SourceCitation[] = [];
+  try {
+    const { data: matchedChunks } = await supabase.rpc('match_knowledge_chunks', {
+      query_text: lastUserMsg,
+      match_limit: 4,
+    });
+    if (matchedChunks && matchedChunks.length > 0) {
+      knowledgeContext =
+        '\n=== REFERENSI DOKUMEN RESMI TERKAIT (KNOWLEDGE BASE 54 DOKUMEN) ===\n' +
+        matchedChunks
+          .map(
+            (c: { doc_title: string; chunk_index: number; content: string }) =>
+              `[DOKUMEN: ${c.doc_title} (Bagian ${c.chunk_index})]:\n${c.content}`
+          )
+          .join('\n\n');
+
+      for (const mc of matchedChunks) {
+        if (!matchingDocSources.some((s) => s.title === mc.doc_title)) {
+          matchingDocSources.push({
+            type: 'KNOWLEDGE BASE',
+            title: mc.doc_title,
+            detail: `Kutipan terindeks Bagian ${mc.chunk_index}`,
+          });
+        }
+      }
+    }
+  } catch (kbErr) {
+    console.warn('[Knowledge Base RAG] Query failed:', kbErr);
+  }
+
   // 2. Bangun system prompt komprehensif
-  const systemPrompt = buildSystemPrompt(dynamicDbContext, userRole, isVerified, userMemoryContext);
+  const systemPrompt = buildSystemPrompt(dynamicDbContext, userRole, isVerified, userMemoryContext, knowledgeContext);
 
   // 3. Build conversation contents (multi-turn, token-efficient)
   const contents = buildGeminiContents(messages);
 
   const collectedSources: SourceCitation[] = [
-    { type: 'LOCAL DATA', title: 'Basis Data & Portal Informasi DKPP Kota Cilegon', detail: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — DKPP-INFO 2026' }
+    { type: 'LOCAL DATA', title: 'Basis Data & Portal Informasi DKPP Kota Cilegon', detail: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — DKPP-INFO 2026' },
+    ...matchingDocSources
   ];
   const executedTools: ToolCall[] = [];
+
 
   // 4. Panggil Gemini dengan multi-model fallback
   if (apiKey) {
