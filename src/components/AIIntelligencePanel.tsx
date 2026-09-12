@@ -80,7 +80,8 @@ export interface MatchedPin {
 }
 
 export interface MapAction {
-  type: 'FLY_TO' | 'RESET' | 'HIGHLIGHT' | 'FILTER';
+  _id?: string;
+  type: 'FLY_TO' | 'RESET' | 'HIGHLIGHT' | 'FILTER' | string;
   target?: string;
   lat?: number;
   lng?: number;

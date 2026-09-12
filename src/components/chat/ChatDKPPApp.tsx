@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PanelLeft, 
   Grid, 
@@ -30,6 +30,7 @@ export const ChatDKPPApp: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastMapAction, setLastMapAction] = useState<MapAction | null>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
 
   // User state (Default guest or verified user)
   const [currentUser, setCurrentUser] = useState<UserProfile>({
@@ -205,9 +206,12 @@ export const ChatDKPPApp: React.FC = () => {
 
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Dispatch map action if any
+        // Dispatch map action if any (dengan unique _id agar aksi dieksekusi tepat 1x)
         if (data.map_actions && data.map_actions.length > 0) {
-          setLastMapAction(data.map_actions[0]);
+          setLastMapAction({
+            ...data.map_actions[0],
+            _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          });
         }
       }
     } catch {
@@ -317,30 +321,17 @@ export const ChatDKPPApp: React.FC = () => {
         </header>
 
         {/* Workspace Layout */}
-        <main className="flex-1 flex flex-col md:flex-row overflow-hidden p-2 sm:p-3 gap-3">
-          {/* GIS Map Pane */}
-          {(viewMode === 'SPLIT' || viewMode === 'PETA') && (
-            <div
-              className={`h-full transition-all duration-200 ${
-                viewMode === 'PETA'
-                  ? 'w-full'
-                  : 'w-full md:w-1/2 h-[42vh] md:h-full shrink-0'
-              }`}
-            >
-              <SplitMapPane
-                lastAction={lastMapAction}
-                onSelectKelurahan={(kel) =>
-                  handleSendMessage(`Tampilkan data dan status ketahanan pangan untuk ${kel}`)
-                }
-              />
-            </div>
-          )}
-
-          {/* Chat Assistant Pane */}
+        <main
+          ref={mainScrollRef}
+          className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden p-2 sm:p-3 gap-3"
+        >
+          {/* Chat Assistant Pane (Default Fullscreen di atas untuk Mobile, di Kanan untuk Desktop) */}
           {(viewMode === 'SPLIT' || viewMode === 'CHAT') && (
             <div
-              className={`flex-1 flex flex-col h-full bg-white dark:bg-[#17181c] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-sm overflow-hidden min-w-0 ${
-                viewMode === 'CHAT' ? 'w-full' : 'w-full md:w-1/2'
+              className={`flex flex-col bg-white dark:bg-[#17181c] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-sm overflow-hidden min-w-0 order-1 md:order-2 ${
+                viewMode === 'CHAT'
+                  ? 'w-full h-full'
+                  : 'w-full md:w-1/2 h-[calc(100dvh-4.75rem)] md:h-full shrink-0'
               }`}
             >
               <ChatContainer
@@ -348,10 +339,72 @@ export const ChatDKPPApp: React.FC = () => {
                 isLoading={isLoading}
                 onSuggestionClick={handleSendMessage}
               />
-              <div className="p-3 border-t border-gray-100 dark:border-gray-800/80 bg-white/60 dark:bg-[#17181c]/60 backdrop-blur-sm">
+
+              {/* Petunjuk Mobile: Peta Spasial GIS berada di bawah (scroll down) */}
+              {viewMode === 'SPLIT' && (
+                <div className="md:hidden flex items-center justify-between px-3 py-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 border-t border-emerald-100 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-medium shrink-0">
+                  <span className="flex items-center gap-1">
+                    <MapIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Peta GIS Cilegon (407 Poligon Sawah & Lengas) di bawah
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const mapEl = document.getElementById('gis-map-section');
+                      if (mapEl) {
+                        mapEl.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-600 text-white rounded-md text-[10px] font-bold hover:bg-emerald-700 transition-colors shadow-xs"
+                  >
+                    Lihat Peta ↓
+                  </button>
+                </div>
+              )}
+
+              <div className="p-3 border-t border-gray-100 dark:border-gray-800/80 bg-white/60 dark:bg-[#17181c]/60 backdrop-blur-sm shrink-0">
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   isLoading={isLoading}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* GIS Map Pane (Di bawah Chatbot pada Mobile saat SPLIT, di Kiri pada Desktop) */}
+          {(viewMode === 'SPLIT' || viewMode === 'PETA') && (
+            <div
+              id="gis-map-section"
+              className={`transition-all duration-200 order-2 md:order-1 ${
+                viewMode === 'PETA'
+                  ? 'w-full h-full min-h-[500px]'
+                  : 'w-full md:w-1/2 h-[75vh] md:h-full shrink-0'
+              }`}
+            >
+              {/* Mobile Quick Navigation Bar */}
+              {viewMode === 'SPLIT' && (
+                <div className="md:hidden flex items-center justify-between px-3 py-2 bg-slate-900 text-white rounded-t-2xl border-t border-x border-slate-700">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                    <MapIcon className="w-3.5 h-3.5" />
+                    <span>Peta Spasial GIS Kota Cilegon</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="flex items-center gap-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg transition-colors shadow-xs"
+                  >
+                    <span>↑ Kembali ke Chat</span>
+                  </button>
+                </div>
+              )}
+              <div className={`w-full ${viewMode === 'SPLIT' ? 'h-[calc(100%-37px)] md:h-full' : 'h-full'}`}>
+                <SplitMapPane
+                  lastAction={lastMapAction}
+                  onSelectKelurahan={(kel) =>
+                    handleSendMessage(`Tampilkan data dan status ketahanan pangan untuk ${kel}`)
+                  }
                 />
               </div>
             </div>

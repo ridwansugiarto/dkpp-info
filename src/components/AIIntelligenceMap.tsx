@@ -152,6 +152,7 @@ function CustomMapPanes() {
 }
 
 // Highlight Manager: FlyTo target wilayah atau Pin GPS saat user berinteraksi dengan AI
+// Menjaga agar user DAPAT BEBAS ZOOM IN / ZOOM OUT / PAN secara kustom tanpa di-reset kembali oleh peta
 function HighlightManager({
   highlightWilayah = [],
   highlightPins = [],
@@ -166,12 +167,25 @@ function HighlightManager({
   kecamatanFeatures?: any[];
 }) {
   const map = useMap();
+  const lastActionKeyRef = useRef<string | null>(null);
+  const lastHighlightKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!map) return;
 
     // 0. Prioritas Aksi Langsung dari MapAction (Chatbot Realtime Response)
     if (mapAction) {
+      const actionKey =
+        mapAction._id ||
+        `${mapAction.type}:${mapAction.target || ''}:${mapAction.lat || ''}:${mapAction.lng || ''}:${mapAction.zoom || ''}`;
+
+      // Cegah eksekusi berulang jika action ini sudah pernah dijalankan
+      // Memungkinkan user bebas zoom-out atau eksplorasi peta secara kustom tanpa snap back
+      if (lastActionKeyRef.current === actionKey) {
+        return;
+      }
+      lastActionKeyRef.current = actionKey;
+
       if (mapAction.type === 'RESET') {
         try {
           map.flyTo([-6.01, 106.02], 12.5, { animate: true, duration: 1.2 });
@@ -184,11 +198,20 @@ function HighlightManager({
         } catch {}
         return;
       }
+      return;
     }
 
     const validPins = (highlightPins || []).filter(
       (p) => p && typeof p.lat === 'number' && !isNaN(p.lat) && typeof p.lng === 'number' && !isNaN(p.lng)
     );
+
+    const highlightKey = `${(highlightWilayah || []).slice().sort().join(',')}|${validPins.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(';')}`;
+
+    // Hanya fitBounds jika ada perubahan highlight wilayah/pin baru dan bukan default kosong
+    if (!highlightKey || highlightKey === '|' || lastHighlightKeyRef.current === highlightKey) {
+      return;
+    }
+    lastHighlightKeyRef.current = highlightKey;
 
     // 1. Jika ada PIN GPS yang spesifik dari AI, fokus langsung ke titik PIN tersebut
     if (validPins.length > 0) {
@@ -208,16 +231,16 @@ function HighlightManager({
     // 2. Fit bounds ke semua wilayah poligon yang di-highlight
     if (highlightWilayah.length > 0) {
       try {
-        const matchedKel = (kelurahanFeatures || []).filter(f => {
+        const matchedKel = (kelurahanFeatures || []).filter((f) => {
           const name = f.properties?.name || f.properties?.Name || '';
           return isWilayahMatch(name, highlightWilayah);
         });
-        const matchedKec = (kecamatanFeatures || []).filter(f => {
+        const matchedKec = (kecamatanFeatures || []).filter((f) => {
           const name = f.properties?.name || f.properties?.Name || '';
           return isWilayahMatch(name, highlightWilayah);
         });
         const combinedFeatures = [...matchedKel, ...matchedKec];
-        
+
         if (combinedFeatures.length > 0) {
           const geoLayer = L.geoJSON(combinedFeatures as any);
           const b = geoLayer.getBounds();

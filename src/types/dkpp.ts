@@ -62,6 +62,7 @@ export interface ToolCall {
 }
 
 export interface MapAction {
+  _id?: string;
   type: 'MAP_FIT_BOUNDS' | 'MAP_ZOOM' | 'MAP_HIGHLIGHT' | 'MAP_SET_LAYER' | 'MAP_CLEAR_LAYER' | 'CHOROPLETH' | 'FLY_TO' | string;
   layerName?: string;
   featureName?: string;
