@@ -18,65 +18,85 @@ export const ADMIN_NIP = process.env.ADMIN_NIP || '197610182002121002';
 /**
  * Server-side User Authorization resolver
  */
-export async function resolveUserAuth(userEmail?: string, userId?: string): Promise<UserProfile> {
-  if (!userEmail) {
-    return {
-      id: userId || 'guest',
-      email: 'guest@dkpp-cilegon.id',
-      full_name: 'Tamu / Guest DKPP',
-      role: 'GUEST',
-      is_verified_employee: false,
-      can_access_sensitive: false,
-    };
-  }
-
-  // Check if Admin
-  if (userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+export async function resolveUserAuth(userEmail?: string, userId?: string, userNip?: string): Promise<UserProfile> {
+  // 1. Check if Super Admin
+  if (userEmail && userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
     return {
       id: userId || 'admin-user',
       email: userEmail,
-      full_name: 'Ridwan Sugiarto (Admin)',
+      full_name: 'Dr. Ir. Ridwan Sugiarto, M.Si (Super Admin)',
       role: 'ADMIN',
       is_verified_employee: true,
       can_access_sensitive: true,
       nip: ADMIN_NIP,
       department: 'DKPP Kota Cilegon',
-      position: 'Administrator Sistem & Analis Ketahanan Pangan',
+      position: 'Kepala Dinas DKPP (Super Admin)',
     };
   }
 
-  // Lookup in employees table
-  try {
-    const { data: employee } = await supabaseAdmin
-      .from('employees')
-      .select('*')
-      .eq('email', userEmail)
-      .eq('is_active', true)
-      .maybeSingle();
+  // 2. Lookup in dkpp_pegawai_nip by NIP if provided
+  if (userNip) {
+    const cleanNip = userNip.trim().replace(/\s+/g, '');
+    try {
+      const { data: nipRecord } = await supabaseAdmin
+        .from('dkpp_pegawai_nip')
+        .select('*')
+        .eq('nip', cleanNip)
+        .eq('is_active', true)
+        .maybeSingle();
 
-    if (employee) {
-      const isSensitive = employee.access_level === 'SENSITIVE' || employee.access_level === 'ADMIN';
-      return {
-        id: userId || employee.id,
-        email: employee.email,
-        full_name: employee.full_name,
-        role: employee.access_level === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
-        is_verified_employee: true,
-        can_access_sensitive: isSensitive,
-        nip: employee.nip,
-        department: employee.department,
-        position: employee.position,
-      };
+      if (nipRecord) {
+        return {
+          id: userId || `emp-${nipRecord.nip}`,
+          email: userEmail || `${nipRecord.nip}@dkpp.cilegon.go.id`,
+          full_name: nipRecord.nama,
+          role: 'EMPLOYEE',
+          is_verified_employee: true,
+          can_access_sensitive: true,
+          nip: nipRecord.nip,
+          department: nipRecord.bidang || 'DKPP Kota Cilegon',
+          position: nipRecord.jabatan,
+        };
+      }
+    } catch (nipErr) {
+      console.warn('Error resolving user from dkpp_pegawai_nip:', nipErr);
     }
-  } catch (err) {
-    console.error('Error resolving employee from DB:', err);
   }
 
-  // Default to Guest if not a verified employee
+  // 3. Lookup in employees table by email if provided
+  if (userEmail) {
+    try {
+      const { data: employee } = await supabaseAdmin
+        .from('employees')
+        .select('*')
+        .eq('email', userEmail)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (employee) {
+        const isSensitive = employee.access_level === 'SENSITIVE' || employee.access_level === 'ADMIN';
+        return {
+          id: userId || employee.id,
+          email: employee.email,
+          full_name: employee.full_name,
+          role: employee.access_level === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+          is_verified_employee: true,
+          can_access_sensitive: isSensitive,
+          nip: employee.nip,
+          department: employee.department,
+          position: employee.position,
+        };
+      }
+    } catch (err) {
+      console.error('Error resolving employee from DB:', err);
+    }
+  }
+
+  // 4. Default to Guest: User Guest tanpa NIP TIDAK BISA mengakses data sensitif
   return {
     id: userId || 'guest',
-    email: userEmail,
-    full_name: userEmail.split('@')[0],
+    email: userEmail || 'guest@dkpp-cilegon.id',
+    full_name: userEmail ? userEmail.split('@')[0] : 'Tamu / Guest DKPP',
     role: 'GUEST',
     is_verified_employee: false,
     can_access_sensitive: false,

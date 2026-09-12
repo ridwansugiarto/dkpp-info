@@ -249,6 +249,7 @@ export const ChatDKPPApp: React.FC = () => {
           message: text,
           userEmail: currentUser.email,
           userId: currentUser.id,
+          userNip: currentUser.nip,
         }),
       });
 

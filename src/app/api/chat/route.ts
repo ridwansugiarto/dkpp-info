@@ -8,6 +8,7 @@ const chatRequestSchema = z.object({
   message: z.string().min(1, 'Pesan tidak boleh kosong'),
   userEmail: z.string().optional(),
   userId: z.string().optional(),
+  userNip: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,10 +23,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { sessionId, message, userEmail, userId } = parseResult.data;
+    const { sessionId, message, userEmail, userId, userNip } = parseResult.data;
 
-    // 1. Resolve User Authorization server-side
-    const authProfile = await resolveUserAuth(userEmail, userId);
+    // 1. Resolve User Authorization server-side (Super Admin, Verified NIP Pegawai, or GUEST)
+    const authProfile = await resolveUserAuth(userEmail, userId, userNip);
 
     // 2. Fetch User Memories (per-user isolation)
     let memoryContext = '';
@@ -70,11 +71,12 @@ export async function POST(req: NextRequest) {
 
     conversationHistory.push({ role: 'user', content: message });
 
-    // 4. Generate AI Response via Gemini with Tool Execution
+    // 4. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
     const aiResult = await generateChatResponse({
       messages: conversationHistory,
       userRole: authProfile.role,
       isVerified: authProfile.is_verified_employee,
+      canAccessSensitive: authProfile.can_access_sensitive,
       userMemoryContext: memoryContext,
     });
 
