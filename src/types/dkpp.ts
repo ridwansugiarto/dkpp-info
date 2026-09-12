@@ -54,10 +54,23 @@ export interface SourceCitation {
   date?: string;
 }
 
+export interface ToolCall {
+  name: string;
+  status: string;
+  args?: Record<string, unknown>;
+  result?: unknown;
+}
+
 export interface MapAction {
-  type: 'MAP_FIT_BOUNDS' | 'MAP_ZOOM' | 'MAP_HIGHLIGHT' | 'MAP_SET_LAYER' | 'MAP_CLEAR_LAYER';
+  type: 'MAP_FIT_BOUNDS' | 'MAP_ZOOM' | 'MAP_HIGHLIGHT' | 'MAP_SET_LAYER' | 'MAP_CLEAR_LAYER' | 'CHOROPLETH' | 'FLY_TO' | string;
   layerName?: string;
   featureName?: string;
+  target?: string;
+  lat?: number;
+  lng?: number;
+  thematicMode?: string;
+  layersToEnable?: string[];
+  pin?: Record<string, unknown>;
   bounds?: [[number, number], [number, number]];
   coordinates?: [number, number];
   zoom?: number;
@@ -70,12 +83,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   sources?: SourceCitation[];
-  tool_calls?: Array<{
-    name: string;
-    status: string;
-    args?: Record<string, unknown>;
-    result?: unknown;
-  }>;
+  tool_calls?: ToolCall[];
   map_actions?: MapAction[];
   created_at: string;
 }

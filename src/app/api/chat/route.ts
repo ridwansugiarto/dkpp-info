@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         role: authProfile.role,
         messageLength: message.length,
-        toolsUsed: aiResult.tool_calls.map((t) => t.name),
+        toolsUsed: (aiResult.tool_calls || []).map((t: { name: string }) => t.name),
       },
     });
 

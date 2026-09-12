@@ -1,4 +1,4 @@
-import { SourceCitation, MapAction } from '@/types/dkpp';
+import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import fsvaData from './fsva-official-data.json';
 import fsvaForm2Data from './fsva-form2-official-data.json';
 import { supabase } from './supabase';
@@ -386,6 +386,8 @@ export async function generateChatResponse(params: {
     }
   ];
 
+  const executedTools: ToolCall[] = [];
+
   // 3. Coba panggil Gemini API dengan multi-model fallback
   if (apiKey) {
     try {
@@ -393,7 +395,7 @@ export async function generateChatResponse(params: {
       return {
         content: generatedText,
         sources: collectedSources,
-        tool_calls: [],
+        tool_calls: executedTools,
         map_actions: collectedMapActions
       };
     } catch (apiErr) {
@@ -406,7 +408,7 @@ export async function generateChatResponse(params: {
   return {
     content: fallback.content,
     sources: fallback.sources,
-    tool_calls: [],
+    tool_calls: executedTools,
     map_actions: collectedMapActions.length > 0 ? collectedMapActions : fallback.mapActions
   };
 }
