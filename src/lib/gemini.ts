@@ -1,7 +1,21 @@
 import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
-import { isPegawaiHumorQuery, buildPegawaiHumorContext } from '@/data/pegawai_humor';
+import {
+  isPegawaiHumorQuery,
+  buildPegawaiHumorContext,
+  getTopCantik,
+  getTopGanteng,
+  getTopAura,
+  getTopCerdas,
+  formatIndeksKecantikan,
+  formatIndeksKetampanan,
+  formatIndeksAura,
+  formatIndeksCerdas,
+  isSeriousEmployee,
+  OFFICIAL_DKPP_HUMOR_DATA,
+  type PegawaiHumorItem
+} from '@/data/pegawai_humor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -670,50 +684,47 @@ function buildMapActions(
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback Rule-Based Synthesizer (jika Gemini offline)
 // ─────────────────────────────────────────────────────────────────────────────
-function generateRuleBasedAnswer(userQuery: string): string {
+function generateRuleBasedAnswer(userQuery: string, liveData?: PegawaiHumorItem[]): string {
   const q = userQuery.toLowerCase();
+  const dataset = liveData && liveData.length > 0 ? liveData : OFFICIAL_DKPP_HUMOR_DATA;
 
   // Mode bercanda/humor pegawai internal
   if (isPegawaiHumorQuery(userQuery)) {
     let ans = `Radar **Mode Keakraban Internal DKPP** mendeteksi pertanyaan seputar pesona keakraban pegawai! ✨\n\n`;
     if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
-      ans += `Berdasarkan **Indeks Kecantikan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai paling memikat:\n\n` +
-        `1. **Sri Rahmadani Piliang, SE** — dengan Indeks Kecantikan Komposit sebesar **97,66%**\n` +
-        `2. **Sri Ratnaningsih, S.Pi** — dengan Indeks Kecantikan Komposit sebesar **96,58%**\n` +
-        `3. **Minarni, SE** — dengan Indeks Kecantikan Komposit sebesar **95,20%**\n` +
-        `4. **Winda Ratnasari, SP** — dengan Indeks Kecantikan Komposit sebesar **89,82%**\n` +
-        `5. **Maisaroh, SP** — dengan Indeks Kecantikan Komposit sebesar **88,92%**\n` +
-        `6. **Maryori, S.Pi** — dengan Indeks Kecantikan Komposit sebesar **81,47%**\n\n`;
+      const topCantik = getTopCantik(dataset, 6);
+      ans += `Berdasarkan **Indeks Kecantikan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai paling memikat:\n\n`;
+      topCantik.forEach((p, idx) => {
+        ans += `${idx + 1}. **${p.nama}** — dengan Indeks Kecantikan Komposit sebesar **${formatIndeksKecantikan(p)}**\n`;
+      });
+      ans += `\n`;
     } else if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
-      ans += `Berdasarkan **Indeks Ketampanan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai pria dengan indeks tertinggi:\n\n` +
-        `1. **Subandi** — dengan Indeks Ketampanan & Daya Pikat sebesar **95,10%**\n` +
-        `2. **Asep Qomaruzzaman, S.AP** — dengan Indeks Ketampanan Komposit sebesar **94,67%**\n` +
-        `3. **Paulus Dwi Ari K D, ST** — dengan Indeks Ketampanan Komposit sebesar **94,42%**\n` +
-        `4. **Yuki Suryarizki, S.Kom** — dengan Indeks Ketampanan Komposit sebesar **93,47%**\n` +
-        `5. **Ridwan Sugiarto, S.Pi** — dengan Indeks Ketampanan Komposit sebesar **90,29%**\n` +
-        `6. **Tandis Destalana, SE.MM** — dengan Indeks Ketampanan Komposit sebesar **83,33%**\n` +
-        `7. **Udin Saprudin, SE, M.M.** — dengan Indeks Ketampanan Komposit sebesar **82,82%**\n\n`;
+      const topGanteng = getTopGanteng(dataset, 6);
+      ans += `Berdasarkan **Indeks Ketampanan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai pria dengan indeks tertinggi:\n\n`;
+      topGanteng.forEach((p, idx) => {
+        ans += `${idx + 1}. **${p.nama}** — dengan Indeks Ketampanan Komposit sebesar **${formatIndeksKetampanan(p)}**\n`;
+      });
+      ans += `\n`;
     } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma') || q.includes('terpesona')) {
-      ans += `Berdasarkan **Indeks Kharisma & Daya Pikat Komposit** dalam catatan mode santai DKPP Kota Cilegon:\n\n` +
-        `1. **Subandi** — dengan Indeks Kharisma Komposit sebesar **96,70%**\n` +
-        `2. **Sri Ratnaningsih, S.Pi** — dengan Indeks Kharisma Komposit sebesar **94,58%**\n` +
-        `3. **Yuki Suryarizki, S.Kom** — dengan Indeks Kharisma Komposit sebesar **93,87%**\n` +
-        `4. **Asep Qomaruzzaman, S.AP** — dengan Indeks Kharisma Komposit sebesar **93,36%**\n` +
-        `5. **Paulus Dwi Ari K D, ST** — dengan Indeks Kharisma Komposit sebesar **91,84%**\n` +
-        `6. **Sri Rahmadani Piliang, SE** — dengan Indeks Kharisma Komposit sebesar **91,66%**\n\n`;
+      const topAura = getTopAura(dataset, 6);
+      ans += `Berdasarkan **Indeks Kharisma & Daya Pikat Komposit** dalam catatan mode santai DKPP Kota Cilegon:\n\n`;
+      topAura.forEach((p, idx) => {
+        ans += `${idx + 1}. **${p.nama}** — dengan Indeks Kharisma Komposit sebesar **${formatIndeksAura(p)}**\n`;
+      });
+      ans += `\n`;
     } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
-      ans += `Berdasarkan **Indeks Kecerdasan Komposit (Mode Santai)** dalam catatan internal DKPP Kota Cilegon:\n\n` +
-        `1. **Ridwan Sugiarto, S.Pi** — dengan Indeks Kecerdasan Komposit sebesar **96,79%**\n` +
-        `2. **Mas Akhmad Rangga P, SE, MM** — dengan Indeks Kecerdasan Komposit sebesar **95,55%**\n` +
-        `3. **Sri Rahmadani Piliang, SE** — dengan Indeks Kecerdasan Komposit sebesar **92,09%**\n` +
-        `4. **Winda Ratnasari, SP** — dengan Indeks Kecerdasan Komposit sebesar **90,88%**\n` +
-        `5. **Minarni, SE** — dengan Indeks Kecerdasan Komposit sebesar **90,70%**\n` +
-        `6. **Sandhi Maulana Adha, SP** — dengan Indeks Kecerdasan Komposit sebesar **90,43%**\n\n`;
+      const topCerdas = getTopCerdas(dataset, 6);
+      ans += `Berdasarkan **Indeks Kecerdasan Komposit (Mode Santai)** dalam catatan internal DKPP Kota Cilegon:\n\n`;
+      topCerdas.forEach((p, idx) => {
+        ans += `${idx + 1}. **${p.nama}** — dengan Indeks Kecerdasan Komposit sebesar **${formatIndeksCerdas(p)}**\n`;
+      });
+      ans += `\n`;
     } else {
+      const topGanteng = getTopGanteng(dataset, 3);
+      const topCantik = getTopCantik(dataset, 3);
       ans += `Catatan mode santai/keakraban internal DKPP menyajikan Indeks Komposit Pegawai sebagai berikut:\n\n` +
-        `• **Indeks Ketampanan Komposit Tertinggi:** Subandi (95,10%), Asep Qomaruzzaman, S.AP (94,67%), Paulus Dwi Ari K D, ST (94,42%), Yuki Suryarizki, S.Kom (93,47%)\n` +
-        `• **Indeks Kecantikan Komposit Tertinggi:** Sri Rahmadani Piliang, SE (97,66%), Sri Ratnaningsih, S.Pi (96,58%), Minarni, SE (95,20%), Winda Ratnasari, SP (89,82%)\n` +
-        `• **Indeks Kharisma & Terpesona Tertinggi:** Subandi (96,70%), Sri Ratnaningsih, S.Pi (94,58%), Yuki Suryarizki, S.Kom (93,87%)\n\n`;
+        `• **Indeks Ketampanan Komposit Tertinggi:** ` + topGanteng.map(p => `${p.nama} (${formatIndeksKetampanan(p)})`).join(', ') + `\n` +
+        `• **Indeks Kecantikan Komposit Tertinggi:** ` + topCantik.map(p => `${p.nama} (${formatIndeksKecantikan(p)})`).join(', ') + `\n\n`;
     }
     ans += `> _*Catatan:* Ini adalah data humor / mode santai internal DKPP khusus untuk mencairkan suasana dan keakraban keluarga besar dinas, bukan instrumen penilaian kedinasan resmi ya! 😄_`;
     return ans;
@@ -859,7 +870,20 @@ export async function generateChatResponse(params: {
 
   // 2. Cek apakah pertanyaan user adalah mode bercanda / humor internal
   const isHumor = isPegawaiHumorQuery(lastUserMsg);
-  const humorContext = isHumor ? buildPegawaiHumorContext(lastUserMsg) : null;
+  let liveHumorData: PegawaiHumorItem[] | undefined = undefined;
+  if (isHumor) {
+    try {
+      const { data: dbHumor, error: dbErr } = await supabase
+        .from('dkpp_pegawai_humor')
+        .select('*');
+      if (!dbErr && dbHumor && dbHumor.length > 0) {
+        liveHumorData = (dbHumor as PegawaiHumorItem[]).filter((p) => !isSeriousEmployee(p.nama));
+      }
+    } catch {
+      // Fallback ke in-memory jika db belum siap
+    }
+  }
+  const humorContext = isHumor ? buildPegawaiHumorContext(lastUserMsg, liveHumorData) : null;
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
@@ -909,7 +933,7 @@ export async function generateChatResponse(params: {
   }
 
   // 5. Fallback: Smart Domain Synthesizer
-  const fallbackContent = generateRuleBasedAnswer(lastUserMsg);
+  const fallbackContent = generateRuleBasedAnswer(lastUserMsg, liveHumorData);
   const { mapActions: fallbackMapActions } = buildMapActions(lastUserMsg, fallbackContent, []);
   return {
     content: fallbackContent,

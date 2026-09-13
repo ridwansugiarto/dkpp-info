@@ -547,28 +547,28 @@ export function formatIndeksAura(p: PegawaiHumorItem): string {
 }
 
 // Helper functions untuk merespons pertanyaan santai
-export function getTopGanteng(limit = 6): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
+export function getTopGanteng(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
+  return dataset
     .filter(p => p.jenis_kelamin === 'L')
     .sort((a, b) => getIndeksKetampananNum(b) - getIndeksKetampananNum(a))
     .slice(0, limit);
 }
 
-export function getTopCantik(limit = 6): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
+export function getTopCantik(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
+  return dataset
     .filter(p => p.jenis_kelamin === 'P')
     .sort((a, b) => getIndeksKecantikanNum(b) - getIndeksKecantikanNum(a))
     .slice(0, limit);
 }
 
-export function getTopAura(limit = 6): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
+export function getTopAura(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
+  return dataset
     .sort((a, b) => getIndeksAuraNum(b) - getIndeksAuraNum(a))
     .slice(0, limit);
 }
 
-export function getTopCerdas(limit = 6): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
+export function getTopCerdas(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
+  return dataset
     .sort((a, b) => getIndeksCerdasNum(b) - getIndeksCerdasNum(a))
     .slice(0, limit);
 }
@@ -578,10 +578,10 @@ export function isSeriousEmployee(nama: string): boolean {
   return EXCLUDED_SERIOUS_PEGAWAI.some(ex => ex.toLowerCase().includes(q) || q.includes(ex.toLowerCase()));
 }
 
-export function findPegawaiHumorByName(namaQuery: string): PegawaiHumorItem | undefined {
+export function findPegawaiHumorByName(namaQuery: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): PegawaiHumorItem | undefined {
   const q = namaQuery.toLowerCase().trim();
   if (isSeriousEmployee(q)) return undefined; // Proteksi pegawai serius
-  return OFFICIAL_DKPP_HUMOR_DATA.find(p => p.nama.toLowerCase().includes(q));
+  return dataset.find(p => p.nama.toLowerCase().includes(q));
 }
 
 /**
@@ -614,7 +614,7 @@ export function isPegawaiHumorQuery(userMessage: string): boolean {
 /**
  * Bangun teks konteks humor yang relevan untuk AI
  */
-export function buildPegawaiHumorContext(userMessage: string): string | null {
+export function buildPegawaiHumorContext(userMessage: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): string | null {
   if (!isPegawaiHumorQuery(userMessage)) return null;
 
   const q = userMessage.toLowerCase();
@@ -627,38 +627,39 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
   result += `5. Akhiri jawaban dengan catatan santai bahwa ini bersumber dari catatan internal mode santai/keakraban DKPP.\n\n`;
 
   if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
-    const topCantik = getTopCantik(6);
+    const topCantik = getTopCantik(dataset, 6);
     result += `DAFTAR PEGAWAI PALING CANTIK (DENGAN INDEKS KECANTIKAN KOMPOSIT DALAM PERSENTASE):\n`;
     topCantik.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} — dengan Indeks Kecantikan Komposit sebesar ${formatIndeksKecantikan(p)}\n`;
     });
     result += `\n`;
   } else if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
-    const topGanteng = getTopGanteng(6);
+    const topGanteng = getTopGanteng(dataset, 6);
     result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (DENGAN INDEKS KETAMPANAN KOMPOSIT DALAM PERSENTASE):\n`;
     topGanteng.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} — dengan Indeks Ketampanan Komposit sebesar ${formatIndeksKetampanan(p)}\n`;
     });
     result += `\n`;
   } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma') || q.includes('terpesona')) {
-    const topAura = getTopAura(6);
+    const topAura = getTopAura(dataset, 6);
     result += `DAFTAR PEGAWAI DENGAN DAYA TARIK & AURA TERTINGGI (DENGAN INDEKS AURA KOMPOSIT DALAM PERSENTASE):\n`;
     topAura.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} — dengan Indeks Kharisma/Aura Komposit sebesar ${formatIndeksAura(p)}\n`;
     });
     result += `\n`;
   } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
-    const topCerdas = getTopCerdas(6);
+    const topCerdas = getTopCerdas(dataset, 6);
     result += `DAFTAR PEGAWAI DENGAN INDEKS KECERDASAN KOMPOSIT TERTINGGI (DALAM PERSENTASE):\n`;
     topCerdas.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} — dengan Indeks Kecerdasan Komposit sebesar ${formatIndeksCerdas(p)}\n`;
     });
     result += `\n`;
   } else {
+    const topGanteng = getTopGanteng(dataset, 3);
+    const topCantik = getTopCantik(dataset, 3);
     result += `RINGKASAN INDEKS KOMPOSIT MODE SANTAI DKPP:\n`;
-    result += `- Indeks Kecantikan Tertinggi: Sri Rahmadani Piliang, SE (97,66%), Sri Ratnaningsih, S.Pi (96,58%), Minarni, SE (95,20%)\n`;
-    result += `- Indeks Ketampanan Tertinggi: Subandi (95,10%), Asep Qomaruzzaman, S.AP (94,67%), Paulus Dwi Ari K D, ST (94,42%), Yuki Suryarizki, S.Kom (93,47%)\n`;
-    result += `- Indeks Kecerdasan Komposit: Ridwan Sugiarto, S.Pi (96,79%), Mas Akhmad Rangga P, SE, MM (95,55%)\n`;
+    result += `- Indeks Kecantikan Tertinggi: ` + topCantik.map(p => `${p.nama} (${formatIndeksKecantikan(p)})`).join(', ') + `\n`;
+    result += `- Indeks Ketampanan Tertinggi: ` + topGanteng.map(p => `${p.nama} (${formatIndeksKetampanan(p)})`).join(', ') + `\n`;
   }
 
   return result;
