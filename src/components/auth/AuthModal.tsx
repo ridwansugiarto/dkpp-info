@@ -114,7 +114,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setErrorMessage(null);
       startCloudWaitTimer(6);
 
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : undefined;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
