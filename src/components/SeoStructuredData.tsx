@@ -1,15 +1,17 @@
 import { APP_VERSION } from '@/lib/version';
 
 export default function SeoStructuredData() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dkpp.info';
+
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
       // ── 1. WebSite ──────────────────────────────────────────
       {
         '@type': 'WebSite',
-        '@id': 'https://pangancilegon.web.id/#website',
-        url: 'https://pangancilegon.web.id',
-        name: 'Sistem Informasi Ketahanan Pangan Kota Cilegon',
+        '@id': `${baseUrl}/#website`,
+        url: baseUrl,
+        name: 'Sistem Informasi Ketahanan Pangan Kota Cilegon — DKPP',
         description:
           'Platform Food Security Intelligence & DSS untuk pemantauan, analisis, dan pengambilan keputusan ketahanan pangan Kota Cilegon berbasis data real-time dan kecerdasan buatan.',
         inLanguage: 'id',
@@ -17,7 +19,7 @@ export default function SeoStructuredData() {
           '@type': 'SearchAction',
           target: {
             '@type': 'EntryPoint',
-            urlTemplate: 'https://pangancilegon.web.id/?q={search_term_string}',
+            urlTemplate: `${baseUrl}/?q={search_term_string}`,
           },
           'query-input': 'required name=search_term_string',
         },
@@ -26,9 +28,9 @@ export default function SeoStructuredData() {
       // ── 2. GovernmentService ────────────────────────────────
       {
         '@type': 'GovernmentService',
-        '@id': 'https://pangancilegon.web.id/#service',
+        '@id': `${baseUrl}/#service`,
         name: 'Food Security Intelligence & DSS Kota Cilegon',
-        url: 'https://pangancilegon.web.id',
+        url: baseUrl,
         description:
           'Layanan informasi dan analitik ketahanan pangan Kota Cilegon mencakup harga pangan real-time, peta FSVA interaktif, analisis SKPG, forecast harga berbasis ML, early warning system (EWS), indeks IKP, PPH, PoU, dan AI insight per indikator.',
         serviceType: 'Food Security Monitoring and Decision Support',
@@ -52,7 +54,7 @@ export default function SeoStructuredData() {
         },
         availableChannel: {
           '@type': 'ServiceChannel',
-          serviceUrl: 'https://pangancilegon.web.id',
+          serviceUrl: baseUrl,
           availableLanguage: 'id',
         },
         category: [
@@ -68,11 +70,11 @@ export default function SeoStructuredData() {
       // ── 3. SoftwareApplication ──────────────────────────────
       {
         '@type': 'SoftwareApplication',
-        '@id': 'https://pangancilegon.web.id/#app',
+        '@id': `${baseUrl}/#app`,
         name: 'Food Security Intelligence & DSS',
         applicationCategory: 'GovernmentApplication',
         operatingSystem: 'Web Browser',
-        url: 'https://pangancilegon.web.id',
+        url: baseUrl,
         version: APP_VERSION,
         datePublished: '2026-06-06',
         description:
@@ -108,11 +110,11 @@ export default function SeoStructuredData() {
       // ── 4. Dataset ──────────────────────────────────────────
       {
         '@type': 'Dataset',
-        '@id': 'https://pangancilegon.web.id/#dataset',
+        '@id': `${baseUrl}/#dataset`,
         name: 'Data Ketahanan Pangan Kota Cilegon 2021–2026',
         description:
           'Kumpulan data ketahanan pangan Kota Cilegon mencakup harga komoditas strategis (beras, minyak goreng, cabai, daging, telur, bawang), indeks IKP, skor PPH, PoU, data FSVA per kelurahan, analisis SKPG bulanan, dan data balita/stunting.',
-        url: 'https://pangancilegon.web.id',
+        url: baseUrl,
         license: 'https://creativecommons.org/licenses/by/4.0/',
         creator: {
           '@type': 'GovernmentOrganization',

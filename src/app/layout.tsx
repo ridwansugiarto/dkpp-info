@@ -118,7 +118,7 @@ export const metadata: Metadata = {
   publisher: 'Kota Cilegon',
 
   // ── CANONICAL URL ──────────────────────────────────────────
-  metadataBase: new URL('https://pangancilegon.web.id'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dkpp.info'),
   alternates: {
     canonical: '/',
   },
@@ -127,8 +127,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'id_ID',
-    url: 'https://pangancilegon.web.id',
-    siteName: 'Sistem Informasi Ketahanan Pangan Kota Cilegon',
+    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dkpp.info',
+    siteName: 'Sistem Informasi Ketahanan Pangan Kota Cilegon — DKPP',
     title: 'Food Security Intelligence & DSS — Kota Cilegon',
     description:
       'Pantau harga pangan real-time, peta FSVA, forecast AI, dan early warning system kerawanan pangan Kota Cilegon secara interaktif.',
