@@ -57,6 +57,7 @@ export const ChatDKPPApp: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastMapAction, setLastMapAction] = useState<MapAction | null>(null);
+  const [highlightPins, setHighlightPins] = useState<any[]>([]);
   const [activeMapAnswer, setActiveMapAnswer] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
 
@@ -484,10 +485,19 @@ export const ChatDKPPApp: React.FC = () => {
 
         // Dispatch map action if any (simpan state peta tanpa otomatis berpindah mode)
         if (data.map_actions && data.map_actions.length > 0) {
+          const act = data.map_actions[0];
           setLastMapAction({
-            ...data.map_actions[0],
+            ...act,
             _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           });
+          if (act.pins && act.pins.length > 0) {
+            setHighlightPins(act.pins);
+          } else if (act.pin) {
+            setHighlightPins([act.pin]);
+          }
+        }
+        if (data.matched_pins && data.matched_pins.length > 0) {
+          setHighlightPins(data.matched_pins);
         }
 
         // Jika user memang sedang berada di tab PETA, perbarui ringkasan analisis untuk kartu mengambang di peta
@@ -517,6 +527,11 @@ export const ChatDKPPApp: React.FC = () => {
         ...action,
         _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       });
+      if (action.pins && action.pins.length > 0) {
+        setHighlightPins(action.pins);
+      } else if (action.pin) {
+        setHighlightPins([action.pin]);
+      }
     }
     if (answerContent) {
       setActiveMapAnswer(answerContent);
@@ -752,6 +767,7 @@ export const ChatDKPPApp: React.FC = () => {
               <div className="w-full h-full">
                 <SplitMapPane
                   lastAction={lastMapAction}
+                  highlightPins={highlightPins}
                   onSelectKelurahan={(prompt) => {
                     handleSendMessage(prompt);
                     // Capture 6: jika user klik tombol bertanya ke AI untuk jawaban presisi di poligon sawah, otomatis menampilkan tab peta gis (hanya di versi mobile)

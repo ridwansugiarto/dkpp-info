@@ -105,7 +105,7 @@ const FALLBACK_TERNAK: TernakPin[] = [
 export async function fetchNelayenTangkap(): Promise<NelayenPin[]> {
   const rows = await spFetch(
     'nelayan_tangkap',
-    'id,lat,lng,nama_nelayan,alat_tangkap,jumlah_nelayan,perahu_motor_tempel,kelurahan,kecamatan',
+    '*',
     'order=nama_nelayan.asc'
   ) as Array<Record<string, unknown>>;
 
@@ -113,22 +113,58 @@ export async function fetchNelayenTangkap(): Promise<NelayenPin[]> {
 
   return rows
     .filter(r => r.lat != null && r.lng != null && r.nama_nelayan)
-    .map(r => ({
-      lat: Number(r.lat), lng: Number(r.lng),
-      name: String(r.nama_nelayan),
-      category: 'nelayan' as const,
-      kelurahan: String(r.kelurahan || resolveKelurahan(String(r.nama_nelayan))),
-      kecamatan: String(r.kecamatan || resolveKecamatan(Number(r.lat), Number(r.lng))),
-      jumlah_nelayan: Number(r.jumlah_nelayan ?? 0),
-      alat_tangkap: String(r.alat_tangkap || '-'),
-      perahu_motor_tempel: Number(r.perahu_motor_tempel ?? 0),
-    }));
+    .map(r => {
+      // Parse perahu motor tempel
+      let perahuMotor = 0;
+      if (r.perahu) {
+        if (typeof r.perahu === 'object') {
+          perahuMotor = Number((r.perahu as Record<string, unknown>)['Perahu motor tempel'] || Object.values(r.perahu as Record<string, unknown>)[0] || 0);
+        } else if (typeof r.perahu === 'string') {
+          try {
+            const obj = JSON.parse(r.perahu);
+            perahuMotor = Number(obj['Perahu motor tempel'] || Object.values(obj)[0] || 0);
+          } catch {
+            const m = (r.perahu as string).match(/\d+/);
+            if (m) perahuMotor = parseInt(m[0], 10);
+          }
+        }
+      } else if (r.perahu_motor_tempel != null) {
+        perahuMotor = Number(r.perahu_motor_tempel);
+      }
+
+      // Parse jumlah nelayan (disimpan di no_hp atau jumlah_nelayan)
+      let jmlNelayan = 0;
+      if (r.jumlah_nelayan != null && !isNaN(Number(r.jumlah_nelayan))) {
+        jmlNelayan = Number(r.jumlah_nelayan);
+      } else if (r.no_hp && !isNaN(Number(r.no_hp))) {
+        jmlNelayan = Number(r.no_hp);
+      } else if (typeof r.alat_tangkap === 'string') {
+        const m = (r.alat_tangkap as string).match(/:(\d+)/);
+        if (m) jmlNelayan = parseInt(m[1], 10);
+      }
+
+      const nama = String(r.nama_nelayan);
+      const lat = Number(r.lat);
+      const lng = Number(r.lng);
+
+      return {
+        lat,
+        lng,
+        name: nama,
+        category: 'nelayan' as const,
+        kelurahan: String(r.kelurahan || resolveKelurahan(nama)),
+        kecamatan: String(r.kecamatan || resolveKecamatan(lat, lng)),
+        jumlah_nelayan: jmlNelayan,
+        alat_tangkap: String(r.alat_tangkap || '-'),
+        perahu_motor_tempel: perahuMotor,
+      };
+    });
 }
 
 export async function fetchKolamBudidaya(): Promise<KolamPin[]> {
   const rows = await spFetch(
     'kolam_budidaya',
-    'id,lat,lng,nama,pemilik,jenis_ikan,luas_m2,kelurahan,kecamatan'
+    '*'
   ) as Array<Record<string, unknown>>;
 
   if (!rows.length) return FALLBACK_KOLAM;
@@ -150,7 +186,7 @@ export async function fetchKolamBudidaya(): Promise<KolamPin[]> {
 export async function fetchPokTanKwt(): Promise<PokTanPin[]> {
   const rows = await spFetch(
     'poktan_kwt',
-    'id,lat,lng,nama,jenis,jumlah_anggota,komoditas,kelurahan,kecamatan'
+    '*'
   ) as Array<Record<string, unknown>>;
 
   if (!rows.length) return FALLBACK_POKTAN;
@@ -171,7 +207,7 @@ export async function fetchPokTanKwt(): Promise<PokTanPin[]> {
 export async function fetchPeternakan(): Promise<TernakPin[]> {
   const rows = await spFetch(
     'peternakan',
-    'id,lat,lng,nama,pemilik,jenis_ternak,jumlah,kelurahan,kecamatan'
+    '*'
   ) as Array<Record<string, unknown>>;
 
   if (!rows.length) return FALLBACK_TERNAK;

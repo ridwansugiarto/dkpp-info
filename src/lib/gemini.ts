@@ -635,44 +635,135 @@ function buildMapActions(
 
   let flyToAdded = false;
 
-  // Kelurahan spesifik
-  for (const [kelName, coord] of Object.entries(KELURAHAN_COORDS)) {
-    if (qLower.includes(kelName.toLowerCase()) || textLower.includes(kelName.toLowerCase())) {
-      const isSawah = qLower.includes('sawah');
-      const isNelayan = qLower.includes('nelayan') || qLower.includes('pangkalan');
-      const isKwt = qLower.includes('kwt') || qLower.includes('wanita tani');
-      const sawahHa = KELURAHAN_SAWAH[kelName] ?? null;
-      const category = isSawah ? 'sawah' : isNelayan ? 'nelayan' : isKwt ? 'kwt' : 'wilayah';
-      const pinName = isSawah ? `Sawah Kelurahan ${kelName}${sawahHa !== null ? ` (${sawahHa} Ha)` : ''}` : `Kelurahan ${kelName} (${coord.kec})`;
-      const layersToEnable = ['kelurahan'];
-      if (isSawah) layersToEnable.push('sawah');
-      if (isNelayan) layersToEnable.push('nelayan');
-      if (isKwt) layersToEnable.push('kwt', 'poktan');
-      const customPin = { lat: coord.lat, lng: coord.lng, name: pinName, category, kelurahan: kelName, kecamatan: coord.kec };
-      if (!matchedPins.some(p => p.name === customPin.name)) matchedPins.unshift(customPin);
-      if (!wilayahHighlight.includes(kelName)) wilayahHighlight.push(kelName);
-      mapActions.push({ type: 'FLY_TO', target: kelName, lat: coord.lat, lng: coord.lng, zoom: isSawah ? 16 : 15.5, layersToEnable, thematicMode, pin: customPin });
+  const isNelayanQuery = qLower.includes('nelayan') || qLower.includes('pangkalan') || qLower.includes('tpi') || textLower.includes('pangkalan nelayan');
+  const isKolamQuery = qLower.includes('kolam') || qLower.includes('budidaya') || qLower.includes('ikan');
+  const isKwtQuery = qLower.includes('kwt') || qLower.includes('wanita tani') || qLower.includes('poktan');
+  const isTernakQuery = qLower.includes('ternak') || qLower.includes('sapi') || qLower.includes('kambing');
+
+  // 1. Cek jika user menanyakan titik pangkalan nelayan secara spesifik atau umum di Cilegon
+  if (isNelayanQuery && matchedPins.some(p => p.category === 'nelayan')) {
+    const nelayanPinsMatched = matchedPins.filter(p => p.category === 'nelayan');
+    // Jika ada nama pangkalan tertentu yang disebut (misal: "tanjung peni", "medaksa", "suralaya")
+    const specificNelayan = nelayanPinsMatched.find(p => qLower.includes(p.name.toLowerCase()) || textLower.includes(p.name.toLowerCase()));
+    if (specificNelayan) {
+      mapActions.push({
+        type: 'FLY_TO',
+        target: specificNelayan.name,
+        lat: specificNelayan.lat,
+        lng: specificNelayan.lng,
+        zoom: 16,
+        layersToEnable: ['kelurahan', 'nelayan'],
+        pin: specificNelayan,
+        pins: [specificNelayan]
+      });
       flyToAdded = true;
-      break;
+    } else {
+      // Pertanyaan umum: "pangkalan nelayan di cilegon" -> Tampilkan seluruh 9 pangkalan nelayan dengan zoom pesisir
+      mapActions.push({
+        type: 'FLY_TO',
+        target: 'Pangkalan Nelayan Kota Cilegon',
+        lat: -5.955,
+        lng: 106.01,
+        zoom: 12.5,
+        layersToEnable: ['kelurahan', 'nelayan'],
+        pin: nelayanPinsMatched[0],
+        pins: nelayanPinsMatched
+      });
+      flyToAdded = true;
     }
   }
 
-  // Kecamatan
+  // 2. Cek jika user menanyakan budidaya kolam, KWT, atau peternakan
+  if (!flyToAdded && isKolamQuery && matchedPins.some(p => p.category === 'kolam')) {
+    const kolamMatched = matchedPins.filter(p => p.category === 'kolam');
+    mapActions.push({
+      type: 'FLY_TO',
+      target: kolamMatched[0].name,
+      lat: kolamMatched[0].lat,
+      lng: kolamMatched[0].lng,
+      zoom: 15,
+      layersToEnable: ['kelurahan', 'kolam'],
+      pin: kolamMatched[0],
+      pins: kolamMatched
+    });
+    flyToAdded = true;
+  }
+
+  if (!flyToAdded && isKwtQuery && matchedPins.some(p => p.category === 'kwt' || p.category === 'poktan')) {
+    const kwtMatched = matchedPins.filter(p => p.category === 'kwt' || p.category === 'poktan');
+    mapActions.push({
+      type: 'FLY_TO',
+      target: kwtMatched[0].name,
+      lat: kwtMatched[0].lat,
+      lng: kwtMatched[0].lng,
+      zoom: 15,
+      layersToEnable: ['kelurahan', 'kwt', 'poktan'],
+      pin: kwtMatched[0],
+      pins: kwtMatched
+    });
+    flyToAdded = true;
+  }
+
+  if (!flyToAdded && isTernakQuery && matchedPins.some(p => p.category === 'ternak')) {
+    const ternakMatched = matchedPins.filter(p => p.category === 'ternak');
+    mapActions.push({
+      type: 'FLY_TO',
+      target: ternakMatched[0].name,
+      lat: ternakMatched[0].lat,
+      lng: ternakMatched[0].lng,
+      zoom: 15,
+      layersToEnable: ['kelurahan', 'ternak'],
+      pin: ternakMatched[0],
+      pins: ternakMatched
+    });
+    flyToAdded = true;
+  }
+
+  // 3. Kelurahan spesifik (jika belum fly to pin sektoral)
   if (!flyToAdded) {
-    for (const [kecName, coord] of Object.entries(KECAMATAN_COORDS)) {
-      if (qLower.includes(kecName.toLowerCase())) {
+    for (const [kelName, coord] of Object.entries(KELURAHAN_COORDS)) {
+      if (qLower.includes(kelName.toLowerCase()) || textLower.includes(kelName.toLowerCase())) {
         const isSawah = qLower.includes('sawah');
-        const layersToEnable = ['kecamatan', 'kelurahan'];
+        const isNelayan = qLower.includes('nelayan') || qLower.includes('pangkalan');
+        const isKwt = qLower.includes('kwt') || qLower.includes('wanita tani');
+        const sawahHa = KELURAHAN_SAWAH[kelName] ?? null;
+        const category = isSawah ? 'sawah' : isNelayan ? 'nelayan' : isKwt ? 'kwt' : 'wilayah';
+        const pinName = isSawah ? `Sawah Kelurahan ${kelName}${sawahHa !== null ? ` (${sawahHa} Ha)` : ''}` : `Kelurahan ${kelName} (${coord.kec})`;
+        const layersToEnable = ['kelurahan'];
         if (isSawah) layersToEnable.push('sawah');
-        if (!wilayahHighlight.includes(kecName)) wilayahHighlight.push(kecName);
-        mapActions.push({ type: 'FLY_TO', target: kecName, lat: coord.lat, lng: coord.lng, zoom: 14, layersToEnable, thematicMode });
+        if (isNelayan) layersToEnable.push('nelayan');
+        if (isKwt) layersToEnable.push('kwt', 'poktan');
+        const customPin = { lat: coord.lat, lng: coord.lng, name: pinName, category, kelurahan: kelName, kecamatan: coord.kec };
+        if (!matchedPins.some(p => p.name === customPin.name)) matchedPins.unshift(customPin);
+        if (!wilayahHighlight.includes(kelName)) wilayahHighlight.push(kelName);
+        mapActions.push({ type: 'FLY_TO', target: kelName, lat: coord.lat, lng: coord.lng, zoom: isSawah ? 16 : 15.5, layersToEnable, thematicMode, pin: customPin, pins: matchedPins });
         flyToAdded = true;
         break;
       }
     }
   }
 
-  // Pin tematik
+  // 4. Kecamatan (abaikan kata 'cilegon' umum jika bukan 'kecamatan cilegon')
+  if (!flyToAdded) {
+    for (const [kecName, coord] of Object.entries(KECAMATAN_COORDS)) {
+      if (kecName.toLowerCase() === 'cilegon' && !qLower.includes('kecamatan cilegon') && !qLower.includes('kec cilegon')) {
+        continue;
+      }
+      if (qLower.includes(kecName.toLowerCase())) {
+        const isSawah = qLower.includes('sawah');
+        const isNelayan = qLower.includes('nelayan') || qLower.includes('pangkalan');
+        const layersToEnable = ['kecamatan', 'kelurahan'];
+        if (isSawah) layersToEnable.push('sawah');
+        if (isNelayan) layersToEnable.push('nelayan');
+        if (!wilayahHighlight.includes(kecName)) wilayahHighlight.push(kecName);
+        mapActions.push({ type: 'FLY_TO', target: kecName, lat: coord.lat, lng: coord.lng, zoom: 14, layersToEnable, thematicMode, pins: matchedPins });
+        flyToAdded = true;
+        break;
+      }
+    }
+  }
+
+  // 5. Pin tematik sisa jika belum ada flyTo
   if (!flyToAdded && matchedPins.length > 0) {
     const fp = matchedPins[0];
     const layersToEnable = ['kelurahan'];
@@ -680,7 +771,7 @@ function buildMapActions(
     if (fp.category === 'kolam') layersToEnable.push('kolam');
     if (fp.category === 'ternak') layersToEnable.push('ternak');
     if (fp.category === 'kwt') layersToEnable.push('kwt', 'poktan');
-    mapActions.push({ type: 'FLY_TO', target: fp.name, lat: fp.lat, lng: fp.lng, zoom: 16, layersToEnable, pin: fp });
+    mapActions.push({ type: 'FLY_TO', target: fp.name, lat: fp.lat, lng: fp.lng, zoom: 16, layersToEnable, pin: fp, pins: matchedPins });
     flyToAdded = true;
   }
 

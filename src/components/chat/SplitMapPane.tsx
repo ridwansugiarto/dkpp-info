@@ -24,15 +24,21 @@ const AIIntelligenceMap = dynamic(
 
 interface SplitMapPaneProps {
   lastAction?: MapAction | null;
+  highlightPins?: any[];
   onSelectKelurahan?: (name: string) => void;
   className?: string;
 }
 
 export const SplitMapPane: React.FC<SplitMapPaneProps> = ({
   lastAction,
+  highlightPins = [],
   onSelectKelurahan,
   className = '',
 }) => {
+  const effectivePins = highlightPins && highlightPins.length > 0
+    ? highlightPins
+    : (lastAction?.pins || (lastAction?.pin ? [lastAction.pin] : []));
+
   return (
     <div 
       style={{ isolation: 'isolate' }}
@@ -41,6 +47,7 @@ export const SplitMapPane: React.FC<SplitMapPaneProps> = ({
       <AIIntelligenceMap
         activeTab="split"
         mapAction={lastAction as any}
+        highlightPins={effectivePins as any}
         onTriggerChatPrompt={(prompt) => {
           if (onSelectKelurahan) {
             onSelectKelurahan(prompt);

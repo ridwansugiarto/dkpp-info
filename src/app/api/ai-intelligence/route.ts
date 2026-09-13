@@ -1117,6 +1117,14 @@ ${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
         kelurahan: string;
         kecamatan: string;
       };
+      pins?: Array<{
+        lat: number;
+        lng: number;
+        name: string;
+        category: string;
+        kelurahan: string;
+        kecamatan: string;
+      }>;
     } | null = null;
 
     // Evaluasi Spatial Querying (Fase 2: Natural Language to GIS Filter)
@@ -1207,10 +1215,15 @@ ${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
       // Periksa kecocokan nama 8 kecamatan jika kelurahan tidak disebut spesifik
       if (!mapAction) {
         for (const [kecName, coord] of Object.entries(KECAMATAN_COORDINATES)) {
+          if (kecName.toLowerCase() === 'cilegon' && !userQueryLower.includes('kecamatan cilegon') && !userQueryLower.includes('kec cilegon')) {
+            continue;
+          }
           if (userQueryLower.includes(kecName.toLowerCase())) {
             const isSawah = userQueryLower.includes('sawah');
+            const isNelayan = userQueryLower.includes('nelayan') || userQueryLower.includes('pangkalan');
             const layersToEnable = ['kecamatan', 'kelurahan'];
             if (isSawah) layersToEnable.push('sawah');
+            if (isNelayan) layersToEnable.push('nelayan');
 
             mapAction = {
               type: 'FLY_TO',
@@ -1218,7 +1231,8 @@ ${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
               lat: coord.lat,
               lng: coord.lng,
               zoom: 14,
-              layers_to_enable: layersToEnable
+              layers_to_enable: layersToEnable,
+              pins: matchedPins
             };
             if (!wilayahHighlight.includes(kecName)) {
               wilayahHighlight.push(kecName);
@@ -1228,24 +1242,26 @@ ${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
         }
       }
 
-      // Jika ada matched_pins tematik lain (misal user minta "pangkalan nelayan medaksa")
+      // Jika ada matched_pins tematik lain (misal user minta "pangkalan nelayan di cilegon" atau "pangkalan nelayan medaksa")
       if (!mapAction && matchedPins.length > 0) {
         const firstPin = matchedPins[0];
+        const isNelayan = userQueryLower.includes('nelayan') || userQueryLower.includes('pangkalan');
         const layersToEnable = ['kelurahan'];
         if (firstPin.category === 'sawah') layersToEnable.push('sawah');
-        if (firstPin.category === 'nelayan') layersToEnable.push('nelayan');
+        if (firstPin.category === 'nelayan' || isNelayan) layersToEnable.push('nelayan');
         if (firstPin.category === 'kolam') layersToEnable.push('kolam');
         if (firstPin.category === 'ternak') layersToEnable.push('ternak');
         if (firstPin.category === 'kwt' || firstPin.category === 'poktan') layersToEnable.push('kwt', 'poktan');
 
         mapAction = {
           type: 'FLY_TO',
-          target: firstPin.name,
-          lat: firstPin.lat,
-          lng: firstPin.lng,
-          zoom: 16,
+          target: isNelayan && matchedPins.length > 1 ? 'Pangkalan Nelayan Kota Cilegon' : firstPin.name,
+          lat: isNelayan && matchedPins.length > 1 ? -5.955 : firstPin.lat,
+          lng: isNelayan && matchedPins.length > 1 ? 106.01 : firstPin.lng,
+          zoom: isNelayan && matchedPins.length > 1 ? 12.5 : 16,
           layers_to_enable: layersToEnable,
-          pin: firstPin
+          pin: firstPin,
+          pins: matchedPins
         };
       }
 

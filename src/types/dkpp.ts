@@ -73,6 +73,10 @@ export interface MapAction {
   thematicMode?: string;
   layersToEnable?: string[];
   pin?: Record<string, unknown>;
+  pins?: Array<Record<string, unknown>>;
+  filteredWilayah?: string[];
+  filterActive?: boolean;
+  filterLabel?: string;
   bounds?: [[number, number], [number, number]];
   coordinates?: [number, number];
   zoom?: number;

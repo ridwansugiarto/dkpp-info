@@ -145,6 +145,8 @@ export async function POST(req: NextRequest) {
       sources: aiResult.sources,
       tool_calls: aiResult.tool_calls,
       map_actions: aiResult.map_actions,
+      matched_pins: aiResult.matched_pins,
+      wilayah_highlight: aiResult.wilayah_highlight,
       userRole: authProfile.role,
     });
   } catch (error: unknown) {

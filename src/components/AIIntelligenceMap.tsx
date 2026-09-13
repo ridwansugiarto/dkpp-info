@@ -834,9 +834,21 @@ export default function AIIntelligenceMap({
   // Filter valid AI Matched Pins & gabungkan pin dari MapAction jika ada
   const validAiPins = useMemo(() => {
     const all = [...(highlightPins || [])];
-    if (mapAction?.pin && typeof mapAction.pin.lat === 'number' && typeof mapAction.pin.lng === 'number') {
-      if (!all.some(p => p.name === mapAction.pin?.name && Math.abs(p.lat - mapAction.pin.lat) < 0.001)) {
-        all.unshift(mapAction.pin);
+    const mapPins = (mapAction as any)?.pins;
+    if (Array.isArray(mapPins)) {
+      for (const p of mapPins) {
+        if (p && typeof p.lat === 'number' && typeof p.lng === 'number') {
+          if (!all.some(existing => existing.name === p.name || (Math.abs(existing.lat - p.lat) < 0.0005 && Math.abs(existing.lng - p.lng) < 0.0005))) {
+            all.push(p);
+          }
+        }
+      }
+    }
+    const targetPin = mapAction?.pin;
+    if (targetPin && typeof targetPin.lat === 'number' && typeof targetPin.lng === 'number') {
+      const pinLat = targetPin.lat;
+      if (!all.some(p => p.name === (targetPin as any)?.name && Math.abs(p.lat - pinLat) < 0.001)) {
+        all.unshift(targetPin as any);
       }
     }
     return all.filter(
