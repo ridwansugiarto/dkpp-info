@@ -17,7 +17,8 @@ import {
   Check,
   ThumbsUp,
   ThumbsDown,
-  Share2
+  Share2,
+  ArrowRight
 } from 'lucide-react';
 import { ChatMessage, SourceCitation } from '@/types/dkpp';
 import { cleanResponseText } from '@/lib/gemini';
@@ -35,6 +36,7 @@ interface ChatContainerProps {
   onSuggestionClick: (prompt: string) => void;
   onSelectKelurahan?: (kel: string) => void;
   viewMode?: 'SPLIT' | 'PETA' | 'CHAT';
+  onOpenMap?: (action?: any, answerContent?: string) => void;
 }
 
 // Suggestions removed per user request (Capture 1)
@@ -75,6 +77,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   onSuggestionClick,
   onSelectKelurahan,
   viewMode = 'CHAT',
+  onOpenMap,
 }) => {
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -482,6 +485,33 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         title="Perlu Koreksi"
                       >
                         <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Tawaran Beralih ke Mode Peta GIS (1-Klik Tanpa Pop-up Berulang) */}
+                  {!isUser && msg.map_actions && msg.map_actions.length > 0 && onOpenMap && (
+                    <div className="mt-3 p-3 sm:p-3.5 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+                      <div className="flex items-start sm:items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
+                            Tampilan Peta Spasial GIS Tersedia
+                          </span>
+                          <span className="text-[11px] text-emerald-700 dark:text-emerald-300/90 leading-tight mt-0.5">
+                            Buka peta untuk melihat visualisasi geospasial & poligon wilayah terkait.
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onOpenMap(msg.map_actions?.[0], msg.content)}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                      >
+                        <span>Buka Mode Peta GIS</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}

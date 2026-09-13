@@ -383,20 +383,16 @@ export const ChatDKPPApp: React.FC = () => {
 
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Dispatch map action if any
+        // Dispatch map action if any (simpan state peta tanpa otomatis berpindah mode)
         if (data.map_actions && data.map_actions.length > 0) {
           setLastMapAction({
             ...data.map_actions[0],
             _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           });
-          // Capture 5: Otomatis tampilkan tab peta gis di mobile saat user minta task yg butuh jawaban peta
-          if (isMobile) {
-            setViewMode('PETA');
-          }
         }
 
-        // Capture 6: Jika sedang di tab PETA (atau aksi peta), simpan ringkasan analisis untuk kartu mengambang di peta
-        if (viewMode === 'PETA' || (isMobile && data.map_actions && data.map_actions.length > 0)) {
+        // Jika user memang sedang berada di tab PETA, perbarui ringkasan analisis untuk kartu mengambang di peta
+        if (viewMode === 'PETA') {
           setActiveMapAnswer(data.content);
         }
       }
@@ -413,6 +409,20 @@ export const ChatDKPPApp: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 1-Click Handshake untuk beralih ke mode Peta GIS secara instan tanpa dialog/popup berulang
+  const handleOpenMap = (action?: any, answerContent?: string) => {
+    if (action) {
+      setLastMapAction({
+        ...action,
+        _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      });
+    }
+    if (answerContent) {
+      setActiveMapAnswer(answerContent);
+    }
+    setViewMode('PETA');
   };
 
   return (
@@ -603,6 +613,7 @@ export const ChatDKPPApp: React.FC = () => {
                 isLoading={isLoading}
                 onSuggestionClick={handleSendMessage}
                 viewMode={viewMode}
+                onOpenMap={handleOpenMap}
               />
 
               <div
