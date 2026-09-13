@@ -8,13 +8,15 @@ import {
   Trash2, 
   Edit3, 
   Search, 
-  PanelLeftClose, 
+  PanelLeftClose,
+  Shield,
   ShieldCheck, 
   UserCheck, 
   LogOut, 
   LogIn,
   Layers,
-  Settings
+  Settings,
+  Wheat
 } from 'lucide-react';
 import { ChatSession, UserProfile } from '@/types/dkpp';
 import Link from 'next/link';
@@ -31,6 +33,7 @@ interface ChatSidebarProps {
   onToggleOpen: () => void;
   onLoginClick: () => void;
   onLogoutClick: () => void;
+  onClaimNipClick?: () => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -45,6 +48,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onToggleOpen,
   onLoginClick,
   onLogoutClick,
+  onClaimNipClick,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,15 +91,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {/* Sidebar Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-200/70 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-sm font-bold text-sm">
-              DK
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-amber-300 shadow-sm">
+              <Wheat className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
-              <span className="font-semibold text-gray-900 dark:text-white text-base tracking-tight leading-tight">
+              <span className="font-semibold text-gray-900 text-base tracking-tight leading-tight">
                 Chat DKPP
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                Cilegon AI Knowledge
+              <span className="text-[10.5px] text-emerald-600 font-semibold tracking-wide">
+                Cilegon AI Food Security
               </span>
             </div>
           </div>
@@ -242,11 +246,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           /* Capture 2: Get responses tailored to you Card */
           <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
             <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-1 leading-snug">
-                Get responses tailored to you
+              <h4 className="text-xs font-bold text-gray-900 mb-1 leading-snug">
+                Personalisasi Jawaban Anda
               </h4>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
-                Log in to get answers based on saved chats, plus create images and upload files.
+              <p className="text-[11px] text-gray-500 leading-relaxed mb-3">
+                Masuk untuk menyimpan riwayat chat, sinkronisasi antar perangkat, dan akses data ketahanan pangan resmi.
               </p>
               <button
                 type="button"
@@ -278,7 +282,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         <UserCheck className="w-2.5 h-2.5" /> Pegawai DKPP
                       </span>
                     ) : (
-                      <span className="text-[9px] text-gray-400">Pengguna Terdaftar</span>
+                      <button
+                        type="button"
+                        onClick={onClaimNipClick}
+                        className="inline-flex items-center gap-1 text-[9px] text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
+                        title="Klaim NIP Pegawai untuk membuka mode dokumen sensitif"
+                      >
+                        <Shield className="w-2.5 h-2.5" />
+                        <span>Klaim NIP</span>
+                      </button>
                     )}
                   </div>
                 </div>

@@ -1235,7 +1235,7 @@ export default function AIIntelligenceMap({
                     type="button"
                     style="width:100%;margin-top:10px;background:linear-gradient(135deg, #047857, #065f46);color:#ffffff;border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.18);"
                   >
-                    <span>🌱</span> Analisis Agronomi Presisi AI
+                    <span>🌱</span> Bertanya ke AI untuk Jawaban Presisi
                   </button>
                 </div>
               `);

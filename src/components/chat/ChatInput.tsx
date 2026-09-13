@@ -84,16 +84,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-2">
-      <div className="relative flex items-center bg-white dark:bg-[#212328] rounded-2xl border border-gray-200 dark:border-gray-700/80 shadow-md focus-within:border-emerald-500/60 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-1.5">
-        {/* Attachment Button */}
+    <div className="w-full max-w-4xl lg:max-w-5xl mx-auto px-2 sm:px-4">
+      <div className="relative flex items-center bg-white rounded-full border border-gray-300/80 shadow-xs focus-within:border-gray-500 focus-within:ring-2 focus-within:ring-gray-200 transition-all p-1 sm:p-1.5">
+        {/* Plus / Add Action Button (Capture 5 style) */}
         <button
           type="button"
           onClick={() => {}}
-          title="Lampirkan Dokumen / Gambar"
-          className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          title="Tindakan Tambahan"
+          className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors shrink-0 cursor-pointer ml-0.5"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {/* Text Area */}
@@ -102,64 +102,50 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask DKPP-INFO anything..."
+          placeholder="Tanya Chat DKPP apa saja..."
           rows={1}
           disabled={disabled || isLoading}
-          className="flex-1 bg-transparent px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none resize-none max-h-32 leading-relaxed"
+          className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none max-h-32 leading-relaxed"
         />
 
         {/* Action Buttons Right */}
-        <div className="flex items-center gap-1.5 shrink-0 pr-1">
-          {/* Think Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsThinkingMode(!isThinkingMode)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-              isThinkingMode
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-            }`}
-          >
-            <BrainCircuit className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Think</span>
-          </button>
-
+        <div className="flex items-center gap-1 shrink-0 pr-1">
           {/* Voice Input */}
           <button
             type="button"
             onClick={toggleVoice}
             title={isListening ? 'Mendengarkan...' : 'Gunakan Suara'}
-            className={`p-2 rounded-xl transition-colors ${
+            className={`p-2 rounded-full transition-colors ${
               isListening
-                ? 'text-red-500 bg-red-50 dark:bg-red-950/50 animate-pulse'
-                : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'text-red-500 bg-red-50 animate-pulse'
+                : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
             }`}
           >
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
 
-          {/* Send Button */}
+          {/* Send Button (Capture 5 Circular Arrow Button) */}
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!input.trim() || isLoading || disabled}
-            className={`p-2 rounded-xl transition-all ${
+            className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full transition-all ${
               input.trim() && !isLoading
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                ? 'bg-neutral-900 hover:bg-black text-white shadow-xs cursor-pointer'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
             ) : (
-              <ArrowUp className="w-4 h-4" />
+              <ArrowUp className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             )}
           </button>
         </div>
       </div>
 
-      <div className="text-[10px] text-center text-gray-400 dark:text-gray-500 mt-2">
-        DKPP-INFO dapat memadukan data lokal Cilegon, peta spasial FSVA, dan referensi resmi pemerintah.
+      <div className="text-[10.5px] text-center text-gray-400 mt-2 px-4">
+        Chat DKPP didukung AI & sistem intelijen ketahanan pangan Kota Cilegon. Mohon verifikasi kembali data penting kedinasan.
       </div>
     </div>
   );

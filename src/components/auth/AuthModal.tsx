@@ -237,8 +237,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
             {mode === 'login' ? 'Log in or sign up' : 'Buat Akun DKPP'}
           </h2>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed max-w-xs mx-auto">
-            You&apos;ll get smarter responses and can upload files, images, and more.
+          <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
+            Masuk untuk menyimpan riwayat analisis, sinkronisasi antar perangkat, dan respon yang lebih presisi.
           </p>
         </div>
 

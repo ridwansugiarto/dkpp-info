@@ -34,34 +34,10 @@ interface ChatContainerProps {
   isLoading: boolean;
   onSuggestionClick: (prompt: string) => void;
   onSelectKelurahan?: (kel: string) => void;
+  viewMode?: 'SPLIT' | 'PETA' | 'CHAT';
 }
 
-const SUGGESTIONS = [
-  {
-    title: 'FSVA & Kerawanan Pangan',
-    prompt: 'Tampilkan analisis FSVA Kota Cilegon dan daftar kelurahan yang masuk prioritas waspada pangan.',
-    icon: Compass,
-    color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60',
-  },
-  {
-    title: 'SKPG & Neraca Pangan',
-    prompt: 'Bagaimana ringkasan laporan bulanan SKPG Cilegon dan stabilitas pasokan beras serta komoditas strategis?',
-    icon: Activity,
-    color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60',
-  },
-  {
-    title: 'Harga Pasar Kranggot & Blok F',
-    prompt: 'Berapa harga komoditas pangan pokok terkini di Pasar Kranggot dan Pasar Blok F Cilegon?',
-    icon: TrendingUp,
-    color: 'text-sky-500 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800/60',
-  },
-  {
-    title: 'Agroklimat & Lengas Tanah',
-    prompt: 'Tampilkan kondisi telemetri agroklimat dan lengas tanah untuk wilayah pertanian di Cilegon.',
-    icon: Layers,
-    color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60',
-  },
-];
+// Suggestions removed per user request (Capture 1)
 
 // Helper: parse bold, italic, and code inlines
 function parseInlineFormatting(text: string): React.ReactNode {
@@ -98,6 +74,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   isLoading,
   onSuggestionClick,
   onSelectKelurahan,
+  viewMode = 'CHAT',
 }) => {
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -347,44 +324,46 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
       {messages.length === 0 ? (
-        /* Empty State */
-        <div className="max-w-2xl mx-auto py-12 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md mb-4">
-            <Sparkles className="w-7 h-7" />
+        /* Empty State (Capture 5 Minimalist Vibes) */
+        <div className="max-w-xl mx-auto py-14 sm:py-20 flex flex-col items-center text-center animate-in fade-in duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-sm mb-5">
+            <Sparkles className="w-6 h-6" />
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
-            Bagaimana saya dapat membantu?
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-2.5">
+            What are you working on?
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-8">
-            Asisten cerdas DKPP Kota Cilegon untuk analisis ketahanan pangan, pertanian, agroklimat, dan data spasial GIS.
+          <p className="text-xs sm:text-sm text-gray-500 max-w-md mb-6 leading-relaxed">
+            Asisten cerdas DKPP Kota Cilegon untuk analisis ketahanan pangan, pertanian, perikanan, peternakan, agroklimat, dan data spasial GIS.
           </p>
 
-          {/* Suggestion Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
-            {SUGGESTIONS.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={index}
-                  onClick={() => onSuggestionClick(item.prompt)}
-                  className={`p-3.5 rounded-xl border text-xs transition-all hover:scale-[1.01] flex flex-col justify-between gap-2.5 ${item.color}`}
-                >
-                  <div className="flex items-center gap-2 font-semibold">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.title}</span>
-                  </div>
-                  <span className="text-[11px] opacity-80 line-clamp-2">
-                    {item.prompt}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Minimalist Action Pill (Persis Capture 5 "What can you do?") */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => onSuggestionClick('Apa saja data dan analisis ketahanan pangan yang bisa saya tanyakan?')}
+              className="px-4 py-2 rounded-full border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-xs transition-all cursor-pointer"
+            >
+              What can you do?
+            </button>
+            <button
+              type="button"
+              onClick={() => onSuggestionClick('Tampilkan ringkasan status ketahanan pangan dan stabilitas pasokan beras Kota Cilegon.')}
+              className="px-4 py-2 rounded-full border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-xs transition-all cursor-pointer"
+            >
+              Status Ketahanan Pangan
+            </button>
           </div>
         </div>
       ) : (
         /* Messages Thread */
-        <div className="max-w-3xl mx-auto space-y-5">
+        <div
+          className={
+            viewMode === 'CHAT'
+              ? 'max-w-4xl lg:max-w-5xl mx-auto space-y-6 px-3 sm:px-6 w-full'
+              : 'max-w-3xl mx-auto space-y-5'
+          }
+        >
           {messages.map((msg, idx) => {
             const isUser = msg.role === 'user';
 
@@ -393,10 +372,10 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 key={msg.id || idx}
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Assistant Sleek Avatar (No raw "DK" text) */}
+                {/* Assistant Sleek Avatar (Celadon Green #A8DCAB) */}
                 {!isUser && (
                   <div
-                    className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0 mt-0.5"
+                    className="w-8 h-8 rounded-xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-xs shrink-0 mt-0.5"
                     title="DKPP-INFO Intelligence Assistant"
                   >
                     <Sparkles className="w-4 h-4" />
@@ -404,12 +383,32 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 )}
 
                 <div
-                  className={`max-w-[88%] sm:max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                  className={
                     isUser
-                      ? 'bg-emerald-600 text-white rounded-tr-xs'
-                      : 'bg-white dark:bg-[#1a1c22] border border-gray-200/80 dark:border-gray-800 rounded-tl-xs'
-                  }`}
+                      ? 'max-w-[85%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-xs bg-[#A8DCAB] text-emerald-950 font-medium rounded-tr-xs'
+                      : viewMode === 'CHAT'
+                      ? 'relative group flex-1 min-w-0 bg-transparent border-0 shadow-none px-0 py-0.5 text-gray-900 pr-8'
+                      : 'relative group max-w-[88%] sm:max-w-[85%] rounded-2xl px-4 py-3 shadow-sm bg-white dark:bg-[#1a1c22] border border-gray-200/80 dark:border-gray-800 rounded-tl-xs pr-8'
+                  }
                 >
+                  {/* Top-Right Copy Icon on Assistant Response */}
+                  {!isUser && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(msg.content, idx)}
+                      className="absolute top-1 right-1 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all cursor-pointer z-10"
+                      title="Salin jawaban ini"
+                    >
+                      {copiedIndex === idx ? (
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Tersalin</span>
+                        </span>
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                   {/* Tool Calls Status Chips */}
                   {msg.tool_calls && msg.tool_calls.length > 0 && (
                     <div className="mb-2.5 flex flex-wrap gap-1.5 border-b border-gray-100 dark:border-gray-800 pb-2">
@@ -527,14 +526,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex gap-3 justify-start items-center">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-xs shrink-0">
                 <Sparkles className="w-4 h-4 animate-spin" />
               </div>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex gap-1">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
+                  <div className="w-2 h-2 rounded-full bg-[#A8DCAB] animate-bounce" />
+                  <div className="w-2 h-2 rounded-full bg-[#A8DCAB] animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-2 h-2 rounded-full bg-[#A8DCAB] animate-bounce [animation-delay:0.4s]" />
                 </div>
                 <span>DKPP-INFO sedang menganalisis data spasial & menghitung neraca pangan...</span>
               </div>
