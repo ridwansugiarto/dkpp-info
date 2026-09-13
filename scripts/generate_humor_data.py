@@ -7,7 +7,9 @@ excel_path = os.path.join('public', 'daftar nip pegawai internal DKPP', 'nama da
 wb = openpyxl.load_workbook(excel_path)
 sheet = wb.active
 
-rows = []
+eligible_rows = []
+excluded_rows = []
+
 for r in range(3, sheet.max_row + 1):
     no = sheet.cell(row=r, column=1).value
     nama = sheet.cell(row=r, column=2).value
@@ -19,25 +21,48 @@ for r in range(3, sheet.max_row + 1):
     cerdas = sheet.cell(row=r, column=8).value
     
     if nama and str(nama).strip():
-        rows.append({
-            'nomor': int(no) if no is not None and str(no).strip().isdigit() else None,
-            'nama': str(nama).strip(),
-            'jenis_kelamin': str(jk).strip().upper() if jk else None,
-            'skor_ketampanan_kecantikan': int(tampan) if tampan is not None and str(tampan).strip().isdigit() else None,
-            'skor_daya_tarik_aura': int(aura) if aura is not None and str(aura).strip().isdigit() else None,
-            'jumlah_terpesona': int(terpesona) if terpesona is not None and str(terpesona).strip().isdigit() else None,
-            'skor_rajin_kehadiran': int(rajin) if rajin is not None and str(rajin).strip().isdigit() else None,
-            'skor_kecerdasan': int(cerdas) if cerdas is not None and str(cerdas).strip().isdigit() else None,
-            'is_sensitive': True,
-            'kategori': 'MODE_BERCANDA_INTERNAL'
-        })
+        nama_str = str(nama).strip()
+        ratings = [tampan, aura, terpesona, rajin, cerdas]
+        # Jika ada cell rating yang kosong (None atau string kosong), berarti pegawai serius dan tidak bisa menerima candaan
+        has_empty_cell = any(v is None or str(v).strip() == '' for v in ratings)
 
-print(f"Parsed {len(rows)} rows from Excel.")
+        if has_empty_cell:
+            excluded_rows.append({
+                'no': no,
+                'nama': nama_str,
+                'jk': jk,
+                'ratings': ratings
+            })
+        else:
+            eligible_rows.append({
+                'nomor': int(no) if no is not None and str(no).strip().isdigit() else None,
+                'nama': nama_str,
+                'jenis_kelamin': str(jk).strip().upper() if jk else None,
+                'skor_ketampanan_kecantikan': int(tampan),
+                'skor_daya_tarik_aura': int(aura),
+                'jumlah_terpesona': int(terpesona),
+                'skor_rajin_kehadiran': int(rajin),
+                'skor_kecerdasan': int(cerdas),
+                'is_sensitive': True,
+                'kategori': 'MODE_BERCANDA_INTERNAL'
+            })
 
-# 1. Generate SQL migration
+print(f"Total Eligible (Semua cell terisi): {len(eligible_rows)}")
+print(f"Total Excluded (Ada cell kosong/serius): {len(excluded_rows)}")
+print("\nDaftar Pegawai Excluded (Serius / Jangan Dicandai):")
+for ex in excluded_rows:
+    print(f" - {ex['nama']} (No: {ex['no']})")
+
+print("\nDaftar Pegawai Eligible (Semua rating lengkap):")
+for el in eligible_rows:
+    print(f" + {el['nama']} (No: {el['nomor']})")
+
+# 1. Generate SQL migration dengan hanya pegawai eligible
 sql_lines = [
     "-- ====================================================================",
     "-- MIGRATION 017: DATA PENDUKUNG INTERNAL DKPP (MODE BERCANDA / HUMOR)",
+    "-- HANYA BERISI PEGAWAI DENGAN SELURUH CELL RATING LENGKAP",
+    "-- PEGAWAI DENGAN CELL KOSONG / EMPTY DIKECUALIKAN KARENA SERIUS",
     "-- DITANDAI SEBAGAI DATA SENSITIF & TERISOLASI KHUSUS JAWABAN SANTAI",
     "-- ====================================================================",
     "",
@@ -46,11 +71,11 @@ sql_lines = [
     "    nomor INT,",
     "    nama VARCHAR(150) NOT NULL,",
     "    jenis_kelamin CHAR(1), -- L / P",
-    "    skor_ketampanan_kecantikan INT, -- Skor 1-10",
-    "    skor_daya_tarik_aura INT, -- Skor 1-10",
-    "    jumlah_terpesona INT, -- Jumlah yang tertarik/terpesona",
-    "    skor_rajin_kehadiran INT, -- Skor 1-10",
-    "    skor_kecerdasan INT, -- Skor 1-10",
+    "    skor_ketampanan_kecantikan INT NOT NULL, -- Skor 1-10",
+    "    skor_daya_tarik_aura INT NOT NULL, -- Skor 1-10",
+    "    jumlah_terpesona INT NOT NULL, -- Jumlah yang tertarik/terpesona",
+    "    skor_rajin_kehadiran INT NOT NULL, -- Skor 1-10",
+    "    skor_kecerdasan INT NOT NULL, -- Skor 1-10",
     "    is_sensitive BOOLEAN DEFAULT true, -- DITANDAI SEBAGAI DATA SENSITIF",
     "    kategori VARCHAR(50) DEFAULT 'MODE_BERCANDA_INTERNAL',",
     "    created_at TIMESTAMPTZ DEFAULT now()",
@@ -81,15 +106,15 @@ sql_lines = [
 ]
 
 values_list = []
-for item in rows:
+for item in eligible_rows:
     no_val = str(item['nomor']) if item['nomor'] is not None else 'NULL'
     nama_esc = item['nama'].replace("'", "''")
     jk_val = f"'{item['jenis_kelamin']}'" if item['jenis_kelamin'] else 'NULL'
-    tampan_val = str(item['skor_ketampanan_kecantikan']) if item['skor_ketampanan_kecantikan'] is not None else 'NULL'
-    aura_val = str(item['skor_daya_tarik_aura']) if item['skor_daya_tarik_aura'] is not None else 'NULL'
-    terpesona_val = str(item['jumlah_terpesona']) if item['jumlah_terpesona'] is not None else 'NULL'
-    rajin_val = str(item['skor_rajin_kehadiran']) if item['skor_rajin_kehadiran'] is not None else 'NULL'
-    cerdas_val = str(item['skor_kecerdasan']) if item['skor_kecerdasan'] is not None else 'NULL'
+    tampan_val = str(item['skor_ketampanan_kecantikan'])
+    aura_val = str(item['skor_daya_tarik_aura'])
+    terpesona_val = str(item['jumlah_terpesona'])
+    rajin_val = str(item['skor_rajin_kehadiran'])
+    cerdas_val = str(item['skor_kecerdasan'])
     values_list.append(f"({no_val}, '{nama_esc}', {jk_val}, {tampan_val}, {aura_val}, {terpesona_val}, {rajin_val}, {cerdas_val}, true, 'MODE_BERCANDA_INTERNAL')")
 
 sql_lines.append(',\n'.join(values_list) + ';')
@@ -97,73 +122,80 @@ sql_lines.append(',\n'.join(values_list) + ';')
 with open('supabase/migrations/017_dkpp_pegawai_humor.sql', 'w', encoding='utf-8') as f:
     f.write('\n'.join(sql_lines))
 
-print("Created supabase/migrations/017_dkpp_pegawai_humor.sql")
+print("Updated supabase/migrations/017_dkpp_pegawai_humor.sql")
 
 # 2. Generate TypeScript module
 ts_code = f"""// Master Data Pendukung Internal DKPP (Mode Bercanda / Humor)
-// Catatan: Data ini KHUSUS untuk mencairkan suasana jika user bertanya hal santai/bercanda
-// DILARANG DICAMPURKAN DENGAN PERTANYAAN SERIUS / FORMAL KEDINASAN
+// ATURAN KETAT: HANYA PEGAWAI DENGAN SELURUH CELL RATING LENGKAP YANG DIPROSES!
+// PEGAWAI DENGAN CELL KOSONG/EMPTY DIKECUALIKAN KARENA SERIUS DAN TIDAK BISA MENERIMA CANDAAN.
 
 export interface PegawaiHumorItem {{
   nomor: number | null;
   nama: string;
   jenis_kelamin: 'L' | 'P' | null;
-  skor_ketampanan_kecantikan: number | null; // 1-10
-  skor_daya_tarik_aura: number | null; // 1-10
-  jumlah_terpesona: number | null; // Jumlah perempuan/penggemar yang terpesona
-  skor_rajin_kehadiran: number | null; // 1-10
-  skor_kecerdasan: number | null; // 1-10
+  skor_ketampanan_kecantikan: number; // 1-10
+  skor_daya_tarik_aura: number; // 1-10
+  jumlah_terpesona: number; // Jumlah orang/penggemar yang terpesona
+  skor_rajin_kehadiran: number; // 1-10
+  skor_kecerdasan: number; // 1-10
   is_sensitive: boolean;
   kategori: string;
 }}
 
-export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = {json.dumps(rows, indent=2, ensure_ascii=False)};
+// Daftar nama pegawai yang SERIUS (memiliki cell kosong di file Excel)
+// DILARANG KERAS memproses nama-nama ini dalam candaan/humor:
+export const EXCLUDED_SERIOUS_PEGAWAI: string[] = {json.dumps([ex['nama'] for ex in excluded_rows], indent=2, ensure_ascii=False)};
+
+// Hanya pegawai dengan data lengkap yang bersedia masuk mode humor:
+export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = {json.dumps(eligible_rows, indent=2, ensure_ascii=False)};
 
 // Helper functions untuk merespons pertanyaan santai
 export function getTopGanteng(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jenis_kelamin === 'L' && p.skor_ketampanan_kecantikan !== null)
-    .sort((a, b) => (b.skor_ketampanan_kecantikan ?? 0) - (a.skor_ketampanan_kecantikan ?? 0))
+    .filter(p => p.jenis_kelamin === 'L')
+    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
     .slice(0, limit);
 }}
 
 export function getTopCantik(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jenis_kelamin === 'P' && p.skor_ketampanan_kecantikan !== null)
-    .sort((a, b) => (b.skor_ketampanan_kecantikan ?? 0) - (a.skor_ketampanan_kecantikan ?? 0))
+    .filter(p => p.jenis_kelamin === 'P')
+    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
     .slice(0, limit);
 }}
 
 export function getTopAura(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_daya_tarik_aura !== null)
-    .sort((a, b) => (b.skor_daya_tarik_aura ?? 0) - (a.skor_daya_tarik_aura ?? 0))
+    .sort((a, b) => b.skor_daya_tarik_aura - a.skor_daya_tarik_aura)
     .slice(0, limit);
 }}
 
 export function getTopTerpesona(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jumlah_terpesona !== null)
-    .sort((a, b) => (b.jumlah_terpesona ?? 0) - (a.jumlah_terpesona ?? 0))
+    .sort((a, b) => b.jumlah_terpesona - a.jumlah_terpesona)
     .slice(0, limit);
 }}
 
 export function getTopCerdas(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_kecerdasan !== null)
-    .sort((a, b) => (b.skor_kecerdasan ?? 0) - (a.skor_kecerdasan ?? 0))
+    .sort((a, b) => b.skor_kecerdasan - a.skor_kecerdasan)
     .slice(0, limit);
 }}
 
 export function getTopRajin(limit = 5): PegawaiHumorItem[] {{
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_rajin_kehadiran !== null)
-    .sort((a, b) => (b.skor_rajin_kehadiran ?? 0) - (a.skor_rajin_kehadiran ?? 0))
+    .sort((a, b) => b.skor_rajin_kehadiran - a.skor_rajin_kehadiran)
     .slice(0, limit);
+}}
+
+export function isSeriousEmployee(nama: string): boolean {{
+  const q = nama.toLowerCase().trim();
+  return EXCLUDED_SERIOUS_PEGAWAI.some(ex => ex.toLowerCase().includes(q) || q.includes(ex.toLowerCase()));
 }}
 
 export function findPegawaiHumorByName(namaQuery: string): PegawaiHumorItem | undefined {{
   const q = namaQuery.toLowerCase().trim();
+  if (isSeriousEmployee(q)) return undefined; // Proteksi pegawai serius
   return OFFICIAL_DKPP_HUMOR_DATA.find(p => p.nama.toLowerCase().includes(q));
 }}
 
@@ -173,7 +205,6 @@ export function findPegawaiHumorByName(namaQuery: string): PegawaiHumorItem | un
 export function isPegawaiHumorQuery(userMessage: string): boolean {{
   const q = userMessage.toLowerCase();
   
-  // Kata kunci humor/santai khusus atribut fisik, pesona, ketampanan, dsb
   const humorKeywords = [
     'ganteng', 'paling ganteng', 'tampan', 'paling tampan',
     'cantik', 'paling cantik', 'ayu', 'jelita',
@@ -186,7 +217,6 @@ export function isPegawaiHumorQuery(userMessage: string): boolean {{
 
   const hasHumorKeyword = humorKeywords.some(k => q.includes(k));
   
-  // Harus ada konteks pegawai, dkpp, orang, staf, asn, atau nama orang
   const contextKeywords = [
     'pegawai', 'dkpp', 'staf', 'staff', 'asn', 'internal', 'kantor', 'dinas', 'orang',
     'siapa', 'cowok', 'cewek', 'bapak', 'ibu'
@@ -204,12 +234,14 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {{
 
   const q = userMessage.toLowerCase();
   let result = `=== MODE BERCANDA / HUMOR INTERNAL PEGAWAI DKPP (SENSITIF - INTERNAL ONLY) ===\\n`;
-  result += `CATATAN PENTING: Pertanyaan pengguna terdeteksi sebagai pertanyaan santai/bercanda seputar keakraban pegawai DKPP.\\n`;
-  result += `Jawablah dengan nada yang ramah, hangat, jenaka, dan sopan. Berikan disclaimer di akhir bahwa ini adalah catatan internal humor/candaan DKPP untuk keakraban bersama, bukan penilaian kedinasan resmi.\\n\\n`;
+  result += `ATURAN WAJIB & MUTLAK:\\n`;
+  result += `1. HANYA sebutkan nama-nama yang ada di DAFTAR RESMI MODE BERCANDA di bawah ini (nama yang seluruh ratingnya terisi lengkap).\\n`;
+  result += `2. DILARANG KERAS menyebutkan nama-nama yang memiliki sel kosong / tidak memiliki rating (seperti Ibu Plt. Kadis Efa Sarifah, Sekretaris Dinas Agus Purmono, Kabid Lira, Kabid Cahyaning, H. Mustofa, dll.) dalam konteks candaan/humor, karena beliau-beliau berkarakter serius dan tidak bisa menerima candaan.\\n`;
+  result += `3. Jawablah dengan nada yang ramah, hangat, jenaka, dan sopan, diakhiri dengan catatan santai bahwa ini khusus keakraban internal DKPP.\\n\\n`;
 
   if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {{
     const topGanteng = getTopGanteng(6);
-    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (Skor 1-10):\\n`;
+    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (Hanya yang bersedia bercanda):\\n`;
     topGanteng.forEach((p, idx) => {{
       result += `${{idx + 1}}. ${{p.nama}} (Skor Ketampanan: ${{p.skor_ketampanan_kecantikan}}/10, Aura: ${{p.skor_daya_tarik_aura}}/10)\\n`;
     }});
@@ -218,7 +250,7 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {{
 
   if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {{
     const topCantik = getTopCantik(6);
-    result += `DAFTAR PEGAWAI PALING CANTIK (Skor 1-10):\\n`;
+    result += `DAFTAR PEGAWAI PALING CANTIK (Hanya yang bersedia bercanda):\\n`;
     topCantik.forEach((p, idx) => {{
       result += `${{idx + 1}}. ${{p.nama}} (Skor Kecantikan: ${{p.skor_ketampanan_kecantikan}}/10, Aura: ${{p.skor_daya_tarik_aura}}/10)\\n`;
     }});
@@ -236,16 +268,16 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {{
 
   if (q.includes('terpesona') || q.includes('terpikat') || q.includes('fans') || q.includes('perempuan') || q.includes('wanita')) {{
     const topTerpesona = getTopTerpesona(6);
-    result += `DAFTAR PEGAWAI DENGAN JUMLAH ORANG / WANITA YANG TERPESONA TERBANYAK:\\n`;
+    result += `DAFTAR PEGAWAI DENGAN JUMLAH YANG TERPESONA TERBANYAK:\\n`;
     topTerpesona.forEach((p, idx) => {{
-      result += `${{idx + 1}}. ${{p.nama}} (Mencapai ${{p.jumlah_terpesona}} orang yang terpikat/terpesona)\\n`;
+      result += `${{idx + 1}}. ${{p.nama}} (Mencapai ${{p.jumlah_terpesona}} orang terpesona)\\n`;
     }});
     result += `\\n`;
   }}
 
   if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {{
     const topCerdas = getTopCerdas(6);
-    result += `DAFTAR PEGAWAI PALING CERDAS / JENIUS:\\n`;
+    result += `DAFTAR PEGAWAI DENGAN SKOR KECERDASAN TERTINGGI (Mode Santai):\\n`;
     topCerdas.forEach((p, idx) => {{
       result += `${{idx + 1}}. ${{p.nama}} (Skor Kecerdasan: ${{p.skor_kecerdasan}}/10, Rajin: ${{p.skor_rajin_kehadiran}}/10)\\n`;
     }});
@@ -254,20 +286,19 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {{
 
   if (q.includes('rajin') || q.includes('hadir') || q.includes('kehadiran')) {{
     const topRajin = getTopRajin(6);
-    result += `DAFTAR PEGAWAI PALING RAJIN & DISIPLIN KEHADIRAN:\\n`;
+    result += `DAFTAR PEGAWAI PALING RAJIN KEHADIRAN (Mode Santai):\\n`;
     topRajin.forEach((p, idx) => {{
       result += `${{idx + 1}}. ${{p.nama}} (Skor Kehadiran: ${{p.skor_rajin_kehadiran}}/10)\\n`;
     }});
     result += `\\n`;
   }}
 
-  // Jika umum (misal: "siapa saja yang ada di daftar candaan?")
   if (!q.includes('ganteng') && !q.includes('cantik') && !q.includes('aura') && !q.includes('terpesona') && !q.includes('cerdas') && !q.includes('rajin')) {{
-    result += `RINGKASAN MODE BERCANDA:\\n`;
+    result += `RINGKASAN MODE BERCANDA (HANYA PEGAWAI DENGAN RATING LENGKAP):\\n`;
     result += `- Paling Ganteng: Paulus Dwi Ari K D, ST, Subandi, Yuki Suryarizki, S.Kom, Asep Qomaruzzaman, S.AP, Ridwan Sugiarto, S.Pi, Udin Saprudin, SE\\n`;
     result += `- Paling Cantik: Sri Rahmadani Piliang, SE, Minarni, SE, Sri Ratnaningsih, S.Pi, Winda Ratnasari, SP, Maisaroh, SP\\n`;
     result += `- Juara Pemikat Terpesona: Subandi (50 orang), Asep Qomaruzzaman (48 orang), Yuki Suryarizki (45 orang)\\n`;
-    result += `- Paling Cerdas: Ridwan Sugiarto, S.Pi (10/10), Wahyudi, SE (10/10), Mas Akhmad Rangga P, SE (10/10), Sandhi Maulana Adha, SP (10/10), Ibu Plt. Kadis Efa Sarifah (10/10)\\n`;
+    result += `- Paling Cerdas: Ridwan Sugiarto, S.Pi (10/10), Wahyudi, SE (10/10), Mas Akhmad Rangga P, SE (10/10), Sandhi Maulana Adha, SP (10/10), Asep Qomaruzzaman, S.AP (10/10)\\n`;
   }}
 
   return result;
@@ -277,4 +308,4 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {{
 with open('src/data/pegawai_humor.ts', 'w', encoding='utf-8') as f:
     f.write(ts_code)
 
-print("Created src/data/pegawai_humor.ts successfully.")
+print("Updated src/data/pegawai_humor.ts successfully.")

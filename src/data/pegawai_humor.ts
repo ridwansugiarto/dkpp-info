@@ -1,20 +1,87 @@
 // Master Data Pendukung Internal DKPP (Mode Bercanda / Humor)
-// Catatan: Data ini KHUSUS untuk mencairkan suasana jika user bertanya hal santai/bercanda
-// DILARANG DICAMPURKAN DENGAN PERTANYAAN SERIUS / FORMAL KEDINASAN
+// ATURAN KETAT: HANYA PEGAWAI DENGAN SELURUH CELL RATING LENGKAP YANG DIPROSES!
+// PEGAWAI DENGAN CELL KOSONG/EMPTY DIKECUALIKAN KARENA SERIUS DAN TIDAK BISA MENERIMA CANDAAN.
 
 export interface PegawaiHumorItem {
   nomor: number | null;
   nama: string;
   jenis_kelamin: 'L' | 'P' | null;
-  skor_ketampanan_kecantikan: number | null; // 1-10
-  skor_daya_tarik_aura: number | null; // 1-10
-  jumlah_terpesona: number | null; // Jumlah perempuan/penggemar yang terpesona
-  skor_rajin_kehadiran: number | null; // 1-10
-  skor_kecerdasan: number | null; // 1-10
+  skor_ketampanan_kecantikan: number; // 1-10
+  skor_daya_tarik_aura: number; // 1-10
+  jumlah_terpesona: number; // Jumlah orang/penggemar yang terpesona
+  skor_rajin_kehadiran: number; // 1-10
+  skor_kecerdasan: number; // 1-10
   is_sensitive: boolean;
   kategori: string;
 }
 
+// Daftar nama pegawai yang SERIUS (memiliki cell kosong di file Excel)
+// DILARANG KERAS memproses nama-nama ini dalam candaan/humor:
+export const EXCLUDED_SERIOUS_PEGAWAI: string[] = [
+  "H. Mustofa, Sos,Msi",
+  "H.M.Muchtar,S.Sos,M.Si",
+  "Djadjat Djatnika, S.IP",
+  "Anugroho Nur W, S.Pt",
+  "drh. Abraham Syah",
+  "Ari Priyatna, SP",
+  "Uki Rofika, SE",
+  "Hafid Dasuki, S.Pt",
+  "Amiruddin, SE",
+  "Lina Octavia, A.Md",
+  "Suharyadi",
+  "Dedi Septriyansa",
+  "Lahmudin",
+  "Ahmad Sarbini",
+  "Nina Masliana",
+  "Yudi Slamet Hidayat, S.P",
+  "Erna Febrianti, SP",
+  "Santawi",
+  "Ghoni Syafiulloh, S.Ak",
+  "Rusdi",
+  "Rofiqoh, S.Sos",
+  "Musfiroh, S.Pi",
+  "Fani Herawati,SP",
+  "Rizkyullah, SM",
+  "Maskan",
+  "Ayaza Azzahra, S.M",
+  "Dede Tri Mulyana, SP",
+  "Maida Rintan Astuti",
+  "Reza Maulana Muhammad, SP",
+  "Iyan Rachman, SE",
+  "Heri. S.PdI",
+  "Muhtadi",
+  "Robet Wahid",
+  "Rofiatul Adawiyah",
+  "Yusuf Supriatna",
+  "Efa Sarifah, ST, MT",
+  "Agus Purmono, A.P, MM",
+  "Ir. Lira Yuliantina, MM",
+  "Cahyaning Sukarti S.K.M, MM",
+  "Drh. Hj. Dina Safitri",
+  "Moch. Dwinanda Y,S.Pt",
+  "Liva Widiaty, SE, MM",
+  "Yessy Desvia, SP",
+  "Adelina Andi Wiani Putri, SE",
+  "Meisaroh, SE",
+  "Kusnadi, SE",
+  "Shofi Nur Prihatin, SP",
+  "Devi Yuningsih, A.Md",
+  "Afri Rizka Amiardi, S.P",
+  "Maruli Setiawan, S.P",
+  "Oja Fakhruroja, S.T",
+  "Endra Purnama, S.P",
+  "Rosmani Butarbutar, S.P",
+  "Muhamad Hamdi, SP",
+  "Abi Sukarya",
+  "Haryanto",
+  "Muhamad Farhan.S.Pi",
+  "Hartono",
+  "F. Mahmud",
+  "Iwan",
+  "Muhaemin"
+];
+
+// Hanya pegawai dengan data lengkap yang bersedia masuk mode humor:
 export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   {
     "nomor": 9,
@@ -435,786 +502,56 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "skor_kecerdasan": 2,
     "is_sensitive": true,
     "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 5,
-    "nama": "H. Mustofa, Sos,Msi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 7,
-    "nama": "H.M.Muchtar,S.Sos,M.Si",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 6,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 11,
-    "nama": "Djadjat Djatnika, S.IP",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 7,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 13,
-    "nama": "Anugroho Nur W, S.Pt",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 16,
-    "nama": "drh. Abraham Syah",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 8,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 19,
-    "nama": "Ari Priyatna, SP",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 21,
-    "nama": "Uki Rofika, SE",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 23,
-    "nama": "Hafid Dasuki, S.Pt",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 9,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 33,
-    "nama": "Amiruddin, SE",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 9,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 8,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 34,
-    "nama": "Lina Octavia, A.Md",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 6,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 41,
-    "nama": "Suharyadi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 42,
-    "nama": "Dedi Septriyansa",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 9,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 43,
-    "nama": "Lahmudin",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 5,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 44,
-    "nama": "Ahmad Sarbini",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 8,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 45,
-    "nama": "Nina Masliana",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 7,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 5,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 52,
-    "nama": "Yudi Slamet Hidayat, S.P",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 5,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 53,
-    "nama": "Erna Febrianti, SP",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 55,
-    "nama": "Santawi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 56,
-    "nama": "Ghoni Syafiulloh, S.Ak",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 67,
-    "nama": "Rusdi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 6,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 68,
-    "nama": "Rofiqoh, S.Sos",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 4,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 5,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 71,
-    "nama": "Musfiroh, S.Pi",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 7,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 73,
-    "nama": "Fani Herawati,SP",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 6,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 74,
-    "nama": "Rizkyullah, SM",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 7,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 78,
-    "nama": "Maskan",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 82,
-    "nama": "Ayaza Azzahra, S.M",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 8,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 83,
-    "nama": "Dede Tri Mulyana, SP",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 6,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 5,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 85,
-    "nama": "Maida Rintan Astuti",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 86,
-    "nama": "Reza Maulana Muhammad, SP",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 7,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 9,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 87,
-    "nama": "Iyan Rachman, SE",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 4,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 3,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 88,
-    "nama": "Heri. S.PdI",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 90,
-    "nama": "Muhtadi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 94,
-    "nama": "Robet Wahid",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 95,
-    "nama": "Rofiatul Adawiyah",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 96,
-    "nama": "Yusuf Supriatna",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": 5,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 1,
-    "nama": "Efa Sarifah, ST, MT",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 10,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 2,
-    "nama": "Agus Purmono, A.P, MM",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 10,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 3,
-    "nama": "Ir. Lira Yuliantina, MM",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 9,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 4,
-    "nama": "Cahyaning Sukarti S.K.M, MM",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 7,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 6,
-    "nama": "Drh. Hj. Dina Safitri",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 10,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 8,
-    "nama": "Moch. Dwinanda Y,S.Pt",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 15,
-    "nama": "Liva Widiaty, SE, MM",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 4,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 17,
-    "nama": "Yessy Desvia, SP",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 8,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 20,
-    "nama": "Adelina Andi Wiani Putri, SE",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": 8,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 29,
-    "nama": "Meisaroh, SE",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 30,
-    "nama": "Kusnadi, SE",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 36,
-    "nama": "Shofi Nur Prihatin, SP",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 38,
-    "nama": "Devi Yuningsih, A.Md",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 46,
-    "nama": "Afri Rizka Amiardi, S.P",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 47,
-    "nama": "Maruli Setiawan, S.P",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 48,
-    "nama": "Oja Fakhruroja, S.T",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 49,
-    "nama": "Endra Purnama, S.P",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 50,
-    "nama": "Rosmani Butarbutar, S.P",
-    "jenis_kelamin": "P",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 51,
-    "nama": "Muhamad Hamdi, SP",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 62,
-    "nama": "Abi Sukarya",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 64,
-    "nama": "Haryanto",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 72,
-    "nama": "Muhamad Farhan.S.Pi",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 76,
-    "nama": "Hartono",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 77,
-    "nama": "F. Mahmud",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 89,
-    "nama": "Iwan",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
-  },
-  {
-    "nomor": 93,
-    "nama": "Muhaemin",
-    "jenis_kelamin": "L",
-    "skor_ketampanan_kecantikan": null,
-    "skor_daya_tarik_aura": null,
-    "jumlah_terpesona": null,
-    "skor_rajin_kehadiran": null,
-    "skor_kecerdasan": null,
-    "is_sensitive": true,
-    "kategori": "MODE_BERCANDA_INTERNAL"
   }
 ];
 
 // Helper functions untuk merespons pertanyaan santai
 export function getTopGanteng(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jenis_kelamin === 'L' && p.skor_ketampanan_kecantikan !== null)
-    .sort((a, b) => (b.skor_ketampanan_kecantikan ?? 0) - (a.skor_ketampanan_kecantikan ?? 0))
+    .filter(p => p.jenis_kelamin === 'L')
+    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
     .slice(0, limit);
 }
 
 export function getTopCantik(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jenis_kelamin === 'P' && p.skor_ketampanan_kecantikan !== null)
-    .sort((a, b) => (b.skor_ketampanan_kecantikan ?? 0) - (a.skor_ketampanan_kecantikan ?? 0))
+    .filter(p => p.jenis_kelamin === 'P')
+    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
     .slice(0, limit);
 }
 
 export function getTopAura(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_daya_tarik_aura !== null)
-    .sort((a, b) => (b.skor_daya_tarik_aura ?? 0) - (a.skor_daya_tarik_aura ?? 0))
+    .sort((a, b) => b.skor_daya_tarik_aura - a.skor_daya_tarik_aura)
     .slice(0, limit);
 }
 
 export function getTopTerpesona(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.jumlah_terpesona !== null)
-    .sort((a, b) => (b.jumlah_terpesona ?? 0) - (a.jumlah_terpesona ?? 0))
+    .sort((a, b) => b.jumlah_terpesona - a.jumlah_terpesona)
     .slice(0, limit);
 }
 
 export function getTopCerdas(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_kecerdasan !== null)
-    .sort((a, b) => (b.skor_kecerdasan ?? 0) - (a.skor_kecerdasan ?? 0))
+    .sort((a, b) => b.skor_kecerdasan - a.skor_kecerdasan)
     .slice(0, limit);
 }
 
 export function getTopRajin(limit = 5): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .filter(p => p.skor_rajin_kehadiran !== null)
-    .sort((a, b) => (b.skor_rajin_kehadiran ?? 0) - (a.skor_rajin_kehadiran ?? 0))
+    .sort((a, b) => b.skor_rajin_kehadiran - a.skor_rajin_kehadiran)
     .slice(0, limit);
+}
+
+export function isSeriousEmployee(nama: string): boolean {
+  const q = nama.toLowerCase().trim();
+  return EXCLUDED_SERIOUS_PEGAWAI.some(ex => ex.toLowerCase().includes(q) || q.includes(ex.toLowerCase()));
 }
 
 export function findPegawaiHumorByName(namaQuery: string): PegawaiHumorItem | undefined {
   const q = namaQuery.toLowerCase().trim();
+  if (isSeriousEmployee(q)) return undefined; // Proteksi pegawai serius
   return OFFICIAL_DKPP_HUMOR_DATA.find(p => p.nama.toLowerCase().includes(q));
 }
 
@@ -1224,7 +561,6 @@ export function findPegawaiHumorByName(namaQuery: string): PegawaiHumorItem | un
 export function isPegawaiHumorQuery(userMessage: string): boolean {
   const q = userMessage.toLowerCase();
   
-  // Kata kunci humor/santai khusus atribut fisik, pesona, ketampanan, dsb
   const humorKeywords = [
     'ganteng', 'paling ganteng', 'tampan', 'paling tampan',
     'cantik', 'paling cantik', 'ayu', 'jelita',
@@ -1237,7 +573,6 @@ export function isPegawaiHumorQuery(userMessage: string): boolean {
 
   const hasHumorKeyword = humorKeywords.some(k => q.includes(k));
   
-  // Harus ada konteks pegawai, dkpp, orang, staf, asn, atau nama orang
   const contextKeywords = [
     'pegawai', 'dkpp', 'staf', 'staff', 'asn', 'internal', 'kantor', 'dinas', 'orang',
     'siapa', 'cowok', 'cewek', 'bapak', 'ibu'
@@ -1255,12 +590,14 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
 
   const q = userMessage.toLowerCase();
   let result = `=== MODE BERCANDA / HUMOR INTERNAL PEGAWAI DKPP (SENSITIF - INTERNAL ONLY) ===\n`;
-  result += `CATATAN PENTING: Pertanyaan pengguna terdeteksi sebagai pertanyaan santai/bercanda seputar keakraban pegawai DKPP.\n`;
-  result += `Jawablah dengan nada yang ramah, hangat, jenaka, dan sopan. Berikan disclaimer di akhir bahwa ini adalah catatan internal humor/candaan DKPP untuk keakraban bersama, bukan penilaian kedinasan resmi.\n\n`;
+  result += `ATURAN WAJIB & MUTLAK:\n`;
+  result += `1. HANYA sebutkan nama-nama yang ada di DAFTAR RESMI MODE BERCANDA di bawah ini (nama yang seluruh ratingnya terisi lengkap).\n`;
+  result += `2. DILARANG KERAS menyebutkan nama-nama yang memiliki sel kosong / tidak memiliki rating (seperti Ibu Plt. Kadis Efa Sarifah, Sekretaris Dinas Agus Purmono, Kabid Lira, Kabid Cahyaning, H. Mustofa, dll.) dalam konteks candaan/humor, karena beliau-beliau berkarakter serius dan tidak bisa menerima candaan.\n`;
+  result += `3. Jawablah dengan nada yang ramah, hangat, jenaka, dan sopan, diakhiri dengan catatan santai bahwa ini khusus keakraban internal DKPP.\n\n`;
 
   if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
     const topGanteng = getTopGanteng(6);
-    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (Skor 1-10):\n`;
+    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (Hanya yang bersedia bercanda):\n`;
     topGanteng.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} (Skor Ketampanan: ${p.skor_ketampanan_kecantikan}/10, Aura: ${p.skor_daya_tarik_aura}/10)\n`;
     });
@@ -1269,7 +606,7 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
 
   if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
     const topCantik = getTopCantik(6);
-    result += `DAFTAR PEGAWAI PALING CANTIK (Skor 1-10):\n`;
+    result += `DAFTAR PEGAWAI PALING CANTIK (Hanya yang bersedia bercanda):\n`;
     topCantik.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} (Skor Kecantikan: ${p.skor_ketampanan_kecantikan}/10, Aura: ${p.skor_daya_tarik_aura}/10)\n`;
     });
@@ -1287,16 +624,16 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
 
   if (q.includes('terpesona') || q.includes('terpikat') || q.includes('fans') || q.includes('perempuan') || q.includes('wanita')) {
     const topTerpesona = getTopTerpesona(6);
-    result += `DAFTAR PEGAWAI DENGAN JUMLAH ORANG / WANITA YANG TERPESONA TERBANYAK:\n`;
+    result += `DAFTAR PEGAWAI DENGAN JUMLAH YANG TERPESONA TERBANYAK:\n`;
     topTerpesona.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Mencapai ${p.jumlah_terpesona} orang yang terpikat/terpesona)\n`;
+      result += `${idx + 1}. ${p.nama} (Mencapai ${p.jumlah_terpesona} orang terpesona)\n`;
     });
     result += `\n`;
   }
 
   if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
     const topCerdas = getTopCerdas(6);
-    result += `DAFTAR PEGAWAI PALING CERDAS / JENIUS:\n`;
+    result += `DAFTAR PEGAWAI DENGAN SKOR KECERDASAN TERTINGGI (Mode Santai):\n`;
     topCerdas.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} (Skor Kecerdasan: ${p.skor_kecerdasan}/10, Rajin: ${p.skor_rajin_kehadiran}/10)\n`;
     });
@@ -1305,20 +642,19 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
 
   if (q.includes('rajin') || q.includes('hadir') || q.includes('kehadiran')) {
     const topRajin = getTopRajin(6);
-    result += `DAFTAR PEGAWAI PALING RAJIN & DISIPLIN KEHADIRAN:\n`;
+    result += `DAFTAR PEGAWAI PALING RAJIN KEHADIRAN (Mode Santai):\n`;
     topRajin.forEach((p, idx) => {
       result += `${idx + 1}. ${p.nama} (Skor Kehadiran: ${p.skor_rajin_kehadiran}/10)\n`;
     });
     result += `\n`;
   }
 
-  // Jika umum (misal: "siapa saja yang ada di daftar candaan?")
   if (!q.includes('ganteng') && !q.includes('cantik') && !q.includes('aura') && !q.includes('terpesona') && !q.includes('cerdas') && !q.includes('rajin')) {
-    result += `RINGKASAN MODE BERCANDA:\n`;
+    result += `RINGKASAN MODE BERCANDA (HANYA PEGAWAI DENGAN RATING LENGKAP):\n`;
     result += `- Paling Ganteng: Paulus Dwi Ari K D, ST, Subandi, Yuki Suryarizki, S.Kom, Asep Qomaruzzaman, S.AP, Ridwan Sugiarto, S.Pi, Udin Saprudin, SE\n`;
     result += `- Paling Cantik: Sri Rahmadani Piliang, SE, Minarni, SE, Sri Ratnaningsih, S.Pi, Winda Ratnasari, SP, Maisaroh, SP\n`;
     result += `- Juara Pemikat Terpesona: Subandi (50 orang), Asep Qomaruzzaman (48 orang), Yuki Suryarizki (45 orang)\n`;
-    result += `- Paling Cerdas: Ridwan Sugiarto, S.Pi (10/10), Wahyudi, SE (10/10), Mas Akhmad Rangga P, SE (10/10), Sandhi Maulana Adha, SP (10/10), Ibu Plt. Kadis Efa Sarifah (10/10)\n`;
+    result += `- Paling Cerdas: Ridwan Sugiarto, S.Pi (10/10), Wahyudi, SE (10/10), Mas Akhmad Rangga P, SE (10/10), Sandhi Maulana Adha, SP (10/10), Asep Qomaruzzaman, S.AP (10/10)\n`;
   }
 
   return result;

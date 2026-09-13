@@ -684,8 +684,7 @@ function generateRuleBasedAnswer(userQuery: string): string {
         `4. **Asep Qomaruzzaman, S.AP** — Skor Ketampanan **10/10**, Aura 10/10, Cerdas 10/10\n` +
         `5. **Ridwan Sugiarto, S.Pi** — Skor Ketampanan **9/10**, Aura 9/10, Cerdas 10/10, Rajin 10/10\n` +
         `6. **Udin Saprudin, SE, M.M.** — Skor Ketampanan **9/10**, Aura 9/10\n` +
-        `7. **Tandis Destalana, SE.MM** — Skor Ketampanan **9/10**, Aura 9/10\n` +
-        `8. **Amiruddin, SE** — Skor Ketampanan **9/10**\n\n`;
+        `7. **Tandis Destalana, SE.MM** — Skor Ketampanan **9/10**, Aura 9/10\n\n`;
     } else if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
       ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut jajaran pegawai dengan skor kecantikan & pesona tertinggi:\n\n` +
         `1. **Sri Rahmadani Piliang, SE** — Skor Kecantikan **10/10**, Aura 10/10, Rajin 10/10\n` +
@@ -717,9 +716,9 @@ function generateRuleBasedAnswer(userQuery: string): string {
         `• **Mas Akhmad Rangga P, SE, MM** (10/10, Rajin 10/10)\n` +
         `• **Sandhi Maulana Adha, SP** (10/10)\n` +
         `• **Asep Qomaruzzaman, S.AP** (10/10)\n` +
-        `• **Ibu Plt. Kadis Efa Sarifah, ST, MT** (10/10)\n` +
-        `• **Sekretaris Dinas Agus Purmono, A.P, MM** (10/10)\n` +
-        `• **Drh. Hj. Dina Safitri** (10/10)\n\n`;
+        `• **Udin Saprudin, SE, M.M.** (9/10)\n` +
+        `• **Winda Ratnasari, SP** (9/10)\n` +
+        `• **Minarni, SE** (9/10)\n\n`;
     } else {
       ans += `Catatan mode santai/candaan internal DKPP memuat profil keakraban pegawai (skor ketampanan/kecantikan, aura pesona, kerajinan, hingga kecerdasan santai):\n\n` +
         `• **Ketampanan Puncak:** Paulus Dwi Ari, Subandi, Yuki Suryarizki, Asep Qomaruzzaman, Ridwan Sugiarto, S.Pi\n` +
