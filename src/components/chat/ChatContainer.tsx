@@ -376,16 +376,16 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 key={msg.id || idx}
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Assistant Sleek Avatar (Ikon Resmi Chat DKPP) */}
+                {/* Assistant Sleek Avatar (Ikon Resmi Chat DKPP Transparan) */}
                 {!isUser && (
                   <div
-                    className="w-8 h-8 rounded-xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-center shrink-0 mt-0.5 overflow-hidden p-0.5"
+                    className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5 select-none"
                     title="DKPP-INFO Intelligence Assistant"
                   >
                     <img
                       src="/ikon-chatDKPP.png"
                       alt="DKPP AI"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain drop-shadow-xs"
                     />
                   </div>
                 )}
@@ -534,11 +534,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex gap-3 justify-start items-center">
-              <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-center shrink-0 overflow-hidden p-0.5">
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 select-none">
                 <img
                   src="/ikon-chatDKPP.png"
                   alt="DKPP AI"
-                  className="w-full h-full object-contain animate-pulse"
+                  className="w-full h-full object-contain animate-pulse drop-shadow-xs"
                 />
               </div>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
