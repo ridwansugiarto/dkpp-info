@@ -784,48 +784,77 @@ export default function AIIntelligenceMap({
     loadFromURL();
   }, [loadFromURL]);
 
-  // Fetch Serumpun Padi database pins from sp_cache_data
+  // Fetch Database pins from Supabase (direct nelayan_tangkap + sp_cache_data + 9 pangkalan nelayan fallback)
   useEffect(() => {
     async function fetchCachePins() {
+      const res: typeof dbData = {
+        poktan: [],
+        kolam: [],
+        nelayan: [],
+        horti: [],
+        palawija: [],
+        warning: [],
+      };
+
+      try {
+        // 1. Coba ambil langsung dari tabel nelayan_tangkap Supabase DKPP Info
+        const { data: nelayanDirect } = await supabase
+          .from('nelayan_tangkap')
+          .select('*')
+          .order('nama_nelayan', { ascending: true });
+
+        if (nelayanDirect && nelayanDirect.length > 0) {
+          res.nelayan = nelayanDirect;
+        }
+      } catch (err) {
+        console.warn('Nelayan direct fetch fallback:', err);
+      }
+
       try {
         const { data, error } = await supabase
           .from('sp_cache_data')
           .select('tabel_sumber, data');
 
-        if (error || !data) return;
+        if (!error && data) {
+          for (const row of data) {
+            const d = row.data as any;
+            if (!d) continue;
 
-        const res: typeof dbData = {
-          poktan: [],
-          kolam: [],
-          nelayan: [],
-          horti: [],
-          palawija: [],
-          warning: [],
-        };
-
-        for (const row of data) {
-          const d = row.data as any;
-          if (!d) continue;
-
-          if (row.tabel_sumber === 'poktan_kwt') {
-            res.poktan = Array.isArray(d.list_poktan) ? d.list_poktan : (Array.isArray(d) ? d : []);
-          } else if (row.tabel_sumber === 'kolam_budidaya') {
-            res.kolam = Array.isArray(d.list_kolam) ? d.list_kolam : (Array.isArray(d) ? d : []);
-          } else if (row.tabel_sumber === 'nelayan_tangkap') {
-            res.nelayan = Array.isArray(d.list_nelayan) ? d.list_nelayan : (Array.isArray(d) ? d : []);
-          } else if (row.tabel_sumber === 'komoditas_hortikultura') {
-            res.horti = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
-          } else if (row.tabel_sumber === 'komoditas_palawija') {
-            res.palawija = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
-          } else if (row.tabel_sumber === 'warning_opt') {
-            res.warning = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
+            if (row.tabel_sumber === 'poktan_kwt') {
+              res.poktan = Array.isArray(d.list_poktan) ? d.list_poktan : (Array.isArray(d) ? d : []);
+            } else if (row.tabel_sumber === 'kolam_budidaya') {
+              res.kolam = Array.isArray(d.list_kolam) ? d.list_kolam : (Array.isArray(d) ? d : []);
+            } else if (row.tabel_sumber === 'nelayan_tangkap' && res.nelayan.length === 0) {
+              res.nelayan = Array.isArray(d.list_nelayan) ? d.list_nelayan : (Array.isArray(d) ? d : []);
+            } else if (row.tabel_sumber === 'komoditas_hortikultura') {
+              res.horti = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
+            } else if (row.tabel_sumber === 'komoditas_palawija') {
+              res.palawija = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
+            } else if (row.tabel_sumber === 'warning_opt') {
+              res.warning = Array.isArray(d.sample_records) ? d.sample_records : (Array.isArray(d) ? d : []);
+            }
           }
         }
-
-        setDbData(res);
       } catch (err) {
         console.error('Gagal mengambil pin DB Serumpun Padi:', err);
       }
+
+      // Default fallback 9 Pangkalan Nelayan jika DB belum terisi
+      if (res.nelayan.length === 0) {
+        res.nelayan = [
+          { id: '1bd82a1c', lat: -5.97535724461646, lng: 105.995321273804, nama_nelayan: 'Nelayan Lelean', alat_tangkap: 'Jaring:110,Pancing:110', kelurahan: 'Kubangsari', perahu: '{"Perahu motor tempel":"54"}', no_hp: '110' },
+          { id: '7fb1a2a8', lat: -6.00265181392773, lng: 106.087916493416, nama_nelayan: 'Nelayan Terate', alat_tangkap: 'Pancing:18,Jaring:18', kelurahan: 'Tamansari', perahu: '{"Perahu motor tempel":"5"}', no_hp: '18' },
+          { id: '85d77ade', lat: -6.02121198068546, lng: 105.951858758926, nama_nelayan: 'Nelayan Tanjung Leneng', alat_tangkap: 'Pancing:72,Jaring:72', kelurahan: 'Gunung Sugih', perahu: '{"Perahu motor tempel":"64"}', no_hp: '72' },
+          { id: '923b5772', lat: -5.98419238348569, lng: 105.990793704987, nama_nelayan: 'Nelayan Tanjung Peni', alat_tangkap: 'Pancing:191,Jaring:191', kelurahan: 'Kubangsari', perahu: '{"Perahu motor tempel":"102"}', no_hp: '191' },
+          { id: 'c75383d9', lat: -5.89685912164417, lng: 106.01773917675, nama_nelayan: 'Nelayan Suralaya', alat_tangkap: 'Jaring:67,Pancing:144', kelurahan: 'Suralaya', perahu: '{"Perahu motor tempel":"67"}', no_hp: '144' },
+          { id: 'dac7fa42', lat: -5.93747550643535, lng: 106.000567674637, nama_nelayan: 'Nelayan Mabak', alat_tangkap: 'Jaring:10,Pancing:10', kelurahan: 'Mekarsari', perahu: '{"Perahu motor tempel":"10"}', no_hp: '40' },
+          { id: 'e27ea0eb', lat: -5.91880578636254, lng: 106.004628539085, nama_nelayan: 'Nelayan Lebak Gede', alat_tangkap: 'Pancing:24', kelurahan: 'Lebakgede', perahu: '{"Perahu motor tempel":"16"}', no_hp: '24' },
+          { id: 'f15a7f08', lat: -5.94000459394947, lng: 105.999956130981, nama_nelayan: 'Nelayan Medaksa', alat_tangkap: 'Jaring:52,Pancing:52', kelurahan: 'Tamansari', perahu: '{"Perahu motor tempel":"52"}', no_hp: '76' },
+          { id: 'ffba02f5', lat: -5.93655777560547, lng: 106.000481843948, nama_nelayan: 'Nelayan Kaltex', alat_tangkap: 'Jaring:40,Pancing:40', kelurahan: 'Tamansari', perahu: '{"Perahu motor tempel":"40"}', no_hp: '40' },
+        ];
+      }
+
+      setDbData(res);
     }
 
     fetchCachePins();

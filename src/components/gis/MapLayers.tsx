@@ -400,18 +400,47 @@ export function NelayanDBPins({ data, show = true }: { data: any[]; show?: boole
   const icon = makeIcon('⛵', '#2ec4b6', 28);
   return (
     <>
-      {data.filter(r => r.lat && r.lng && r.lat !== 0).map((r, i) => (
-        <GeoJSONComp
-          key={`nelayan-db-${i}`}
-          data={{ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: {} } as any}
-          pointToLayer={(_: any, ll: any) => L.marker(ll, { icon })}
-          onEachFeature={(_: any, l: any) =>
-            l.bindPopup(
-              `<b style="color:#2ec4b6">⛵ ${r.nama_nelayan || '—'}</b><br/>🎣 ${r.alat_tangkap || '—'}<br/>📍 ${r.kelurahan || 'Pesisir Cilegon'}`
-            )
+      {data.filter(r => r.lat && r.lng && r.lat !== 0).map((r, i) => {
+        let perahuInfo = '';
+        if (r.perahu) {
+          if (typeof r.perahu === 'object') {
+            const v = r.perahu['Perahu motor tempel'] || Object.values(r.perahu)[0];
+            if (v) perahuInfo = `${v} unit`;
+          } else if (typeof r.perahu === 'string') {
+            try {
+              const obj = JSON.parse(r.perahu);
+              const v = obj['Perahu motor tempel'] || Object.values(obj)[0];
+              if (v) perahuInfo = `${v} unit`;
+            } catch {
+              const m = r.perahu.match(/\d+/);
+              if (m) perahuInfo = `${m[0]} unit`;
+            }
           }
-        />
-      ))}
+        }
+        const nelayanCount = r.no_hp || r.jumlah_nelayan || '';
+
+        return (
+          <GeoJSONComp
+            key={`nelayan-db-${i}-${r.lat}-${r.lng}`}
+            data={{ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: {} } as any}
+            pointToLayer={(_: any, ll: any) => L.marker(ll, { icon })}
+            onEachFeature={(_: any, l: any) =>
+              l.bindPopup(
+                `<div style="font-family:system-ui;font-size:12px;padding:3px;min-width:190px;">
+                  <b style="color:#0f766e;font-size:13px;display:block;margin-bottom:4px;">⛵ ${r.nama_nelayan || 'Pangkalan Nelayan'}</b>
+                  <div style="font-size:11px;color:#475569;display:flex;flex-direction:column;gap:2px;">
+                    <div>🎣 Alat: <b>${r.alat_tangkap || '—'}</b></div>
+                    ${perahuInfo ? `<div>🚤 Perahu: <b>${perahuInfo}</b></div>` : ''}
+                    ${nelayanCount ? `<div>👥 Nelayan: <b>${nelayanCount} orang</b></div>` : ''}
+                    <div>📍 Lokasi: <b>${r.kelurahan || 'Pesisir Cilegon'}</b></div>
+                    <div style="color:#0284c7;font-size:10px;margin-top:2px;">🌐 ${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}</div>
+                  </div>
+                </div>`
+              )
+            }
+          />
+        );
+      })}
     </>
   );
 }
