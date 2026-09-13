@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+import { OFFICIAL_DKPP_PEGAWAI } from '@/data/pegawai_dkpp';
+
 const AUTHORIZED_ADMIN_EMAIL = 'ridwansugiarto.mail@gmail.com';
 
-// In-memory store untuk menjaga data jika migrasi database belum selesai di Supabase
-let inMemoryNips = [
-  { id: 'nip-1', nip: '197610182002121002', nama: 'Dr. Ir. Ridwan Sugiarto, M.Si', jabatan: 'Kepala Dinas DKPP (Super Admin)', bidang: 'Pimpinan', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-2', nip: '198003152006041008', nama: 'Ahmad Fauzi, SP, M.M', jabatan: 'Sekretaris Dinas', bidang: 'Sekretariat', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-3', nip: '198207182008012014', nama: 'Siti Rahmawati, S.Pt, M.Si', jabatan: 'Kepala Bidang Ketahanan Pangan', bidang: 'Ketahanan Pangan', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-4', nip: '198509212009021005', nama: 'Budi Santoso, S.P', jabatan: 'Kepala Bidang Pertanian', bidang: 'Pertanian', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-5', nip: '198811042011011002', nama: 'Dedi Kurniawan, S.Pi', jabatan: 'Kepala Bidang Perikanan & Peternakan', bidang: 'Perikanan & Peternakan', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-6', nip: '199002142015032007', nama: 'Nurul Hidayah, S.Tr.P', jabatan: 'Analis Ketahanan Pangan Ahli Muda', bidang: 'Ketahanan Pangan', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-7', nip: '199306282019021004', nama: 'Hendro Wicaksono, A.Md', jabatan: 'Pengelola Sistem Informasi GIS', bidang: 'Sekretariat', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-8', nip: '199504122020122009', nama: 'Dewi Lestari, S.Si', jabatan: 'Petugas Pendata Panel Harga Sagon', bidang: 'Ketahanan Pangan', is_active: true, created_at: new Date().toISOString() },
-  { id: 'nip-9', nip: '199608192022031003', nama: 'Fajar Pratama, S.Tr.Kom', jabatan: 'Operator Database & Telemetri Lengas Tanah', bidang: 'Sekretariat', is_active: true, created_at: new Date().toISOString() },
-];
+// Data resmi 53 Pegawai ASN DKPP Kota Cilegon
+let inMemoryNips = [...OFFICIAL_DKPP_PEGAWAI];
 
 function checkAdminAuth(userEmail?: string | null): boolean {
   if (!userEmail) return false;
@@ -70,14 +62,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama Pegawai wajib diisi.' }, { status: 400 });
     }
 
-    const newRecord = {
+    const newRecord: import('@/data/pegawai_dkpp').PegawaiInternalItem = {
       id: `nip-${Date.now()}`,
       nip: cleanNip,
       nama: nama.trim(),
+      npwp: null,
+      kelas_jabatan: null,
       jabatan: (jabatan || 'Pegawai DKPP').trim(),
+      status_pegawai: 'Fungsional',
       bidang: (bidang || 'DKPP Cilegon').trim(),
+      is_sensitive: true,
       is_active: true,
-      created_at: new Date().toISOString(),
     };
 
     // Coba simpan ke Supabase
@@ -89,6 +84,8 @@ export async function POST(request: Request) {
           nama: newRecord.nama,
           jabatan: newRecord.jabatan,
           bidang: newRecord.bidang,
+          status_pegawai: newRecord.status_pegawai,
+          is_sensitive: true,
           is_active: true
         }])
         .select()

@@ -802,18 +802,21 @@ export default function AdminPortalPage() {
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
-                      <th className="py-3 px-4">NIP</th>
+                      <th className="py-3 px-4">NIP (18 Digit)</th>
                       <th className="py-3 px-4">Nama Pegawai</th>
+                      <th className="py-3 px-4">NPWP</th>
+                      <th className="py-3 px-4">Kelas</th>
                       <th className="py-3 px-4">Jabatan</th>
-                      <th className="py-3 px-4">Bidang</th>
                       <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Keamanan</th>
+                      <th className="py-3 px-4 text-center">Status Cek</th>
                       <th className="py-3 px-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {filteredNips.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                        <td colSpan={9} className="py-8 text-center text-slate-500 text-xs">
                           {nipLoading ? 'Memuat daftar NIP...' : 'Tidak ada data NIP yang sesuai.'}
                         </td>
                       </tr>
@@ -823,17 +826,40 @@ export default function AdminPortalPage() {
                           <td className="py-3 px-4 font-mono font-bold text-emerald-400">
                             {item.nip}
                           </td>
-                          <td className="py-3 px-4 font-medium text-white flex items-center gap-1.5">
-                            <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{item.nama}</span>
+                          <td className="py-3 px-4 font-medium text-white">
+                            <div className="flex items-center gap-1.5">
+                              <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="font-semibold">{item.nama}</span>
+                            </div>
+                            {item.golongan && (
+                              <span className="text-[10px] text-slate-400 font-mono">Gol: {item.golongan}</span>
+                            )}
                           </td>
-                          <td className="py-3 px-4 text-slate-300">{item.jabatan || '-'}</td>
+                          <td className="py-3 px-4 font-mono text-slate-300 text-[11px]">
+                            {item.npwp || <span className="text-slate-600">-</span>}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-amber-400 font-mono">
+                            {item.kelas_jabatan || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-300 text-[11px] max-w-xs">{item.jabatan || '-'}</td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px]">
-                              {item.bidang || 'DKPP'}
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              item.status_pegawai === 'Struktural'
+                                ? 'bg-indigo-950 text-indigo-300 border border-indigo-800/60'
+                                : item.status_pegawai === 'Pelaksana'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                                : 'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
+                            }`}>
+                              {item.status_pegawai || 'Fungsional'}
                             </span>
                           </td>
                           <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-900 text-[10px] font-semibold">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Sensitif</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
                             <button
                               type="button"
                               onClick={() => handleToggleNipActive(item.nip, item.is_active)}
