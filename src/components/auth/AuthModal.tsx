@@ -108,190 +108,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Inisialisasi Google Identity Services (GIS) untuk login langsung tanpa redirect ke supabase.co
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '472312064141-3udqk20ji00b1hbsm4iihlg8l9o9tebr.apps.googleusercontent.com';
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const initGsi = () => {
-      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-        try {
-          (window as any).google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: async (response: any) => {
-              if (response?.credential) {
-                await handleGoogleCredential(response.credential);
-              }
-            },
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
-
-          const hiddenBtn = document.getElementById('dkpp-gsi-render-btn');
-          if (hiddenBtn) {
-            (window as any).google.accounts.id.renderButton(hiddenBtn, {
-              theme: 'outline',
-              size: 'large',
-              width: 320,
-              type: 'standard',
-            });
-          }
-        } catch (e) {
-          console.warn('GSI init warning:', e);
-        }
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      if ((window as any).google?.accounts?.id) {
-        initGsi();
-      } else {
-        const existingScript = document.getElementById('google-gsi-client');
-        if (!existingScript) {
-          const script = document.createElement('script');
-          script.id = 'google-gsi-client';
-          script.src = 'https://accounts.google.com/gsi/client';
-          script.async = true;
-          script.defer = true;
-          script.onload = initGsi;
-          document.head.appendChild(script);
-        } else {
-          existingScript.addEventListener('load', initGsi);
-        }
-      }
-    }
-  }, [isOpen]);
-
-  const handleGoogleCredential = async (credential: string) => {
-    try {
-      setIsLoading(true);
-      setErrorMessage(null);
-      startCloudWaitTimer(6);
-
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: credential,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.user) {
-        const u = data.user;
-        const cleanEmail = u.email?.toLowerCase() || '';
-        const isAdmin = cleanEmail === 'ridwansugiarto.mail@gmail.com';
-        const savedNip = u.user_metadata?.nip || '';
-        let isVerified = isAdmin || !!savedNip;
-        let finalFullName = u.user_metadata?.full_name || u.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : cleanEmail.split('@')[0]);
-        let finalDept = u.user_metadata?.department || (isAdmin ? 'Pimpinan DKPP' : undefined);
-        let finalPosition = u.user_metadata?.position || (isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined);
-
-        if (!isAdmin && savedNip) {
-          try {
-            const vRes = await fetch('/api/auth/verify-nip', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nip: savedNip }),
-            });
-            const vData = await vRes.json();
-            if (vData.valid) {
-              isVerified = true;
-              finalFullName = vData.nama || finalFullName;
-              finalDept = vData.bidang;
-              finalPosition = vData.jabatan;
-            }
-          } catch {}
-        }
-
-        const profile: UserProfile = {
-          id: u.id,
-          email: cleanEmail,
-          full_name: finalFullName,
-          avatar_url: u.user_metadata?.avatar_url || u.user_metadata?.picture,
-          role: isAdmin ? 'ADMIN' : (isVerified ? 'EMPLOYEE' : 'GUEST'),
-          is_verified_employee: isVerified,
-          can_access_sensitive: isVerified,
-          nip: savedNip || (isAdmin ? '197610182002121002' : undefined),
-          department: finalDept,
-          position: finalPosition,
-        };
-
-        stopCloudWaitTimer();
-        try {
-          localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
-          sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
-        } catch {}
-        onSuccess(profile);
-        onClose();
-        return;
-      }
-    } catch (err: any) {
-      console.error('Google ID token login error:', err);
-      // Tunggu hingga total 5-6 detik berlalu sebelum memunculkan pesan eror
-      await new Promise((resolve) => setTimeout(resolve, 3500));
-      stopCloudWaitTimer();
-      setErrorMessage(err.message || 'Gagal login dengan kredensial Google. Silakan coba hubungkan ulang.');
-    } finally {
-      stopCloudWaitTimer();
-      setIsLoading(false);
-    }
-  };
-
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
       setErrorMessage(null);
       startCloudWaitTimer(6);
 
-      // 1. Coba gunakan Google Identity Services (in-page popup/one-tap) agar tidak redirect ke supabase.co
-      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-        const renderBtn = document.getElementById('dkpp-gsi-render-btn')?.querySelector('div[role=button]') as HTMLElement;
-        if (renderBtn) {
-          renderBtn.click();
-          return;
-        }
-
-        (window as any).google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            doOAuthRedirect();
-          }
-        });
-        return;
-      }
-
-      // 2. Fallback ke OAuth redirect jika GIS script tidak dapat dimuat
-      await doOAuthRedirect();
-    } catch (e: any) {
-      // Tunggu toleransi 5-7 detik sebelum menampilkan eror jika server lambat
-      await new Promise((resolve) => setTimeout(resolve, 3500));
-      stopCloudWaitTimer();
-      setErrorMessage(e.message || 'Gagal terhubung dengan server Google. Silakan coba lagi.');
-      setIsLoading(false);
-    }
-  };
-
-  const doOAuthRedirect = async () => {
-    try {
-      // Pre-warm Supabase auth endpoint dengan batas wajar 6 detik (bukan 1.5 detik!)
-      try {
-        const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 6000);
-        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fnhrdwfmwhglbrnzlxxv.supabase.co'}/auth/v1/health`, {
-          headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' },
-          signal: controller.signal,
-        });
-        clearTimeout(tId);
-      } catch {}
-
+      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          redirectTo: redirectUrl,
           queryParams: {
             prompt: 'select_account',
-            access_type: 'offline',
           },
         },
       });
@@ -304,10 +133,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         window.location.href = data.url;
       }
     } catch (e: any) {
-      // Pastikan menunggu 5-7 detik sebelum memunculkan eror
       await new Promise((resolve) => setTimeout(resolve, 3000));
       stopCloudWaitTimer();
-      setErrorMessage(e.message || 'Koneksi ke cloud server membutuhkan waktu lebih lama. Silakan coba hubungkan ulang.');
+      setErrorMessage(
+        e.message || 'Koneksi ke Google OAuth terhambat. Anda dapat masuk menggunakan Email dan Kata Sandi di bawah.'
+      );
       setIsLoading(false);
     }
   };
@@ -572,7 +402,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
             <span>{isLoading ? 'Menghubungkan...' : 'Continue with Google'}</span>
           </button>
-          <div id="dkpp-gsi-render-btn" className="hidden" aria-hidden="true" />
         </div>
 
         {/* Divider OR */}

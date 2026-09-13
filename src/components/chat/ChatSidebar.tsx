@@ -20,7 +20,8 @@ import {
   Pin,
   Archive,
   Share2,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { ChatSession, UserProfile } from '@/types/dkpp';
 import Link from 'next/link';
@@ -130,6 +131,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </span>
               <span className="text-[10.5px] text-emerald-600 font-semibold tracking-wide">
                 Cilegon AI Food Security
+              </span>
+              <span className="text-[8.5px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mt-0.5">
+                UNOFFICIAL
               </span>
             </div>
           </div>
@@ -356,6 +360,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 Log in
               </button>
             </div>
+
+            {/* Kotak DISCLAIMER (PENAFIAN RESMI) */}
+            <div className="mt-2.5 p-2.5 rounded-xl bg-gray-50/90 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
+              <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">
+                <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>DISCLAIMER</span>
+              </div>
+              <p className="text-[9.5px] leading-relaxed text-gray-500 dark:text-gray-400">
+                Aplikasi ini <strong>bukan web app resmi Pemerintah Kota Cilegon</strong>, melainkan purwarupa <em>AI Chatbot</em> dengan tujuan mempermudah akses data dan informasi terkait ketahanan pangan serta pertanian di Kota Cilegon untuk pegawai internal, dan publik dengan pembatasan akses data tertentu.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
@@ -415,6 +430,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+
+            {/* Kotak DISCLAIMER saat Logged In */}
+            <div className="mt-2.5 p-2 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-200/70 dark:border-gray-700/60 text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-0.5">
+                <AlertCircle className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>DISCLAIMER</span>
+              </div>
+              <p className="text-[9px] leading-tight text-gray-500 dark:text-gray-400">
+                Aplikasi ini bukan web app resmi Pemkot Cilegon. AI Chatbot ini dikembangkan untuk mempermudah akses informasi pangan & pertanian bagi internal dan publik secara terukur.
+              </p>
             </div>
           </div>
         )}
