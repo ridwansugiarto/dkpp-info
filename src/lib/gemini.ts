@@ -1,6 +1,7 @@
 import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
+import { isPegawaiHumorQuery, buildPegawaiHumorContext } from '@/data/pegawai_humor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -192,13 +193,29 @@ function buildSystemPrompt(
   isVerified: boolean,
   memoryContext: string,
   knowledgeContext: string = '',
-  canAccessSensitive: boolean = false
+  canAccessSensitive: boolean = false,
+  humorContext: string | null = null
 ): string {
   return `# SYSTEM PROMPT — ChatDKPP: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
 Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
 1. **DATA BERANDA & DATABASE SUPABASE** (KPI, IKP, POU, FSVA, SKPG, EWS, FORECASTING HARGA, PANEL HARGA HARIAN SAGON)
 2. **PETA SPASIAL GIS** (Sawah Baku 407 Petak, ECMWF Lengas Tanah, Nelayan, Budidaya Kolam, KWT, Ternak, Pohon Sukun)
 3. **BASIS DATA AGREGAT & KNOWLEDGE BASE 54 DOKUMEN** (Juknis Bapanas, Susenas 2023, DKB Penduduk 2025, Realisasi DKPP 2014-2025, Neraca Pangan, Kemandirian Komoditas)
+
+${humorContext ? `
+## KHUSUS: MODE BERCANDA & HUMOR KEAKRABAN PEGAWAI INTERNAL DKPP
+⚠️ PERHATIAN KHUSUS: Pertanyaan pengguna terdeteksi sebagai pertanyaan santai / bercanda seputar keakraban pegawai (ketampanan, kecantikan, aura pesona, kerajinan, kecerdasan santai).
+- Gunakan data di bawah ini untuk menjawab secara ramah, ceria, humoris, dan santun.
+- DILARANG KERAS mencampuradukkan jawaban candaan ini dengan analisis formal ketahanan pangan, data GIS, atau isu dinas resmi lainnya!
+- Selalu cantumkan catatan jenaka di akhir:
+  "😄 *Catatan: Data ini bersumber dari catatan internal mode santai/bercanda DKPP untuk keakraban keluarga besar dinas, bukan penilaian kedinasan resmi ya!*"
+
+${humorContext}
+` : `
+## PROTOKOL PEMISAHAN DATA HUMOR (STRICT ISOLATION):
+- Pertanyaan pengguna saat ini adalah PERTANYAAN FORMAL / TEKNIS KEDINASAN.
+- DILARANG KERAS memuat, memunculkan, atau mencampuradukkan data humor, candaan, atau guyonan internal pegawai ke dalam jawaban analisis teknis, neraca pangan, spasial GIS, SKPG, FSVA, atau pelayanan publik. Pertahankan integritas dan profesionalitas jawaban resmi Anda.
+`}
 
 ## PROTOKOL TATA KELOLA & KEAMANAN AKSES DATA SENSITIF (GOVERNANCE POLICY):
 Status Pengguna: ${userRole} | Terverifikasi ASN/Pegawai: ${isVerified} | Izin Akses Sensitif: ${canAccessSensitive ? 'DIIZINKAN' : 'DIBATASI'}
@@ -515,6 +532,11 @@ function buildMapActions(
   rawText: string,
   wilayahHighlight: string[]
 ): { mapActions: MapAction[]; matchedPins: Array<{ lat: number; lng: number; name: string; category: string; kelurahan: string; kecamatan: string }> } {
+  // Mode bercanda/humor: jangan otomatis membuka atau memanipulasi peta
+  if (isPegawaiHumorQuery(userQuery)) {
+    return { mapActions: [], matchedPins: [] };
+  }
+
   const qLower = userQuery.toLowerCase();
   const textLower = rawText.toLowerCase();
   const matchedPins: Array<{ lat: number; lng: number; name: string; category: string; kelurahan: string; kecamatan: string }> = [];
@@ -650,6 +672,63 @@ function buildMapActions(
 // ─────────────────────────────────────────────────────────────────────────────
 function generateRuleBasedAnswer(userQuery: string): string {
   const q = userQuery.toLowerCase();
+
+  // Mode bercanda/humor pegawai internal
+  if (isPegawaiHumorQuery(userQuery)) {
+    let ans = `### Mode Santai & Humor Internal DKPP Cilegon 😄\n\n`;
+    if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
+      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut daftar pegawai dengan skor ketampanan tertinggi:\n\n` +
+        `1. **Paulus Dwi Ari K D, ST** — Skor Ketampanan **10/10**, Aura 10/10 (Pesona memikat)\n` +
+        `2. **Subandi** — Skor Ketampanan **10/10**, Aura 10/10 (Pemikat hingga 50 orang terpesona!)\n` +
+        `3. **Yuki Suryarizki, S.Kom** — Skor Ketampanan **10/10**, Aura 10/10 (45 orang terpesona)\n` +
+        `4. **Asep Qomaruzzaman, S.AP** — Skor Ketampanan **10/10**, Aura 10/10, Cerdas 10/10\n` +
+        `5. **Ridwan Sugiarto, S.Pi** — Skor Ketampanan **9/10**, Aura 9/10, Cerdas 10/10, Rajin 10/10\n` +
+        `6. **Udin Saprudin, SE, M.M.** — Skor Ketampanan **9/10**, Aura 9/10\n` +
+        `7. **Tandis Destalana, SE.MM** — Skor Ketampanan **9/10**, Aura 9/10\n` +
+        `8. **Amiruddin, SE** — Skor Ketampanan **9/10**\n\n`;
+    } else if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
+      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut jajaran pegawai dengan skor kecantikan & pesona tertinggi:\n\n` +
+        `1. **Sri Rahmadani Piliang, SE** — Skor Kecantikan **10/10**, Aura 10/10, Rajin 10/10\n` +
+        `2. **Minarni, SE** — Skor Kecantikan **10/10**, Aura 9/10, Cerdas 9/10, Rajin 10/10\n` +
+        `3. **Sri Ratnaningsih, S.Pi** — Skor Kecantikan **10/10**, Aura 10/10 (30 orang terpesona!)\n` +
+        `4. **Winda Ratnasari, SP** — Skor Kecantikan **9/10**, Aura 9/10, Rajin 10/10, Cerdas 9/10\n` +
+        `5. **Maisaroh, SP** — Skor Kecantikan **9/10**, Aura 9/10 (20 orang terpesona)\n` +
+        `6. **Maryori, S.Pi** — Skor Kecantikan **8/10**, Aura 10/10\n\n`;
+    } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma')) {
+      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut pegawai dengan tingkat aura/daya tarik puncak (10/10):\n\n` +
+        `• **Paulus Dwi Ari K D, ST** (10/10)\n` +
+        `• **Subandi** (10/10)\n` +
+        `• **Asep Qomaruzzaman, S.AP** (10/10)\n` +
+        `• **Yuki Suryarizki, S.Kom** (10/10)\n` +
+        `• **Maryori, S.Pi** (10/10)\n` +
+        `• **Sri Rahmadani Piliang, SE** (10/10)\n` +
+        `• **Sri Ratnaningsih, S.Pi** (10/10)\n\n`;
+    } else if (q.includes('terpesona') || q.includes('terpikat') || q.includes('fans')) {
+      ans += `Berdasarkan catatan internal mode santai DKPP, rekor jumlah orang yang terpesona dipimpin oleh:\n\n` +
+        `1. **Subandi** — Mencapai **50 orang** terpesona!\n` +
+        `2. **Asep Qomaruzzaman, S.AP** — **48 orang** terpesona\n` +
+        `3. **Yuki Suryarizki, S.Kom** — **45 orang** terpesona\n` +
+        `4. **Sri Ratnaningsih, S.Pi** — **30 orang** terpesona\n` +
+        `5. **Minarni, SE** & **Maisaroh, SP** — masing-masing **20 orang** terpesona\n\n`;
+    } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
+      ans += `Berdasarkan catatan internal mode santai DKPP, skor kecerdasan puncak (10/10) disandang oleh:\n\n` +
+        `• **Ridwan Sugiarto, S.Pi** (10/10, Rajin 10/10)\n` +
+        `• **Wahyudi, SE** (10/10)\n` +
+        `• **Mas Akhmad Rangga P, SE, MM** (10/10, Rajin 10/10)\n` +
+        `• **Sandhi Maulana Adha, SP** (10/10)\n` +
+        `• **Asep Qomaruzzaman, S.AP** (10/10)\n` +
+        `• **Ibu Plt. Kadis Efa Sarifah, ST, MT** (10/10)\n` +
+        `• **Sekretaris Dinas Agus Purmono, A.P, MM** (10/10)\n` +
+        `• **Drh. Hj. Dina Safitri** (10/10)\n\n`;
+    } else {
+      ans += `Catatan mode santai/candaan internal DKPP memuat profil keakraban pegawai (skor ketampanan/kecantikan, aura pesona, kerajinan, hingga kecerdasan santai):\n\n` +
+        `• **Ketampanan Puncak:** Paulus Dwi Ari, Subandi, Yuki Suryarizki, Asep Qomaruzzaman, Ridwan Sugiarto, S.Pi\n` +
+        `• **Kecantikan Puncak:** Sri Rahmadani Piliang, SE, Minarni, SE, Sri Ratnaningsih, S.Pi, Winda Ratnasari, SP\n` +
+        `• **Juara Pemikat Terpesona:** Subandi (50 orang), Asep Qomaruzzaman (48 orang), Yuki Suryarizki (45 orang)\n\n`;
+    }
+    ans += `> _*Catatan:* Ini adalah data humor / mode santai internal DKPP khusus untuk mencairkan suasana dan keakraban, bukan instrumen penilaian dinas resmi ya! 😄_`;
+    return ans;
+  }
 
   if (q.includes('skpg') || q.includes('balita') || q.includes('gizi') || q.includes('posyandu')) {
     return `### Laporan SKPG Kota Cilegon — Status: AMAN
@@ -789,14 +868,30 @@ export async function generateChatResponse(params: {
     console.warn('[Knowledge Base RAG] Query failed:', kbErr);
   }
 
-  // 2. Bangun system prompt komprehensif
-  const systemPrompt = buildSystemPrompt(dynamicDbContext, userRole, isVerified, userMemoryContext, knowledgeContext, canAccessSensitive);
+  // 2. Cek apakah pertanyaan user adalah mode bercanda / humor internal
+  const isHumor = isPegawaiHumorQuery(lastUserMsg);
+  const humorContext = isHumor ? buildPegawaiHumorContext(lastUserMsg) : null;
 
-  // 3. Build conversation contents (multi-turn, token-efficient)
+  // 3. Bangun system prompt komprehensif dengan isolasi ketat
+  const systemPrompt = buildSystemPrompt(
+    dynamicDbContext,
+    userRole,
+    isVerified,
+    userMemoryContext,
+    knowledgeContext,
+    canAccessSensitive,
+    humorContext
+  );
+
+  // 4. Build conversation contents (multi-turn, token-efficient)
   const contents = buildGeminiContents(messages);
 
   const collectedSources: SourceCitation[] = [
-    { type: 'LOCAL DATA', title: 'Basis Data & Portal Informasi DKPP Kota Cilegon', detail: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — ChatDKPP 2026' },
+    {
+      type: 'LOCAL DATA',
+      title: isHumor ? 'Catatan Mode Humor Internal DKPP (Sensitif)' : 'Basis Data & Portal Informasi DKPP Kota Cilegon',
+      detail: isHumor ? 'Arsip Guyonan Keakraban Pegawai DKPP Cilegon — Mode Santai' : 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — ChatDKPP 2026'
+    },
     ...matchingDocSources
   ];
   const executedTools: ToolCall[] = [];
