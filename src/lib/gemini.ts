@@ -2,6 +2,7 @@ import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
 import { fetchAllSerumpunData, buildSerumpunContext, type NelayenPin, type KolamPin, type PokTanPin, type TernakPin, type SerumpunData } from './serumpunpadi';
+import { fetchKetapangData, buildKetapangContext } from './ketapang';
 import {
   isPegawaiHumorQuery,
   buildPegawaiHumorContext,
@@ -829,12 +830,14 @@ export async function generateChatResponse(params: {
   const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
   const apiKey = process.env.GEMINI_API_KEY || '';
 
-  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi (paralel)
-  const [dynamicDbContext, liveData] = await Promise.all([
+  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi + ketapang (paralel)
+  const [dynamicDbContext, liveData, ketapangData] = await Promise.all([
     getDynamicSupabaseContext().catch(() => ''),
     fetchAllSerumpunData().catch(() => undefined as SerumpunData | undefined),
+    fetchKetapangData().catch(() => undefined),
   ]);
   const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
+  const ketapangContext = ketapangData ? buildKetapangContext(ketapangData) : '';
 
   // 1b. Ambil kutipan dokumen relevan dari 54 Dokumen Knowledge Base (RAG)
   let knowledgeContext = '';
@@ -935,7 +938,7 @@ export async function generateChatResponse(params: {
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
-    dynamicDbContext + serumpunContext,
+    dynamicDbContext + serumpunContext + ketapangContext,
     userRole,
     isVerified,
     userMemoryContext,
