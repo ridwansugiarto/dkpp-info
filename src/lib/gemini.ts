@@ -194,8 +194,8 @@ function buildSystemPrompt(
   knowledgeContext: string = '',
   canAccessSensitive: boolean = false
 ): string {
-  return `# SYSTEM PROMPT — DKPP-INFO: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
-Anda adalah AI Intelligence resmi **DKPP-INFO** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
+  return `# SYSTEM PROMPT — ChatDKPP: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
+Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
 1. **DATA BERANDA & DATABASE SUPABASE** (KPI, IKP, POU, FSVA, SKPG, EWS, FORECASTING HARGA, PANEL HARGA HARIAN SAGON)
 2. **PETA SPASIAL GIS** (Sawah Baku 407 Petak, ECMWF Lengas Tanah, Nelayan, Budidaya Kolam, KWT, Ternak, Pohon Sukun)
 3. **BASIS DATA AGREGAT & KNOWLEDGE BASE 54 DOKUMEN** (Juknis Bapanas, Susenas 2023, DKB Penduduk 2025, Realisasi DKPP 2014-2025, Neraca Pangan, Kemandirian Komoditas)
@@ -699,7 +699,7 @@ Seluruh **407 petak sawah baku (1.151,97 Ha)** terpantau realtime via ECMWF ERA5
 ET0 rata-rata: 3,8-4,5 mm/hari. Resolusi piksel: 10m x 10m per petak.`;
   }
 
-  return `### DKPP-INFO — Sistem Intelijen Ketahanan Pangan Kota Cilegon
+  return `### ChatDKPP — Sistem Intelijen Ketahanan Pangan Kota Cilegon
 
 **Status Ketahanan Pangan: SANGAT TAHAN**
 
@@ -796,7 +796,7 @@ export async function generateChatResponse(params: {
   const contents = buildGeminiContents(messages);
 
   const collectedSources: SourceCitation[] = [
-    { type: 'LOCAL DATA', title: 'Basis Data & Portal Informasi DKPP Kota Cilegon', detail: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — DKPP-INFO 2026' },
+    { type: 'LOCAL DATA', title: 'Basis Data & Portal Informasi DKPP Kota Cilegon', detail: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon — ChatDKPP 2026' },
     ...matchingDocSources
   ];
   const executedTools: ToolCall[] = [];
@@ -838,5 +838,5 @@ export async function generateChatResponse(params: {
 }
 
 // Re-export untuk kompatibilitas dengan komponen lama
-export const BASE_SYSTEM_INSTRUCTION = `Kamu adalah DKPP-INFO — Sistem Intelijen Ketahanan Pangan Kota Cilegon.`;
+export const BASE_SYSTEM_INSTRUCTION = `Kamu adalah ChatDKPP — Sistem Intelijen Ketahanan Pangan Kota Cilegon.`;
 export function getDomainKnowledgeContext(): string { return ''; }

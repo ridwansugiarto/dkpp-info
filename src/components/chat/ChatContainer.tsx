@@ -380,7 +380,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 {!isUser && (
                   <div
                     className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5 select-none"
-                    title="DKPP-INFO Intelligence Assistant"
+                    title="ChatDKPP Intelligence Assistant"
                   >
                     <img
                       src="/ikon-chatDKPP.png"
@@ -547,7 +547,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                   <div className="w-2 h-2 rounded-full bg-[#A8DCAB] animate-bounce [animation-delay:0.2s]" />
                   <div className="w-2 h-2 rounded-full bg-[#A8DCAB] animate-bounce [animation-delay:0.4s]" />
                 </div>
-                <span>DKPP-INFO sedang menganalisis data spasial & menghitung neraca pangan...</span>
+                <span>ChatDKPP sedang menganalisis knowledge base documents</span>
               </div>
             </div>
           )}

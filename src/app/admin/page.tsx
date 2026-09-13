@@ -299,7 +299,7 @@ export default function AdminPortalPage() {
           </h1>
 
           <p className="text-xs text-slate-400 leading-relaxed mb-6">
-            Berdasarkan tatakelola keamanan data DKPP-INFO Kota Cilegon, portal ini hanya dapat diakses secara eksklusif oleh akun Administrator Resmi:
+            Berdasarkan tatakelola keamanan data ChatDKPP Kota Cilegon, portal ini hanya dapat diakses secara eksklusif oleh akun Administrator Resmi:
             <br />
             <strong className="text-emerald-400 font-mono text-sm block mt-1.5 font-bold">
               ridwansugiarto.mail@gmail.com
@@ -381,7 +381,7 @@ export default function AdminPortalPage() {
               DK
             </div>
             <div>
-              <h1 className="text-base font-bold text-white leading-tight">Admin Portal DKPP-INFO</h1>
+              <h1 className="text-base font-bold text-white leading-tight">Admin Portal ChatDKPP</h1>
               <p className="text-[10px] text-emerald-400">Knowledge Base & System Administration</p>
             </div>
           </div>

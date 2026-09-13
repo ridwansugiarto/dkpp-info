@@ -676,7 +676,7 @@ export const ChatDKPPApp: React.FC = () => {
                     {activeMapAnswer.replace(/[*#`]/g, '')}
                   </div>
                   <div className="mt-3 flex items-center justify-between pt-2 border-t border-gray-100">
-                    <span className="text-[10px] text-gray-400 font-medium">DKPP-INFO Geointelligence</span>
+                    <span className="text-[10px] text-gray-400 font-medium">ChatDKPP Geointelligence</span>
                     <button
                       type="button"
                       onClick={() => setViewMode('CHAT')}
