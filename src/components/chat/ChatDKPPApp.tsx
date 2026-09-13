@@ -178,11 +178,24 @@ export const ChatDKPPApp: React.FC = () => {
         }
       }
 
-      // Bersihkan hash token atau query code dari URL jika baru kembali dari OAuth
+      // Bersihkan hash token atau query code dari URL setelah Supabase selesai membaca sesi
       if (typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || window.location.search.includes('code='))) {
-        window.history.replaceState(null, '', window.location.pathname);
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }, 1500);
       }
     };
+
+    // Bersihkan parameter eror URL pasca-OAuth (jika ada) agar tidak memicu kendala muat halaman
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes('error=') || search.includes('error=')) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
 
     // 1. Cek sesi Supabase yang sudah tersimpan
     supabase.auth.getSession().then(({ data: { session } }) => {

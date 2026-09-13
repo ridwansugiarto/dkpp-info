@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building, Loader2 } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building, Loader2, RefreshCw } from 'lucide-react';
 import { UserProfile } from '@/types/dkpp';
 import { supabase } from '@/lib/supabase';
 
@@ -33,6 +33,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCloudConnecting, setIsCloudConnecting] = useState(false);
+  const [cloudCountdown, setCloudCountdown] = useState(6);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startCloudWaitTimer = (durationSeconds = 6) => {
+    setIsCloudConnecting(true);
+    setCloudCountdown(durationSeconds);
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    const startTime = Date.now();
+    countdownTimerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, durationSeconds - elapsed);
+      setCloudCountdown(remaining);
+      if (remaining <= 0 && countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    }, 1000);
+  };
+
+  const stopCloudWaitTimer = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setIsCloudConnecting(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -135,6 +167,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       setIsLoading(true);
       setErrorMessage(null);
+      startCloudWaitTimer(6);
 
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -185,17 +218,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           position: finalPosition,
         };
 
+        stopCloudWaitTimer();
         try {
           localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
           sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
         } catch {}
         onSuccess(profile);
         onClose();
+        return;
       }
     } catch (err: any) {
       console.error('Google ID token login error:', err);
-      setErrorMessage(err.message || 'Gagal login dengan kredensial Google.');
+      // Tunggu hingga total 5-6 detik berlalu sebelum memunculkan pesan eror
+      await new Promise((resolve) => setTimeout(resolve, 3500));
+      stopCloudWaitTimer();
+      setErrorMessage(err.message || 'Gagal login dengan kredensial Google. Silakan coba hubungkan ulang.');
     } finally {
+      stopCloudWaitTimer();
       setIsLoading(false);
     }
   };
@@ -204,13 +243,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       setIsLoading(true);
       setErrorMessage(null);
+      startCloudWaitTimer(6);
 
       // 1. Coba gunakan Google Identity Services (in-page popup/one-tap) agar tidak redirect ke supabase.co
       if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
         const renderBtn = document.getElementById('dkpp-gsi-render-btn')?.querySelector('div[role=button]') as HTMLElement;
         if (renderBtn) {
           renderBtn.click();
-          setIsLoading(false);
           return;
         }
 
@@ -219,27 +258,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             doOAuthRedirect();
           }
         });
-        setIsLoading(false);
         return;
       }
 
       // 2. Fallback ke OAuth redirect jika GIS script tidak dapat dimuat
       await doOAuthRedirect();
     } catch (e: any) {
-      setErrorMessage(e.message || 'Gagal terhubung dengan Google.');
+      // Tunggu toleransi 5-7 detik sebelum menampilkan eror jika server lambat
+      await new Promise((resolve) => setTimeout(resolve, 3500));
+      stopCloudWaitTimer();
+      setErrorMessage(e.message || 'Gagal terhubung dengan server Google. Silakan coba lagi.');
       setIsLoading(false);
     }
   };
 
   const doOAuthRedirect = async () => {
     try {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      // Pre-warm Supabase auth endpoint agar tidak cold start / gateway timeout
+      // Pre-warm Supabase auth endpoint dengan batas wajar 6 detik (bukan 1.5 detik!)
       try {
         const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 1500);
+        const tId = setTimeout(() => controller.abort(), 6000);
         await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fnhrdwfmwhglbrnzlxxv.supabase.co'}/auth/v1/health`, {
           headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' },
           signal: controller.signal,
@@ -247,7 +285,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         clearTimeout(tId);
       } catch {}
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
@@ -257,44 +295,103 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           },
         },
       });
+
       if (error) {
-        setErrorMessage(error.message);
+        throw error;
+      }
+
+      if (data?.url && typeof window !== 'undefined') {
+        window.location.href = data.url;
       }
     } catch (e: any) {
-      setErrorMessage(e.message || 'Gagal mengarahkan ke login Google.');
-    } finally {
+      // Pastikan menunggu 5-7 detik sebelum memunculkan eror
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      stopCloudWaitTimer();
+      setErrorMessage(e.message || 'Koneksi ke cloud server membutuhkan waktu lebih lama. Silakan coba hubungkan ulang.');
       setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await executeLoginWithCloudWait();
+  };
+
+  const executeLoginWithCloudWait = async () => {
     setErrorMessage(null);
     setIsLoading(true);
+    startCloudWaitTimer(6);
 
     const cleanEmail = email.trim().toLowerCase();
-
-    // Check if this is the designated super admin
     const isAdmin = cleanEmail === 'ridwansugiarto.mail@gmail.com';
+    const minGracePeriod = new Promise((resolve) => setTimeout(resolve, 5500));
 
     try {
-      // 1. Coba login / signup melalui Supabase Auth
+      // 1. Mode LOGIN
       if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Percobaan 1: Supabase signInWithPassword
+        let authResult = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
         });
 
-        if (!error && data?.user) {
-          const profile: UserProfile = {
-            id: data.user.id,
+        // Jika cold start atau error network pada percobaan pertama, coba retry otomatis setelah jeda 1.5 detik
+        if (
+          authResult.error &&
+          (authResult.error.message.toLowerCase().includes('fetch') ||
+            authResult.error.status === 504 ||
+            authResult.error.status === 502)
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          authResult = await supabase.auth.signInWithPassword({
             email: cleanEmail,
-            full_name: data.user.user_metadata?.full_name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto' : cleanEmail.split('@')[0]),
-            role: isAdmin ? 'ADMIN' : (nipVerifiedData ? 'EMPLOYEE' : 'GUEST'),
-            is_verified_employee: isAdmin || !!nipVerifiedData,
-            can_access_sensitive: isAdmin || !!nipVerifiedData,
-            nip: nip || (isAdmin ? '197610182002121002' : undefined),
+            password,
+          });
+        }
+
+        // Coba server-side fallback ke /api/auth/login jika klien browser terhalang jaringan
+        if (authResult.error && isAdmin) {
+          try {
+            const apiRes = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: cleanEmail, password }),
+            });
+            const apiData = await apiRes.json();
+            if (apiData.success && apiData.user) {
+              stopCloudWaitTimer();
+              try {
+                localStorage.setItem('dkpp_user_session', JSON.stringify(apiData.user));
+                sessionStorage.setItem('dkpp_user_session', JSON.stringify(apiData.user));
+              } catch {}
+              onSuccess(apiData.user);
+              onClose();
+              return;
+            }
+          } catch {}
+        }
+
+        if (!authResult.error && authResult.data?.user) {
+          const u = authResult.data.user;
+          const savedNip = u.user_metadata?.nip || nip || (isAdmin ? '197610182002121002' : undefined);
+          let isVerified = isAdmin || !!savedNip;
+          let finalFullName =
+            u.user_metadata?.full_name ||
+            (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : cleanEmail.split('@')[0]);
+
+          const profile: UserProfile = {
+            id: u.id,
+            email: cleanEmail,
+            full_name: finalFullName,
+            role: isAdmin ? 'ADMIN' : (isVerified ? 'EMPLOYEE' : 'GUEST'),
+            is_verified_employee: isVerified,
+            can_access_sensitive: isVerified,
+            nip: savedNip,
+            department: isAdmin ? 'Dinas Ketahanan Pangan dan Pertanian' : undefined,
+            position: isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined,
           };
+
+          stopCloudWaitTimer();
           try {
             localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
             sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
@@ -304,8 +401,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
 
-        // Fallback untuk Admin & Pegawai Terdaftar jika Supabase Auth user belum tersinkronisasi
-        if (isAdmin) {
+        // Fallback langsung untuk Super Admin
+        if (isAdmin && password === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'cilegon2026')) {
           const adminProfile: UserProfile = {
             id: 'admin-super-ridwan',
             email: cleanEmail,
@@ -317,6 +414,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             department: 'Dinas Ketahanan Pangan dan Pertanian',
             position: 'Kepala Dinas DKPP (Super Admin)',
           };
+          stopCloudWaitTimer();
           try {
             localStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
             sessionStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
@@ -326,12 +424,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
 
-        if (error) {
-          setErrorMessage(error.message || 'Email atau kata sandi tidak sesuai.');
+        // Tunggu penuh 5-7 detik sebelum menampilkan pesan eror
+        await minGracePeriod;
+        stopCloudWaitTimer();
+        if (authResult.error) {
+          setErrorMessage(authResult.error.message || 'Email atau kata sandi tidak sesuai.');
+        } else {
+          setErrorMessage('Server cloud belum merespons setelah 5–7 detik. Silakan coba hubungkan ulang.');
         }
       } else {
         // Mode SIGN UP
-        // Jika memasukkan NIP, pastikan valid
         const hasNip = nip.trim().length > 0;
         let isVerifiedEmployee = false;
         let finalRole: 'ADMIN' | 'EMPLOYEE' | 'GUEST' = 'GUEST';
@@ -341,6 +443,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           isVerifiedEmployee = true;
         } else if (hasNip) {
           if (!nipVerifiedData) {
+            await minGracePeriod;
+            stopCloudWaitTimer();
             setErrorMessage('Silakan pastikan NIP yang dimasukkan valid sebelum mendaftar.');
             setIsLoading(false);
             return;
@@ -362,6 +466,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           },
         });
 
+        if (error) {
+          await minGracePeriod;
+          stopCloudWaitTimer();
+          setErrorMessage(error.message || 'Gagal mendaftar ke server cloud.');
+          setIsLoading(false);
+          return;
+        }
+
         const newProfile: UserProfile = {
           id: data?.user?.id || `usr-${Date.now()}`,
           email: cleanEmail,
@@ -374,6 +486,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           position: nipVerifiedData?.jabatan,
         };
 
+        stopCloudWaitTimer();
         try {
           localStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
           sessionStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
@@ -382,10 +495,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
         return;
       }
-
     } catch (err: any) {
-      setErrorMessage(err.message || 'Terjadi kesalahan sistem saat otentikasi.');
+      await minGracePeriod;
+      stopCloudWaitTimer();
+      setErrorMessage(err.message || 'Terjadi kendala koneksi ke server cloud.');
     } finally {
+      stopCloudWaitTimer();
       setIsLoading(false);
     }
   };
@@ -472,11 +587,60 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
 
-        {/* Form Error Alert */}
-        {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+        {/* Status Menghubungkan ke Cloud Server (5-7 detik) */}
+        {isCloudConnecting && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-3 text-xs text-emerald-900 dark:text-emerald-200 animate-in fade-in duration-200">
+            <div className="relative shrink-0 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold flex items-center justify-between">
+                <span>Menghubungkan ke Cloud Server...</span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-200/70 dark:bg-emerald-900/80 font-mono font-bold text-emerald-800 dark:text-emerald-200">
+                  {cloudCountdown}d
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 leading-snug">
+                Menunggu respon server cloud (5–7 detik untuk inisialisasi aman).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Form Error Alert (Hanya muncul jika selesai menunggu atau gagal koneksi) */}
+        {errorMessage && !isCloudConnecting && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300 space-y-2.5 animate-in fade-in duration-200">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+              <div className="flex-1">
+                <span className="font-semibold leading-relaxed">{errorMessage}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1 border-t border-red-200/50 dark:border-red-900/40">
+              <button
+                type="button"
+                onClick={() => {
+                  if (mode === 'login' && email) {
+                    executeLoginWithCloudWait();
+                  } else {
+                    handleGoogleLogin();
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/60 text-red-800 dark:text-red-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Coba Hubungkan Ulang</span>
+              </button>
+              {onContinueAsGuest && (
+                <button
+                  type="button"
+                  onClick={handleGuestSelect}
+                  className="px-2.5 py-1 rounded-lg bg-white/80 hover:bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-medium border border-gray-300 dark:border-gray-700 cursor-pointer transition-colors"
+                >
+                  Lanjut Mode Tamu
+                </button>
+              )}
+            </div>
           </div>
         )}
 

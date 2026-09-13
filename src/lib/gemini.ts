@@ -684,12 +684,19 @@ function buildMapActions(
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback Rule-Based Synthesizer (jika Gemini offline)
 // ─────────────────────────────────────────────────────────────────────────────
-function generateRuleBasedAnswer(userQuery: string, liveData?: PegawaiHumorItem[]): string {
+function generateRuleBasedAnswer(userQuery: string, liveData?: PegawaiHumorItem[], canAccessSensitive: boolean = false): string {
   const q = userQuery.toLowerCase();
   const dataset = liveData && liveData.length > 0 ? liveData : OFFICIAL_DKPP_HUMOR_DATA;
 
   // Mode bercanda/humor pegawai internal
   if (isPegawaiHumorQuery(userQuery)) {
+    if (!canAccessSensitive) {
+      return `### Kebijakan Tata Kelola Keamanan Informasi DKPP Kota Cilegon\n\n` +
+        `Mohon maaf, informasi mengenai catatan profil, keakraban, dan data kepegawaian internal ini berkategori **INTERNAL / SENSITIF DKPP** sesuai kebijakan tata kelola keamanan informasi Dinas Ketahanan Pangan dan Pertanian Kota Cilegon.\n\n` +
+        `Data ini **hanya dapat diakses oleh Pegawai Resmi DKPP yang telah terverifikasi dengan NIP atau Administrator**.\n\n` +
+        `💡 *Silakan lakukan **Log In** dengan akun ASN/Pegawai Anda atau daftarkan NIP resmi Anda untuk membuka hak akses fitur ini.*`;
+    }
+
     let ans = `Radar **Mode Keakraban Internal DKPP** mendeteksi pertanyaan seputar pesona keakraban pegawai! ✨\n\n`;
     if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
       const topCantik = getTopCantik(dataset, 6);
@@ -870,8 +877,29 @@ export async function generateChatResponse(params: {
 
   // 2. Cek apakah pertanyaan user adalah mode bercanda / humor internal
   const isHumor = isPegawaiHumorQuery(lastUserMsg);
+  const isAuthorizedForInternal = canAccessSensitive || isVerified || userRole === 'ADMIN' || userRole === 'EMPLOYEE';
+
+  // PROTEKSI KETAT: Jika pengguna GUEST / belum login menanyakan data humor/peringkat pegawai, tolak langsung!
+  if (isHumor && !isAuthorizedForInternal) {
+    return {
+      content: `### Kebijakan Tata Kelola Keamanan Informasi DKPP Kota Cilegon\n\n` +
+        `Mohon maaf, informasi mengenai catatan profil, keakraban, dan data kepegawaian internal ini berkategori **INTERNAL / SENSITIF DKPP** sesuai tata kelola keamanan informasi Dinas Ketahanan Pangan dan Pertanian Kota Cilegon.\n\n` +
+        `Data ini **hanya dapat diakses oleh Pegawai Resmi DKPP yang telah terverifikasi dengan NIP atau Administrator**.\n\n` +
+        `💡 *Silakan lakukan **Log In** dengan akun ASN/Pegawai Anda atau daftarkan NIP resmi Anda untuk membuka hak akses fitur ini.*`,
+      sources: [{
+        type: 'LOCAL DATA',
+        title: 'Kebijakan Tata Kelola Informasi DKPP Kota Cilegon',
+        detail: 'Restriksi Akses Publik — Data Kepegawaian Khusus Internal ASN Terverifikasi'
+      }],
+      tool_calls: [],
+      map_actions: [],
+      wilayah_highlight: [],
+      matched_pins: []
+    };
+  }
+
   let liveHumorData: PegawaiHumorItem[] | undefined = undefined;
-  if (isHumor) {
+  if (isHumor && isAuthorizedForInternal) {
     try {
       const { data: dbHumor, error: dbErr } = await supabase
         .from('dkpp_pegawai_humor')
@@ -883,7 +911,7 @@ export async function generateChatResponse(params: {
       // Fallback ke in-memory jika db belum siap
     }
   }
-  const humorContext = isHumor ? buildPegawaiHumorContext(lastUserMsg, liveHumorData) : null;
+  const humorContext = (isHumor && isAuthorizedForInternal) ? buildPegawaiHumorContext(lastUserMsg, liveHumorData) : null;
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
@@ -933,7 +961,7 @@ export async function generateChatResponse(params: {
   }
 
   // 5. Fallback: Smart Domain Synthesizer
-  const fallbackContent = generateRuleBasedAnswer(lastUserMsg, liveHumorData);
+  const fallbackContent = generateRuleBasedAnswer(lastUserMsg, liveHumorData, isAuthorizedForInternal);
   const { mapActions: fallbackMapActions } = buildMapActions(lastUserMsg, fallbackContent, []);
   return {
     content: fallbackContent,
