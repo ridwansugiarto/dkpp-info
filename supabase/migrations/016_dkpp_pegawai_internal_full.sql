@@ -55,6 +55,9 @@ USING (
 );
 
 -- 4. Stored Procedure RPC untuk Validasi NIP (Mendukung Input dengan Spasi maupun 18 Digit Polos)
+DROP FUNCTION IF EXISTS public.verify_dkpp_nip(text) CASCADE;
+DROP FUNCTION IF EXISTS public.verify_dkpp_nip(varchar) CASCADE;
+DROP FUNCTION IF EXISTS public.verify_dkpp_nip CASCADE;
 CREATE OR REPLACE FUNCTION public.verify_dkpp_nip(input_nip TEXT)
 RETURNS TABLE (
     valid BOOLEAN,
