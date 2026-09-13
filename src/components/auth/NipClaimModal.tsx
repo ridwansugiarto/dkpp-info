@@ -146,7 +146,7 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Contoh: 198003152006041008"
+                placeholder="18 digit"
                 value={nip}
                 maxLength={24}
                 onChange={(e) => {

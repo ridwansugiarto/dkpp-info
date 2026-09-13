@@ -304,7 +304,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Nama Lengkap Anda"
+                  placeholder=""
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1f2026] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all"
@@ -350,13 +350,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <span>NIP Pegawai DKPP</span>
                 </label>
                 <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-2 py-0.5 rounded-full font-medium">
-                  Khusus ASN / Pegawai
+                  khusus internal DKPP
                 </span>
               </div>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Contoh: 197610182002121002 (Opsional jika Pegawai)"
+                  placeholder="18 digit"
                   value={nip}
                   onChange={(e) => setNip(e.target.value)}
                   onBlur={handleNipBlur}
@@ -403,7 +403,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="button"
             onClick={handleGuestSelect}
-            className="w-full py-2 px-3 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
+            className="w-full py-2.5 px-4 text-xs font-semibold text-emerald-950 bg-[#A8DCAB] hover:bg-[#97cf9a] rounded-full transition-all shadow-xs cursor-pointer"
           >
             Atau Lanjutkan sebagai Tamu (Guest) tanpa NIP
           </button>
