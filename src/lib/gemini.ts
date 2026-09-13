@@ -1,7 +1,7 @@
 import { SourceCitation, MapAction, ToolCall } from '@/types/dkpp';
 import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
-import { fetchNelayenTangkap, buildNelayenContext, type NelayenPin } from './serumpunpadi';
+import { fetchAllSerumpunData, buildSerumpunContext, type NelayenPin, type KolamPin, type PokTanPin, type TernakPin, type SerumpunData } from './serumpunpadi';
 import {
   isPegawaiHumorQuery,
   buildPegawaiHumorContext,
@@ -546,7 +546,7 @@ function buildMapActions(
   userQuery: string,
   rawText: string,
   wilayahHighlight: string[],
-  liveNelayanPins: NelayenPin[] = []
+  liveData?: SerumpunData
 ): { mapActions: MapAction[]; matchedPins: Array<{ lat: number; lng: number; name: string; category: string; kelurahan: string; kecamatan: string }> } {
   // Mode bercanda/humor: jangan otomatis membuka atau memanipulasi peta
   if (isPegawaiHumorQuery(userQuery)) {
@@ -558,27 +558,36 @@ function buildMapActions(
   const matchedPins: Array<{ lat: number; lng: number; name: string; category: string; kelurahan: string; kecamatan: string }> = [];
   const mapActions: MapAction[] = [];
 
-  // Pins nelayan: gunakan data live dari serumpunpadi, fallback ke static jika kosong
-  const nelayanPins = (liveNelayanPins.length > 0 ? liveNelayanPins : [
-    { lat: -6.02121, lng: 105.95186, name: 'Nelayan Tanjung Leneng', category: 'nelayan' as const, kelurahan: 'Gunung Sugih', kecamatan: 'Ciwandan', jumlah_nelayan: 72, alat_tangkap: 'Jaring:72,Pancing:72', perahu_motor_tempel: 72 },
-    { lat: -5.94000, lng: 105.99996, name: 'Nelayan Medaksa',        category: 'nelayan' as const, kelurahan: 'Tamansari',   kecamatan: 'Pulomerak', jumlah_nelayan: 52, alat_tangkap: 'Jaring:52,Pancing:52', perahu_motor_tempel: 24 },
-    { lat: -5.98419, lng: 105.99079, name: 'Nelayan Tanjung Peni',   category: 'nelayan' as const, kelurahan: 'Kubangsari',  kecamatan: 'Ciwandan',  jumlah_nelayan: 191, alat_tangkap: 'Pancing:191,Jaring:191', perahu_motor_tempel: 102 },
-    { lat: -5.89686, lng: 106.01774, name: 'Nelayan Suralaya',       category: 'nelayan' as const, kelurahan: 'Suralaya',    kecamatan: 'Pulomerak', jumlah_nelayan: 144, alat_tangkap: 'Jaring:67,Pancing:144', perahu_motor_tempel: 67 },
-    { lat: -5.92845, lng: 105.99612, name: 'Nelayan Mabak',          category: 'nelayan' as const, kelurahan: 'Mekarsari',   kecamatan: 'Pulomerak', jumlah_nelayan: 40, alat_tangkap: 'Jaring:10,Pancing:10', perahu_motor_tempel: 10 },
-    { lat: -5.93412, lng: 105.99841, name: 'Nelayan Kaltex',         category: 'nelayan' as const, kelurahan: 'Tamansari',   kecamatan: 'Pulomerak', jumlah_nelayan: 40, alat_tangkap: 'Jaring:40,Pancing:40', perahu_motor_tempel: 40 },
-    { lat: -5.90874, lng: 106.00421, name: 'Nelayan Lebak Gede',     category: 'nelayan' as const, kelurahan: 'Lebakgede',   kecamatan: 'Pulomerak', jumlah_nelayan: 24, alat_tangkap: 'Pancing:24', perahu_motor_tempel: 16 },
-    { lat: -5.97535, lng: 105.99532, name: 'Nelayan Lelean',         category: 'nelayan' as const, kelurahan: 'Kubangsari',  kecamatan: 'Ciwandan',  jumlah_nelayan: 110, alat_tangkap: 'Jaring:110,Pancing:110', perahu_motor_tempel: 54 },
-  ]).map(p => ({ ...p, category: 'nelayan' as string }));
+  // Pins dari serumpunpadi: nelayan, kolam, poktan/kwt, ternak
+  const nelayanPins: NelayenPin[] = liveData?.nelayan ?? [];
+  const kolamPins: KolamPin[] = liveData?.kolam ?? [];
+  const poktanPins: PokTanPin[] = liveData?.poktan ?? [];
+  const ternakPins: TernakPin[] = liveData?.ternak ?? [];
+
+  // Fallback nelayan jika live data kosong
+  const nelayanFallback: NelayenPin[] = [
+    { lat: -6.02121, lng: 105.95186, name: 'Nelayan Tanjung Leneng', category: 'nelayan', kelurahan: 'Gunung Sugih', kecamatan: 'Ciwandan',  jumlah_nelayan: 72,  alat_tangkap: 'Jaring:72,Pancing:72',   perahu_motor_tempel: 72  },
+    { lat: -5.94000, lng: 105.99996, name: 'Nelayan Medaksa',        category: 'nelayan', kelurahan: 'Tamansari',   kecamatan: 'Pulomerak', jumlah_nelayan: 52,  alat_tangkap: 'Jaring:52,Pancing:52',   perahu_motor_tempel: 24  },
+    { lat: -5.98419, lng: 105.99079, name: 'Nelayan Tanjung Peni',   category: 'nelayan', kelurahan: 'Kubangsari',  kecamatan: 'Ciwandan',  jumlah_nelayan: 191, alat_tangkap: 'Pancing:191,Jaring:191', perahu_motor_tempel: 102 },
+    { lat: -5.89686, lng: 106.01774, name: 'Nelayan Suralaya',       category: 'nelayan', kelurahan: 'Suralaya',    kecamatan: 'Pulomerak', jumlah_nelayan: 144, alat_tangkap: 'Jaring:67,Pancing:144',  perahu_motor_tempel: 67  },
+    { lat: -5.92845, lng: 105.99612, name: 'Nelayan Mabak',          category: 'nelayan', kelurahan: 'Mekarsari',   kecamatan: 'Pulomerak', jumlah_nelayan: 40,  alat_tangkap: 'Jaring:10,Pancing:10',   perahu_motor_tempel: 10  },
+    { lat: -5.93412, lng: 105.99841, name: 'Nelayan Kaltex',         category: 'nelayan', kelurahan: 'Tamansari',   kecamatan: 'Pulomerak', jumlah_nelayan: 40,  alat_tangkap: 'Jaring:40,Pancing:40',   perahu_motor_tempel: 40  },
+    { lat: -5.90874, lng: 106.00421, name: 'Nelayan Lebak Gede',     category: 'nelayan', kelurahan: 'Lebakgede',   kecamatan: 'Pulomerak', jumlah_nelayan: 24,  alat_tangkap: 'Pancing:24',              perahu_motor_tempel: 16  },
+    { lat: -5.97535, lng: 105.99532, name: 'Nelayan Lelean',         category: 'nelayan', kelurahan: 'Kubangsari',  kecamatan: 'Ciwandan',  jumlah_nelayan: 110, alat_tangkap: 'Jaring:110,Pancing:110',  perahu_motor_tempel: 54  },
+  ];
+  const effectiveNelayan = nelayanPins.length > 0 ? nelayanPins : nelayanFallback;
 
   const allPins = [
-    ...nelayanPins,
-    { lat: -5.97323, lng: 106.03231, name: 'KWT Gerogol (Cabai)', category: 'kwt', kelurahan: 'Gerogol', kecamatan: 'Gerogol' },
-    { lat: -5.95625, lng: 106.03523, name: 'KWT Gerem (Sayuran Segar)', category: 'kwt', kelurahan: 'Gerem', kecamatan: 'Gerogol' },
-    { lat: -5.98912, lng: 106.04215, name: 'KWT Kotabumi', category: 'kwt', kelurahan: 'Kotabumi', kecamatan: 'Purwakarta' },
-    { lat: -6.02954, lng: 106.00843, name: 'Kolam Nurholis (Lele/Nila/Gurame)', category: 'kolam', kelurahan: 'Citangkil', kecamatan: 'Citangkil' },
-    { lat: -6.01145, lng: 106.05094, name: 'Kolam Budidaya Nila Masigit', category: 'kolam', kelurahan: 'Masigit', kecamatan: 'Jombang' },
-    { lat: -6.00723, lng: 106.05795, name: 'Peternakan Sapi (Masigit)', category: 'ternak', kelurahan: 'Masigit', kecamatan: 'Jombang' },
-    { lat: -6.00845, lng: 106.05912, name: 'Peternakan Kambing (Masigit)', category: 'ternak', kelurahan: 'Masigit', kecamatan: 'Jombang' },
+    ...effectiveNelayan.map(p => ({ ...p, category: 'nelayan' as string })),
+    ...kolamPins.map(p => ({ ...p, category: 'kolam' as string })),
+    ...poktanPins.map(p => ({ ...p, category: p.category as string })),
+    ...ternakPins.map(p => ({ ...p, category: 'ternak' as string })),
+    { lat: -5.97323, lng: 106.03231, name: 'KWT Gerogol (Cabai)',        category: 'kwt',    kelurahan: 'Gerogol',  kecamatan: 'Gerogol'    },
+    { lat: -5.95625, lng: 106.03523, name: 'KWT Gerem (Sayuran Segar)',  category: 'kwt',    kelurahan: 'Gerem',    kecamatan: 'Gerogol'    },
+    { lat: -5.98912, lng: 106.04215, name: 'KWT Kotabumi',               category: 'kwt',    kelurahan: 'Kotabumi', kecamatan: 'Purwakarta' },
+    { lat: -6.02954, lng: 106.00843, name: 'Kolam Nurholis (Lele/Nila)', category: 'kolam',  kelurahan: 'Citangkil',kecamatan: 'Citangkil'  },
+    { lat: -6.01145, lng: 106.05094, name: 'Kolam Budidaya Nila Masigit',category: 'kolam',  kelurahan: 'Masigit',  kecamatan: 'Jombang'    },
+    { lat: -6.00723, lng: 106.05795, name: 'Peternakan Masigit',         category: 'ternak', kelurahan: 'Masigit',  kecamatan: 'Jombang'    },
   ];
 
   for (const p of allPins) {
@@ -820,12 +829,12 @@ export async function generateChatResponse(params: {
   const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
   const apiKey = process.env.GEMINI_API_KEY || '';
 
-  // 1. Ambil konteks dinamis Supabase + data live nelayan dari serumpunpadi
-  const [dynamicDbContext, liveNelayanPins] = await Promise.all([
+  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi (paralel)
+  const [dynamicDbContext, liveData] = await Promise.all([
     getDynamicSupabaseContext().catch(() => ''),
-    fetchNelayenTangkap().catch(() => [] as NelayenPin[]),
+    fetchAllSerumpunData().catch(() => undefined as SerumpunData | undefined),
   ]);
-  const nelayanContext = buildNelayenContext(liveNelayanPins);
+  const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
 
   // 1b. Ambil kutipan dokumen relevan dari 54 Dokumen Knowledge Base (RAG)
   let knowledgeContext = '';
@@ -926,7 +935,7 @@ export async function generateChatResponse(params: {
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
-    dynamicDbContext + nelayanContext,
+    dynamicDbContext + serumpunContext,
     userRole,
     isVerified,
     userMemoryContext,
@@ -956,7 +965,7 @@ export async function generateChatResponse(params: {
       if (rawText && rawText.trim().length > 0) {
         const wilayahHighlight = extractWilayahHighlights(rawText);
         const cleanText = cleanResponseText(rawText);
-        const { mapActions, matchedPins } = buildMapActions(lastUserMsg, rawText, wilayahHighlight, liveNelayanPins);
+        const { mapActions, matchedPins } = buildMapActions(lastUserMsg, rawText, wilayahHighlight, liveData);
         return {
           content: cleanText,
           sources: collectedSources,
@@ -973,7 +982,7 @@ export async function generateChatResponse(params: {
 
   // 5. Fallback: Smart Domain Synthesizer
   const fallbackContent = generateRuleBasedAnswer(lastUserMsg, liveHumorData, isAuthorizedForInternal);
-  const { mapActions: fallbackMapActions } = buildMapActions(lastUserMsg, fallbackContent, [], liveNelayanPins);
+  const { mapActions: fallbackMapActions } = buildMapActions(lastUserMsg, fallbackContent, [], liveData);
   return {
     content: fallbackContent,
     sources: collectedSources,
