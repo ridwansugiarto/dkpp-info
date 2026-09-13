@@ -98,7 +98,10 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
         });
       } catch {}
 
-      sessionStorage.setItem('dkpp_user_session', JSON.stringify(updatedProfile));
+      try {
+        localStorage.setItem('dkpp_user_session', JSON.stringify(updatedProfile));
+        sessionStorage.setItem('dkpp_user_session', JSON.stringify(updatedProfile));
+      } catch {}
       onSuccess(updatedProfile);
       onClose();
     } catch (e: any) {

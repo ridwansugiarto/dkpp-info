@@ -28,9 +28,9 @@ export async function POST(req: NextRequest) {
     // 1. Resolve User Authorization server-side (Super Admin, Verified NIP Pegawai, or GUEST)
     const authProfile = await resolveUserAuth(userEmail, userId, userNip);
 
-    // 2. Fetch User Memories (per-user isolation)
+    // 2. Fetch User Memories (per-user isolation: GUEST NEVER gets persistent user memories)
     let memoryContext = '';
-    if (authProfile.id && authProfile.id !== 'guest') {
+    if (authProfile.id && !authProfile.id.startsWith('guest_') && authProfile.id !== 'guest' && authProfile.role !== 'GUEST') {
       try {
         const { data: memories } = await supabaseAdmin
           .from('user_memories')

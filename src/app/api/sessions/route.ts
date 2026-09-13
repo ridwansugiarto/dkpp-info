@@ -59,15 +59,19 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title } = body;
+    const { id, title, is_archived } = body;
 
-    if (!id || !title) {
-      return NextResponse.json({ error: 'Parameter id dan title wajib diisi' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'Parameter id wajib diisi' }, { status: 400 });
     }
+
+    const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (typeof title === 'string') updatePayload.title = title;
+    if (typeof is_archived === 'boolean') updatePayload.is_archived = is_archived;
 
     const { data, error } = await supabaseAdmin
       .from('chat_sessions')
-      .update({ title, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', id)
       .select('*')
       .single();

@@ -27,14 +27,20 @@ import Link from 'next/link';
 
 type ViewMode = 'SPLIT' | 'PETA' | 'CHAT';
 
-// Helper to get or create a persistent, isolated client ID for this browser instance
-const getBrowserDeviceId = (): string => {
+// Helper to get or create an isolated client ID strictly scoped to this browser session.
+// When the browser/tab is closed, sessionStorage is purged, so another user opening the browser
+// will NEVER see the previous user's chat sessions or memory.
+const getBrowserSessionId = (): string => {
   if (typeof window === 'undefined') return 'guest_default';
   try {
-    let id = localStorage.getItem('dkpp_browser_device_id');
+    // Purge any legacy shared persistent ID from localStorage
+    localStorage.removeItem('dkpp_browser_device_id');
+    localStorage.removeItem('dkpp_user_session');
+
+    let id = sessionStorage.getItem('dkpp_browser_session_id');
     if (!id || id === 'guest' || id.startsWith('sess-')) {
       id = 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
-      localStorage.setItem('dkpp_browser_device_id', id);
+      sessionStorage.setItem('dkpp_browser_session_id', id);
     }
     return id;
   } catch {
@@ -84,15 +90,16 @@ export const ChatDKPPApp: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load user session from browser storage (isolated per browser) & listen to Supabase Auth changes
+  // Load user session strictly scoped to this browser session & listen to Supabase Auth changes
   useEffect(() => {
-    const browserId = getBrowserDeviceId();
+    const sessionId = getBrowserSessionId();
     let initialUser: UserProfile = {
       ...GUEST_DEFAULT,
-      id: browserId,
+      id: sessionId,
     };
 
     try {
+      // ONLY read from sessionStorage to prevent cross-session / cross-user chat leakage on shared devices
       const saved = sessionStorage.getItem('dkpp_user_session');
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -105,60 +112,89 @@ export const ChatDKPPApp: React.FC = () => {
     setCurrentUser(initialUser);
     fetchSessions(initialUser.id);
 
+    const syncUserFromSupabase = async (user: any) => {
+      if (!user) return;
+      // Strict isolation: immediately purge existing browser sessions/messages to prevent any visual cross-leakage
+      setSessions([]);
+      setMessages([]);
+      setActiveSessionId(null);
+
+      const email = user.email?.toLowerCase() || '';
+      const isAdmin = email === 'ridwansugiarto.mail@gmail.com';
+      const savedNip = user.user_metadata?.nip || '';
+      let isVerified = isAdmin || !!savedNip;
+      let finalFullName = user.user_metadata?.full_name || user.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : email.split('@')[0]);
+      let finalDept = user.user_metadata?.department || (isAdmin ? 'Pimpinan DKPP' : undefined);
+      let finalPosition = user.user_metadata?.position || (isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined);
+
+      if (!isAdmin && savedNip) {
+        try {
+          const vRes = await fetch('/api/auth/verify-nip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nip: savedNip }),
+          });
+          const vData = await vRes.json();
+          if (vData.valid) {
+            isVerified = true;
+            finalFullName = vData.nama || finalFullName;
+            finalDept = vData.bidang;
+            finalPosition = vData.jabatan;
+          }
+        } catch {}
+      }
+
+      const profile: UserProfile = {
+        id: user.id,
+        email: email,
+        full_name: finalFullName,
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+        role: isAdmin ? 'ADMIN' : (isVerified ? 'EMPLOYEE' : 'GUEST'),
+        is_verified_employee: isVerified,
+        can_access_sensitive: isVerified,
+        nip: savedNip || (isAdmin ? '197610182002121002' : undefined),
+        department: finalDept,
+        position: finalPosition,
+      };
+      setCurrentUser(profile);
+      try {
+        sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+        // Remove from localStorage so closing browser tab destroys the active session on shared device
+        localStorage.removeItem('dkpp_user_session');
+      } catch {}
+      fetchSessions(profile.id);
+
+      // Auto-prompt dialog klaim NIP jika user login Google dan belum memiliki NIP terverifikasi
+      if (!isAdmin && !isVerified) {
+        const promptedKey = 'dkpp_nip_prompted_' + user.id;
+        const alreadyPrompted = sessionStorage.getItem(promptedKey);
+        if (!alreadyPrompted) {
+          try {
+            sessionStorage.setItem(promptedKey, 'true');
+          } catch {}
+          setTimeout(() => {
+            setNipClaimModalOpen(true);
+          }, 700);
+        }
+      }
+
+      // Bersihkan hash token atau query code dari URL jika baru kembali dari OAuth
+      if (typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || window.location.search.includes('code='))) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+
+    // 1. Cek sesi Supabase yang sudah tersimpan
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        syncUserFromSupabase(session.user);
+      }
+    });
+
+    // 2. Dengarkan perubahan status otentikasi
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const email = session.user.email?.toLowerCase() || '';
-        const isAdmin = email === 'ridwansugiarto.mail@gmail.com';
-        const savedNip = session.user.user_metadata?.nip || '';
-        let isVerified = isAdmin || !!savedNip;
-        let finalFullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : email.split('@')[0]);
-        let finalDept = session.user.user_metadata?.department || (isAdmin ? 'Pimpinan DKPP' : undefined);
-        let finalPosition = session.user.user_metadata?.position || (isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined);
-
-        if (!isAdmin && savedNip) {
-          try {
-            const vRes = await fetch('/api/auth/verify-nip', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nip: savedNip }),
-            });
-            const vData = await vRes.json();
-            if (vData.valid) {
-              isVerified = true;
-              finalFullName = vData.nama || finalFullName;
-              finalDept = vData.bidang;
-              finalPosition = vData.jabatan;
-            }
-          } catch {}
-        }
-
-        const profile: UserProfile = {
-          id: session.user.id,
-          email: email,
-          full_name: finalFullName,
-          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
-          role: isAdmin ? 'ADMIN' : (isVerified ? 'EMPLOYEE' : 'GUEST'),
-          is_verified_employee: isVerified,
-          can_access_sensitive: isVerified,
-          nip: savedNip || (isAdmin ? '197610182002121002' : undefined),
-          department: finalDept,
-          position: finalPosition,
-        };
-        setCurrentUser(profile);
-        sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
-        fetchSessions(profile.id);
-
-        // Auto-prompt dialog klaim NIP jika user login Google dan belum memiliki NIP terverifikasi
-        if (!isAdmin && !isVerified) {
-          const promptedKey = 'dkpp_nip_prompted_' + session.user.id;
-          const alreadyPrompted = sessionStorage.getItem(promptedKey);
-          if (!alreadyPrompted) {
-            sessionStorage.setItem(promptedKey, 'true');
-            setTimeout(() => {
-              setNipClaimModalOpen(true);
-            }, 700);
-          }
-        }
+        syncUserFromSupabase(session.user);
       }
     });
 
@@ -173,17 +209,30 @@ export const ChatDKPPApp: React.FC = () => {
   };
 
   const handleAuthSuccess = (user: UserProfile) => {
+    // Immediately isolate state
+    setSessions([]);
+    setMessages([]);
+    setActiveSessionId(null);
     setCurrentUser(user);
-    sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
+    try {
+      sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
+      localStorage.removeItem('dkpp_user_session');
+    } catch {}
     fetchSessions(user.id);
   };
 
   const handleLogout = async () => {
-    sessionStorage.removeItem('dkpp_user_session');
-    // Rotate to a fresh browser device guest ID to ensure total memory isolation for subsequent visits
+    try {
+      sessionStorage.removeItem('dkpp_user_session');
+      sessionStorage.removeItem('dkpp_browser_session_id');
+      localStorage.removeItem('dkpp_user_session');
+      localStorage.removeItem('dkpp_browser_device_id');
+      await supabase.auth.signOut();
+    } catch {}
+    // Rotate to a fresh session-isolated guest ID
     const freshGuestId = 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
     try {
-      localStorage.setItem('dkpp_browser_device_id', freshGuestId);
+      sessionStorage.setItem('dkpp_browser_session_id', freshGuestId);
     } catch {}
 
     const freshGuest: UserProfile = {
@@ -194,9 +243,6 @@ export const ChatDKPPApp: React.FC = () => {
     setSessions([]);
     setMessages([]);
     setActiveSessionId(null);
-    try {
-      await supabase.auth.signOut();
-    } catch {}
   };
 
   // Load chat sessions strictly scoped to the active user/browser
@@ -308,6 +354,46 @@ export const ChatDKPPApp: React.FC = () => {
       }
     } catch {
       setSessions((prev) => prev.filter((s) => s.id !== id));
+    }
+  };
+
+  const handlePinSession = (id: string) => {
+    setSessions((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, is_pinned: !s.is_pinned } : s));
+      return [...updated].sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+      });
+    });
+  };
+
+  const handleArchiveSession = async (id: string) => {
+    try {
+      await fetch('/api/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_archived: true }),
+      });
+    } catch {}
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      if (activeSessionId === id) {
+        if (remaining.length > 0) {
+          setActiveSessionId(remaining[0].id);
+          loadMessages(remaining[0].id);
+        } else {
+          setActiveSessionId(null);
+          setMessages([]);
+        }
+      }
+      return remaining;
+    });
+  };
+
+  const handleShareSession = (id: string) => {
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(`${window.location.origin}?session=${id}`);
     }
   };
 
@@ -435,6 +521,9 @@ export const ChatDKPPApp: React.FC = () => {
         onNewChat={handleNewChat}
         onRenameSession={handleRenameSession}
         onDeleteSession={handleDeleteSession}
+        onPinSession={handlePinSession}
+        onArchiveSession={handleArchiveSession}
+        onShareSession={handleShareSession}
         user={currentUser}
         isOpen={sidebarOpen}
         onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
@@ -526,12 +615,12 @@ export const ChatDKPPApp: React.FC = () => {
           </div>
 
           {/* Right Header: Log in & Sign up for free (Guests) / Profile (Logged in) */}
-          {currentUser.role === 'GUEST' ? (
-            <div className="flex items-center gap-2">
+          {(!currentUser.email || currentUser.id === 'guest' || currentUser.id.startsWith('guest_')) ? (
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => handleOpenAuth('login')}
-                className="bg-black hover:bg-neutral-800 text-white text-xs sm:text-sm font-semibold px-3.5 sm:px-4 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
+                className="bg-black hover:bg-neutral-800 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
               >
                 Log in
               </button>
@@ -544,37 +633,43 @@ export const ChatDKPPApp: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {currentUser.email?.toLowerCase() === 'ridwansugiarto.mail@gmail.com' ? (
                 <Link
                   href="/admin"
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors flex items-center gap-1"
+                  className="text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors flex items-center gap-1"
                 >
                   <Shield className="w-3 h-3 text-amber-600" />
-                  <span>Portal Admin</span>
+                  <span className="hidden sm:inline">Portal Admin</span>
+                  <span className="sm:hidden">Admin</span>
                 </Link>
               ) : currentUser.is_verified_employee ? (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-semibold">
                   <CheckCircle className="w-3 h-3 text-emerald-600" />
-                  <span>ASN Terverifikasi</span>
+                  <span className="hidden sm:inline">ASN Terverifikasi</span>
+                  <span className="sm:hidden">ASN</span>
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => setNipClaimModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 shadow-xs transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] sm:text-xs font-bold border border-emerald-300 shadow-xs transition-all cursor-pointer"
                   title="Klaim NIP Pegawai untuk membuka mode dokumen sensitif"
                 >
-                  <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                  <Shield className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-600" />
                   <span className="hidden sm:inline">Klaim NIP Pegawai</span>
                   <span className="sm:hidden">Klaim NIP</span>
                 </button>
               )}
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-100 text-xs font-medium border border-gray-200/80 shadow-xs">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-[10px]">
-                  {currentUser.full_name ? currentUser.full_name.substring(0, 2).toUpperCase() : 'DK'}
+              <div className="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2.5 py-1 rounded-xl bg-gray-100 text-xs font-medium border border-gray-200/80 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-[10px] overflow-hidden shrink-0">
+                  {currentUser.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.full_name ? currentUser.full_name.substring(0, 2).toUpperCase() : 'DK'
+                  )}
                 </div>
-                <span className="max-w-[120px] truncate hidden sm:inline font-semibold">
+                <span className="max-w-[80px] sm:max-w-[120px] truncate hidden sm:inline font-semibold">
                   {currentUser.full_name}
                 </span>
                 <button
@@ -723,7 +818,10 @@ export const ChatDKPPApp: React.FC = () => {
         onClose={() => setNipClaimModalOpen(false)}
         onSuccess={(updatedUser) => {
           setCurrentUser(updatedUser);
-          sessionStorage.setItem('dkpp_user_session', JSON.stringify(updatedUser));
+          try {
+            localStorage.setItem('dkpp_user_session', JSON.stringify(updatedUser));
+            sessionStorage.setItem('dkpp_user_session', JSON.stringify(updatedUser));
+          } catch {}
         }}
       />
     </div>

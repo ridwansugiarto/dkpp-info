@@ -81,7 +81,7 @@ export default function AdminPortalPage() {
   // Check auth session
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem('dkpp_user_session');
+      const raw = localStorage.getItem('dkpp_user_session') || sessionStorage.getItem('dkpp_user_session');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed?.email) {

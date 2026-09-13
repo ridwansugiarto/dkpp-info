@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   MessageSquare, 
-  MoreVertical, 
+  MoreHorizontal, 
   Trash2, 
   Edit3, 
   Search, 
@@ -16,7 +16,11 @@ import {
   LogIn,
   Layers,
   Settings,
-  Wheat
+  Wheat,
+  Pin,
+  Archive,
+  Share2,
+  Check
 } from 'lucide-react';
 import { ChatSession, UserProfile } from '@/types/dkpp';
 import Link from 'next/link';
@@ -28,6 +32,9 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onDeleteSession: (id: string) => void;
+  onPinSession?: (id: string) => void;
+  onArchiveSession?: (id: string) => void;
+  onShareSession?: (id: string) => void;
   user: UserProfile;
   isOpen: boolean;
   onToggleOpen: () => void;
@@ -43,6 +50,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNewChat,
   onRenameSession,
   onDeleteSession,
+  onPinSession,
+  onArchiveSession,
+  onShareSession,
   user,
   isOpen,
   onToggleOpen,
@@ -54,10 +64,26 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const filteredSessions = sessions.filter((s) =>
-    s.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      if (menuOpenId) setMenuOpenId(null);
+    };
+    if (menuOpenId) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [menuOpenId]);
+
+  const filteredSessions = [...sessions]
+    .filter((s) => !s.is_archived && s.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+      return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+    });
 
   const handleStartRename = (session: ChatSession, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -172,13 +198,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <div
                   key={session.id}
                   onClick={() => onSelectSession(session.id)}
-                  className={`group relative flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                  className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs cursor-pointer transition-all ${
+                    menuOpenId === session.id ? 'z-30' : 'z-1'
+                  } ${
                     isActive
-                      ? 'bg-gray-200/80 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+                      ? 'bg-gray-200/90 dark:bg-gray-800 font-medium text-gray-900 dark:text-white shadow-xs'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2 overflow-hidden w-full pr-6">
+                  <div className="flex items-center gap-2 overflow-hidden w-full pr-14">
                     <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`} />
                     {isEditing ? (
                       <input
@@ -198,42 +226,106 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     )}
                   </div>
 
-                  {/* Context Menu Button */}
+                  {/* Context Menu & Pin Action (Capture 2 Style) */}
                   {!isEditing && (
-                    <div className="absolute right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute right-2 flex items-center gap-1">
+                      {session.is_pinned && (
+                        <Pin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-600/20 shrink-0" />
+                      )}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setMenuOpenId(menuOpenId === session.id ? null : session.id);
                         }}
-                        className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded hover:bg-gray-300/60 dark:hover:bg-gray-700"
+                        className={`p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-300/60 dark:hover:bg-gray-700 transition-opacity cursor-pointer ${
+                          isActive || menuOpenId === session.id
+                            ? 'opacity-100'
+                            : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
+                        }`}
+                        title="Opsi percakapan"
                       >
-                        <MoreVertical className="w-3.5 h-3.5" />
+                        <MoreHorizontal className="w-4 h-4" />
                       </button>
 
-                      {/* Dropdown Menu */}
+                      {/* Dropdown Menu (Capture 2 Style) */}
                       {menuOpenId === session.id && (
                         <div
-                          className="absolute right-0 top-6 z-50 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 text-xs"
+                          className="absolute right-0 top-7 z-[9999] w-40 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200/90 dark:border-gray-700 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-150"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          {/* Share */}
                           <button
-                            onClick={(e) => handleStartRename(session, e)}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          >
-                            <Edit3 className="w-3 h-3 text-gray-400" />
-                            <span>Ubah Nama</span>
-                          </button>
-                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDeleteSession(session.id);
                               setMenuOpenId(null);
+                              if (onShareSession) {
+                                onShareSession(session.id);
+                              } else if (navigator.clipboard) {
+                                navigator.clipboard.writeText(`${window.location.origin}?session=${session.id}`);
+                                setToastMsg('Tautan disalin ke clipboard');
+                                setTimeout(() => setToastMsg(null), 2500);
+                              }
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                           >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Hapus</span>
+                            <Share2 className="w-3.5 h-3.5 text-gray-500" />
+                            <span>Share</span>
+                          </button>
+
+                          {/* Rename */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleStartRename(session, e)}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-gray-500" />
+                            <span>Rename</span>
+                          </button>
+
+                          <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+
+                          {/* Pin chat */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                              if (onPinSession) onPinSession(session.id);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <Pin className="w-3.5 h-3.5 text-gray-500" />
+                            <span>{session.is_pinned ? 'Unpin chat' : 'Pin chat'}</span>
+                          </button>
+
+                          {/* Archive */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                              if (onArchiveSession) onArchiveSession(session.id);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <Archive className="w-3.5 h-3.5 text-gray-500" />
+                            <span>Archive</span>
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                              onDeleteSession(session.id);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       )}
@@ -245,9 +337,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </div>
 
-        {/* User Status / Profile Footer (Capture 2 saat Guest) */}
-        {user.role === 'GUEST' ? (
-          /* Capture 2: Get responses tailored to you Card */
+        {/* User Status / Profile Footer: Guest vs Logged In */}
+        {(!user.email || user.id === 'guest' || user.id.startsWith('guest_')) ? (
+          /* Card saat Guest / Belum Login */
           <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
             <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
               <h4 className="text-xs font-bold text-gray-900 mb-1 leading-snug">
@@ -269,8 +361,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <div className="p-3 border-t border-gray-200/70 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                  {user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'DK'}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm overflow-hidden">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'DK'
+                  )}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
@@ -320,6 +416,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Toast Feedback */}
+        {toastMsg && (
+          <div className="absolute bottom-16 left-3 right-3 z-50 py-2 px-3 bg-emerald-700 text-white rounded-xl text-center text-xs font-medium shadow-lg animate-in fade-in duration-150 flex items-center justify-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-white" />
+            <span>{toastMsg}</span>
           </div>
         )}
       </aside>

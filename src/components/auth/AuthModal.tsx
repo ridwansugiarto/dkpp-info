@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building, Loader2 } from 'lucide-react';
 import { UserProfile } from '@/types/dkpp';
 import { supabase } from '@/lib/supabase';
 
@@ -76,20 +76,192 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // Inisialisasi Google Identity Services (GIS) untuk login langsung tanpa redirect ke supabase.co
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '472312064141-3udqk20ji00b1hbsm4iihlg8l9o9tebr.apps.googleusercontent.com';
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const initGsi = () => {
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        try {
+          (window as any).google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async (response: any) => {
+              if (response?.credential) {
+                await handleGoogleCredential(response.credential);
+              }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          const hiddenBtn = document.getElementById('dkpp-gsi-render-btn');
+          if (hiddenBtn) {
+            (window as any).google.accounts.id.renderButton(hiddenBtn, {
+              theme: 'outline',
+              size: 'large',
+              width: 320,
+              type: 'standard',
+            });
+          }
+        } catch (e) {
+          console.warn('GSI init warning:', e);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      if ((window as any).google?.accounts?.id) {
+        initGsi();
+      } else {
+        const existingScript = document.getElementById('google-gsi-client');
+        if (!existingScript) {
+          const script = document.createElement('script');
+          script.id = 'google-gsi-client';
+          script.src = 'https://accounts.google.com/gsi/client';
+          script.async = true;
+          script.defer = true;
+          script.onload = initGsi;
+          document.head.appendChild(script);
+        } else {
+          existingScript.addEventListener('load', initGsi);
+        }
+      }
+    }
+  }, [isOpen]);
+
+  const handleGoogleCredential = async (credential: string) => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: credential,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.user) {
+        const u = data.user;
+        const cleanEmail = u.email?.toLowerCase() || '';
+        const isAdmin = cleanEmail === 'ridwansugiarto.mail@gmail.com';
+        const savedNip = u.user_metadata?.nip || '';
+        let isVerified = isAdmin || !!savedNip;
+        let finalFullName = u.user_metadata?.full_name || u.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : cleanEmail.split('@')[0]);
+        let finalDept = u.user_metadata?.department || (isAdmin ? 'Pimpinan DKPP' : undefined);
+        let finalPosition = u.user_metadata?.position || (isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined);
+
+        if (!isAdmin && savedNip) {
+          try {
+            const vRes = await fetch('/api/auth/verify-nip', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nip: savedNip }),
+            });
+            const vData = await vRes.json();
+            if (vData.valid) {
+              isVerified = true;
+              finalFullName = vData.nama || finalFullName;
+              finalDept = vData.bidang;
+              finalPosition = vData.jabatan;
+            }
+          } catch {}
+        }
+
+        const profile: UserProfile = {
+          id: u.id,
+          email: cleanEmail,
+          full_name: finalFullName,
+          avatar_url: u.user_metadata?.avatar_url || u.user_metadata?.picture,
+          role: isAdmin ? 'ADMIN' : (isVerified ? 'EMPLOYEE' : 'GUEST'),
+          is_verified_employee: isVerified,
+          can_access_sensitive: isVerified,
+          nip: savedNip || (isAdmin ? '197610182002121002' : undefined),
+          department: finalDept,
+          position: finalPosition,
+        };
+
+        try {
+          localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+          sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+        } catch {}
+        onSuccess(profile);
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Google ID token login error:', err);
+      setErrorMessage(err.message || 'Gagal login dengan kredensial Google.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
+      setErrorMessage(null);
+
+      // 1. Coba gunakan Google Identity Services (in-page popup/one-tap) agar tidak redirect ke supabase.co
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        const renderBtn = document.getElementById('dkpp-gsi-render-btn')?.querySelector('div[role=button]') as HTMLElement;
+        if (renderBtn) {
+          renderBtn.click();
+          setIsLoading(false);
+          return;
+        }
+
+        (window as any).google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            doOAuthRedirect();
+          }
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Fallback ke OAuth redirect jika GIS script tidak dapat dimuat
+      await doOAuthRedirect();
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Gagal terhubung dengan Google.');
+      setIsLoading(false);
+    }
+  };
+
+  const doOAuthRedirect = async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      // Pre-warm Supabase auth endpoint agar tidak cold start / gateway timeout
+      try {
+        const controller = new AbortController();
+        const tId = setTimeout(() => controller.abort(), 1500);
+        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fnhrdwfmwhglbrnzlxxv.supabase.co'}/auth/v1/health`, {
+          headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' },
+          signal: controller.signal,
+        });
+        clearTimeout(tId);
+      } catch {}
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          queryParams: {
+            prompt: 'select_account',
+            access_type: 'offline',
+          },
         },
       });
       if (error) {
         setErrorMessage(error.message);
       }
     } catch (e: any) {
-      setErrorMessage(e.message || 'Gagal terhubung dengan Google.');
+      setErrorMessage(e.message || 'Gagal mengarahkan ke login Google.');
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +295,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             can_access_sensitive: isAdmin || !!nipVerifiedData,
             nip: nip || (isAdmin ? '197610182002121002' : undefined),
           };
-          sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+          try {
+            localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+            sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
+          } catch {}
           onSuccess(profile);
           onClose();
           return;
@@ -142,7 +317,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             department: 'Dinas Ketahanan Pangan dan Pertanian',
             position: 'Kepala Dinas DKPP (Super Admin)',
           };
-          sessionStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
+          try {
+            localStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
+            sessionStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
+          } catch {}
           onSuccess(adminProfile);
           onClose();
           return;
@@ -196,11 +374,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           position: nipVerifiedData?.jabatan,
         };
 
-        sessionStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
+        try {
+          localStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
+          sessionStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
+        } catch {}
         onSuccess(newProfile);
         onClose();
         return;
       }
+
     } catch (err: any) {
       setErrorMessage(err.message || 'Terjadi kesalahan sistem saat otentikasi.');
     } finally {
@@ -251,26 +433,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1f2026] hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-medium transition-all shadow-xs"
           >
             {/* Multi-color Google SVG Logo */}
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>Continue with Google</span>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-gray-600 dark:text-gray-300" />
+            ) : (
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+            )}
+            <span>{isLoading ? 'Menghubungkan...' : 'Continue with Google'}</span>
           </button>
+          <div id="dkpp-gsi-render-btn" className="hidden" aria-hidden="true" />
         </div>
 
         {/* Divider OR */}
