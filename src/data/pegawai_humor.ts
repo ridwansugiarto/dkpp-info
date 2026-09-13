@@ -505,42 +505,71 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   }
 ];
 
+// Rumus Komposit Berstandar Indeks (Skala Persentase: 75% - 99.5%)
+export function getIndeksKecantikanNum(p: PegawaiHumorItem): number {
+  const base = (p.skor_ketampanan_kecantikan * 5.0) + (p.skor_daya_tarik_aura * 2.8) + (p.skor_rajin_kehadiran * 1.2) + (p.skor_kecerdasan * 0.8);
+  const tune = ((p.jumlah_terpesona * 0.03) + ((p.nomor || 1) % 7) * 0.04);
+  return Math.min(99.45, Math.max(76.20, base + tune));
+}
+
+export function formatIndeksKecantikan(p: PegawaiHumorItem): string {
+  return getIndeksKecantikanNum(p).toFixed(2).replace('.', ',') + '%';
+}
+
+export function getIndeksKetampananNum(p: PegawaiHumorItem): number {
+  const base = (p.skor_ketampanan_kecantikan * 5.0) + (p.skor_daya_tarik_aura * 2.8) + (p.skor_rajin_kehadiran * 1.2) + (p.skor_kecerdasan * 0.8);
+  const tune = (Math.min(50, p.jumlah_terpesona) * 0.03) + (((p.nomor || 1) % 5) * 0.03);
+  return Math.min(99.35, Math.max(76.20, base + tune));
+}
+
+export function formatIndeksKetampanan(p: PegawaiHumorItem): string {
+  return getIndeksKetampananNum(p).toFixed(2).replace('.', ',') + '%';
+}
+
+export function getIndeksCerdasNum(p: PegawaiHumorItem): number {
+  const base = (p.skor_kecerdasan * 6.0) + (p.skor_rajin_kehadiran * 2.5) + (p.skor_daya_tarik_aura * 1.3);
+  const tune = (((p.nomor || 1) % 9) * 0.03);
+  return Math.min(99.50, Math.max(76.00, base + tune));
+}
+
+export function formatIndeksCerdas(p: PegawaiHumorItem): string {
+  return getIndeksCerdasNum(p).toFixed(2).replace('.', ',') + '%';
+}
+
+export function getIndeksAuraNum(p: PegawaiHumorItem): number {
+  const base = (p.skor_daya_tarik_aura * 5.0) + (p.skor_ketampanan_kecantikan * 3.0) + (p.skor_rajin_kehadiran * 1.0) + (Math.min(50, p.jumlah_terpesona) * 0.15);
+  const tune = (((p.nomor || 1) % 7) * 0.04);
+  return Math.min(99.60, Math.max(76.00, base + tune));
+}
+
+export function formatIndeksAura(p: PegawaiHumorItem): string {
+  return getIndeksAuraNum(p).toFixed(2).replace('.', ',') + '%';
+}
+
 // Helper functions untuk merespons pertanyaan santai
-export function getTopGanteng(limit = 5): PegawaiHumorItem[] {
+export function getTopGanteng(limit = 6): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
     .filter(p => p.jenis_kelamin === 'L')
-    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
+    .sort((a, b) => getIndeksKetampananNum(b) - getIndeksKetampananNum(a))
     .slice(0, limit);
 }
 
-export function getTopCantik(limit = 5): PegawaiHumorItem[] {
+export function getTopCantik(limit = 6): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
     .filter(p => p.jenis_kelamin === 'P')
-    .sort((a, b) => b.skor_ketampanan_kecantikan - a.skor_ketampanan_kecantikan)
+    .sort((a, b) => getIndeksKecantikanNum(b) - getIndeksKecantikanNum(a))
     .slice(0, limit);
 }
 
-export function getTopAura(limit = 5): PegawaiHumorItem[] {
+export function getTopAura(limit = 6): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .sort((a, b) => b.skor_daya_tarik_aura - a.skor_daya_tarik_aura)
+    .sort((a, b) => getIndeksAuraNum(b) - getIndeksAuraNum(a))
     .slice(0, limit);
 }
 
-export function getTopTerpesona(limit = 5): PegawaiHumorItem[] {
+export function getTopCerdas(limit = 6): PegawaiHumorItem[] {
   return OFFICIAL_DKPP_HUMOR_DATA
-    .sort((a, b) => b.jumlah_terpesona - a.jumlah_terpesona)
-    .slice(0, limit);
-}
-
-export function getTopCerdas(limit = 5): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
-    .sort((a, b) => b.skor_kecerdasan - a.skor_kecerdasan)
-    .slice(0, limit);
-}
-
-export function getTopRajin(limit = 5): PegawaiHumorItem[] {
-  return OFFICIAL_DKPP_HUMOR_DATA
-    .sort((a, b) => b.skor_rajin_kehadiran - a.skor_rajin_kehadiran)
+    .sort((a, b) => getIndeksCerdasNum(b) - getIndeksCerdasNum(a))
     .slice(0, limit);
 }
 
@@ -590,71 +619,46 @@ export function buildPegawaiHumorContext(userMessage: string): string | null {
 
   const q = userMessage.toLowerCase();
   let result = `=== MODE BERCANDA / HUMOR INTERNAL PEGAWAI DKPP (SENSITIF - INTERNAL ONLY) ===\n`;
-  result += `ATURAN WAJIB & MUTLAK:\n`;
-  result += `1. HANYA sebutkan nama-nama yang ada di DAFTAR RESMI MODE BERCANDA di bawah ini (nama yang seluruh ratingnya terisi lengkap).\n`;
-  result += `2. DILARANG KERAS menyebutkan nama-nama yang memiliki sel kosong / tidak memiliki rating (seperti Ibu Plt. Kadis Efa Sarifah, Sekretaris Dinas Agus Purmono, Kabid Lira, Kabid Cahyaning, H. Mustofa, dll.) dalam konteks candaan/humor, karena beliau-beliau berkarakter serius dan tidak bisa menerima candaan.\n`;
-  result += `3. Jawablah dengan nada yang ramah, hangat, jenaka, dan sopan, diakhiri dengan catatan santai bahwa ini khusus keakraban internal DKPP.\n\n`;
-
-  if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
-    const topGanteng = getTopGanteng(6);
-    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (Hanya yang bersedia bercanda):\n`;
-    topGanteng.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Skor Ketampanan: ${p.skor_ketampanan_kecantikan}/10, Aura: ${p.skor_daya_tarik_aura}/10)\n`;
-    });
-    result += `\n`;
-  }
+  result += `ATURAN GAYA JAWABAN & FORMAT (WAJIB DIIKUTI TANPA KECUALI):\n`;
+  result += `1. DILARANG KERAS MENAMPILKAN ANGKA MENTAH ATAU SKOR PECAHAN SEPERTI "10/10", "9/10", ATAU "Skor 8"!\n`;
+  result += `2. BERIKAN SKOR GABUNGAN DALAM SATUAN INDEKS PERSENTASE (contoh: "1. Sri Rahmadani Piliang, SE — dengan indeks kecantikan komposit 97,66%").\n`;
+  result += `3. HANYA proses nama-nama yang ada dalam daftar di bawah ini (yang seluruh datanya terisi). JANGAN PERNAH mencatut nama pimpinan atau pegawai yang dikecualikan.\n`;
+  result += `4. Berikan narasi yang santun, elegan, hangat, dan bernada apresiasi keakraban.\n`;
+  result += `5. Akhiri jawaban dengan catatan santai bahwa ini bersumber dari catatan internal mode santai/keakraban DKPP.\n\n`;
 
   if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
     const topCantik = getTopCantik(6);
-    result += `DAFTAR PEGAWAI PALING CANTIK (Hanya yang bersedia bercanda):\n`;
+    result += `DAFTAR PEGAWAI PALING CANTIK (DENGAN INDEKS KECANTIKAN KOMPOSIT DALAM PERSENTASE):\n`;
     topCantik.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Skor Kecantikan: ${p.skor_ketampanan_kecantikan}/10, Aura: ${p.skor_daya_tarik_aura}/10)\n`;
+      result += `${idx + 1}. ${p.nama} — dengan Indeks Kecantikan Komposit sebesar ${formatIndeksKecantikan(p)}\n`;
     });
     result += `\n`;
-  }
-
-  if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma')) {
+  } else if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
+    const topGanteng = getTopGanteng(6);
+    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (DENGAN INDEKS KETAMPANAN KOMPOSIT DALAM PERSENTASE):\n`;
+    topGanteng.forEach((p, idx) => {
+      result += `${idx + 1}. ${p.nama} — dengan Indeks Ketampanan Komposit sebesar ${formatIndeksKetampanan(p)}\n`;
+    });
+    result += `\n`;
+  } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma') || q.includes('terpesona')) {
     const topAura = getTopAura(6);
-    result += `DAFTAR PEGAWAI DENGAN AURA / DAYA TARIK TERTINGGI:\n`;
+    result += `DAFTAR PEGAWAI DENGAN DAYA TARIK & AURA TERTINGGI (DENGAN INDEKS AURA KOMPOSIT DALAM PERSENTASE):\n`;
     topAura.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Skor Aura: ${p.skor_daya_tarik_aura}/10)\n`;
+      result += `${idx + 1}. ${p.nama} — dengan Indeks Kharisma/Aura Komposit sebesar ${formatIndeksAura(p)}\n`;
     });
     result += `\n`;
-  }
-
-  if (q.includes('terpesona') || q.includes('terpikat') || q.includes('fans') || q.includes('perempuan') || q.includes('wanita')) {
-    const topTerpesona = getTopTerpesona(6);
-    result += `DAFTAR PEGAWAI DENGAN JUMLAH YANG TERPESONA TERBANYAK:\n`;
-    topTerpesona.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Mencapai ${p.jumlah_terpesona} orang terpesona)\n`;
-    });
-    result += `\n`;
-  }
-
-  if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
+  } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
     const topCerdas = getTopCerdas(6);
-    result += `DAFTAR PEGAWAI DENGAN SKOR KECERDASAN TERTINGGI (Mode Santai):\n`;
+    result += `DAFTAR PEGAWAI DENGAN INDEKS KECERDASAN KOMPOSIT TERTINGGI (DALAM PERSENTASE):\n`;
     topCerdas.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Skor Kecerdasan: ${p.skor_kecerdasan}/10, Rajin: ${p.skor_rajin_kehadiran}/10)\n`;
+      result += `${idx + 1}. ${p.nama} — dengan Indeks Kecerdasan Komposit sebesar ${formatIndeksCerdas(p)}\n`;
     });
     result += `\n`;
-  }
-
-  if (q.includes('rajin') || q.includes('hadir') || q.includes('kehadiran')) {
-    const topRajin = getTopRajin(6);
-    result += `DAFTAR PEGAWAI PALING RAJIN KEHADIRAN (Mode Santai):\n`;
-    topRajin.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} (Skor Kehadiran: ${p.skor_rajin_kehadiran}/10)\n`;
-    });
-    result += `\n`;
-  }
-
-  if (!q.includes('ganteng') && !q.includes('cantik') && !q.includes('aura') && !q.includes('terpesona') && !q.includes('cerdas') && !q.includes('rajin')) {
-    result += `RINGKASAN MODE BERCANDA (HANYA PEGAWAI DENGAN RATING LENGKAP):\n`;
-    result += `- Paling Ganteng: Paulus Dwi Ari K D, ST, Subandi, Yuki Suryarizki, S.Kom, Asep Qomaruzzaman, S.AP, Ridwan Sugiarto, S.Pi, Udin Saprudin, SE\n`;
-    result += `- Paling Cantik: Sri Rahmadani Piliang, SE, Minarni, SE, Sri Ratnaningsih, S.Pi, Winda Ratnasari, SP, Maisaroh, SP\n`;
-    result += `- Juara Pemikat Terpesona: Subandi (50 orang), Asep Qomaruzzaman (48 orang), Yuki Suryarizki (45 orang)\n`;
-    result += `- Paling Cerdas: Ridwan Sugiarto, S.Pi (10/10), Wahyudi, SE (10/10), Mas Akhmad Rangga P, SE (10/10), Sandhi Maulana Adha, SP (10/10), Asep Qomaruzzaman, S.AP (10/10)\n`;
+  } else {
+    result += `RINGKASAN INDEKS KOMPOSIT MODE SANTAI DKPP:\n`;
+    result += `- Indeks Kecantikan Tertinggi: Sri Rahmadani Piliang, SE (97,66%), Sri Ratnaningsih, S.Pi (96,58%), Minarni, SE (95,20%)\n`;
+    result += `- Indeks Ketampanan Tertinggi: Subandi (95,10%), Asep Qomaruzzaman, S.AP (94,67%), Paulus Dwi Ari K D, ST (94,42%), Yuki Suryarizki, S.Kom (93,47%)\n`;
+    result += `- Indeks Kecerdasan Komposit: Ridwan Sugiarto, S.Pi (96,79%), Mas Akhmad Rangga P, SE, MM (95,55%)\n`;
   }
 
   return result;

@@ -675,57 +675,47 @@ function generateRuleBasedAnswer(userQuery: string): string {
 
   // Mode bercanda/humor pegawai internal
   if (isPegawaiHumorQuery(userQuery)) {
-    let ans = `### Mode Santai & Humor Internal DKPP Cilegon 😄\n\n`;
-    if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
-      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut daftar pegawai dengan skor ketampanan tertinggi:\n\n` +
-        `1. **Paulus Dwi Ari K D, ST** — Skor Ketampanan **10/10**, Aura 10/10 (Pesona memikat)\n` +
-        `2. **Subandi** — Skor Ketampanan **10/10**, Aura 10/10 (Pemikat hingga 50 orang terpesona!)\n` +
-        `3. **Yuki Suryarizki, S.Kom** — Skor Ketampanan **10/10**, Aura 10/10 (45 orang terpesona)\n` +
-        `4. **Asep Qomaruzzaman, S.AP** — Skor Ketampanan **10/10**, Aura 10/10, Cerdas 10/10\n` +
-        `5. **Ridwan Sugiarto, S.Pi** — Skor Ketampanan **9/10**, Aura 9/10, Cerdas 10/10, Rajin 10/10\n` +
-        `6. **Udin Saprudin, SE, M.M.** — Skor Ketampanan **9/10**, Aura 9/10\n` +
-        `7. **Tandis Destalana, SE.MM** — Skor Ketampanan **9/10**, Aura 9/10\n\n`;
-    } else if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
-      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut jajaran pegawai dengan skor kecantikan & pesona tertinggi:\n\n` +
-        `1. **Sri Rahmadani Piliang, SE** — Skor Kecantikan **10/10**, Aura 10/10, Rajin 10/10\n` +
-        `2. **Minarni, SE** — Skor Kecantikan **10/10**, Aura 9/10, Cerdas 9/10, Rajin 10/10\n` +
-        `3. **Sri Ratnaningsih, S.Pi** — Skor Kecantikan **10/10**, Aura 10/10 (30 orang terpesona!)\n` +
-        `4. **Winda Ratnasari, SP** — Skor Kecantikan **9/10**, Aura 9/10, Rajin 10/10, Cerdas 9/10\n` +
-        `5. **Maisaroh, SP** — Skor Kecantikan **9/10**, Aura 9/10 (20 orang terpesona)\n` +
-        `6. **Maryori, S.Pi** — Skor Kecantikan **8/10**, Aura 10/10\n\n`;
-    } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma')) {
-      ans += `Berdasarkan catatan internal mode santai/candaan DKPP Kota Cilegon, berikut pegawai dengan tingkat aura/daya tarik puncak (10/10):\n\n` +
-        `• **Paulus Dwi Ari K D, ST** (10/10)\n` +
-        `• **Subandi** (10/10)\n` +
-        `• **Asep Qomaruzzaman, S.AP** (10/10)\n` +
-        `• **Yuki Suryarizki, S.Kom** (10/10)\n` +
-        `• **Maryori, S.Pi** (10/10)\n` +
-        `• **Sri Rahmadani Piliang, SE** (10/10)\n` +
-        `• **Sri Ratnaningsih, S.Pi** (10/10)\n\n`;
-    } else if (q.includes('terpesona') || q.includes('terpikat') || q.includes('fans')) {
-      ans += `Berdasarkan catatan internal mode santai DKPP, rekor jumlah orang yang terpesona dipimpin oleh:\n\n` +
-        `1. **Subandi** — Mencapai **50 orang** terpesona!\n` +
-        `2. **Asep Qomaruzzaman, S.AP** — **48 orang** terpesona\n` +
-        `3. **Yuki Suryarizki, S.Kom** — **45 orang** terpesona\n` +
-        `4. **Sri Ratnaningsih, S.Pi** — **30 orang** terpesona\n` +
-        `5. **Minarni, SE** & **Maisaroh, SP** — masing-masing **20 orang** terpesona\n\n`;
+    let ans = `Radar **Mode Keakraban Internal DKPP** mendeteksi pertanyaan seputar pesona keakraban pegawai! ✨\n\n`;
+    if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
+      ans += `Berdasarkan **Indeks Kecantikan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai paling memikat:\n\n` +
+        `1. **Sri Rahmadani Piliang, SE** — dengan Indeks Kecantikan Komposit sebesar **97,66%**\n` +
+        `2. **Sri Ratnaningsih, S.Pi** — dengan Indeks Kecantikan Komposit sebesar **96,58%**\n` +
+        `3. **Minarni, SE** — dengan Indeks Kecantikan Komposit sebesar **95,20%**\n` +
+        `4. **Winda Ratnasari, SP** — dengan Indeks Kecantikan Komposit sebesar **89,82%**\n` +
+        `5. **Maisaroh, SP** — dengan Indeks Kecantikan Komposit sebesar **88,92%**\n` +
+        `6. **Maryori, S.Pi** — dengan Indeks Kecantikan Komposit sebesar **81,47%**\n\n`;
+    } else if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
+      ans += `Berdasarkan **Indeks Ketampanan Komposit** dalam catatan mode santai keluarga besar Dinas Ketahanan Pangan dan Pertanian Kota Cilegon, berikut jajaran pegawai pria dengan indeks tertinggi:\n\n` +
+        `1. **Subandi** — dengan Indeks Ketampanan & Daya Pikat sebesar **95,10%**\n` +
+        `2. **Asep Qomaruzzaman, S.AP** — dengan Indeks Ketampanan Komposit sebesar **94,67%**\n` +
+        `3. **Paulus Dwi Ari K D, ST** — dengan Indeks Ketampanan Komposit sebesar **94,42%**\n` +
+        `4. **Yuki Suryarizki, S.Kom** — dengan Indeks Ketampanan Komposit sebesar **93,47%**\n` +
+        `5. **Ridwan Sugiarto, S.Pi** — dengan Indeks Ketampanan Komposit sebesar **90,29%**\n` +
+        `6. **Tandis Destalana, SE.MM** — dengan Indeks Ketampanan Komposit sebesar **83,33%**\n` +
+        `7. **Udin Saprudin, SE, M.M.** — dengan Indeks Ketampanan Komposit sebesar **82,82%**\n\n`;
+    } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma') || q.includes('terpesona')) {
+      ans += `Berdasarkan **Indeks Kharisma & Daya Pikat Komposit** dalam catatan mode santai DKPP Kota Cilegon:\n\n` +
+        `1. **Subandi** — dengan Indeks Kharisma Komposit sebesar **96,70%**\n` +
+        `2. **Sri Ratnaningsih, S.Pi** — dengan Indeks Kharisma Komposit sebesar **94,58%**\n` +
+        `3. **Yuki Suryarizki, S.Kom** — dengan Indeks Kharisma Komposit sebesar **93,87%**\n` +
+        `4. **Asep Qomaruzzaman, S.AP** — dengan Indeks Kharisma Komposit sebesar **93,36%**\n` +
+        `5. **Paulus Dwi Ari K D, ST** — dengan Indeks Kharisma Komposit sebesar **91,84%**\n` +
+        `6. **Sri Rahmadani Piliang, SE** — dengan Indeks Kharisma Komposit sebesar **91,66%**\n\n`;
     } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
-      ans += `Berdasarkan catatan internal mode santai DKPP, skor kecerdasan puncak (10/10) disandang oleh:\n\n` +
-        `• **Ridwan Sugiarto, S.Pi** (10/10, Rajin 10/10)\n` +
-        `• **Wahyudi, SE** (10/10)\n` +
-        `• **Mas Akhmad Rangga P, SE, MM** (10/10, Rajin 10/10)\n` +
-        `• **Sandhi Maulana Adha, SP** (10/10)\n` +
-        `• **Asep Qomaruzzaman, S.AP** (10/10)\n` +
-        `• **Udin Saprudin, SE, M.M.** (9/10)\n` +
-        `• **Winda Ratnasari, SP** (9/10)\n` +
-        `• **Minarni, SE** (9/10)\n\n`;
+      ans += `Berdasarkan **Indeks Kecerdasan Komposit (Mode Santai)** dalam catatan internal DKPP Kota Cilegon:\n\n` +
+        `1. **Ridwan Sugiarto, S.Pi** — dengan Indeks Kecerdasan Komposit sebesar **96,79%**\n` +
+        `2. **Mas Akhmad Rangga P, SE, MM** — dengan Indeks Kecerdasan Komposit sebesar **95,55%**\n` +
+        `3. **Sri Rahmadani Piliang, SE** — dengan Indeks Kecerdasan Komposit sebesar **92,09%**\n` +
+        `4. **Winda Ratnasari, SP** — dengan Indeks Kecerdasan Komposit sebesar **90,88%**\n` +
+        `5. **Minarni, SE** — dengan Indeks Kecerdasan Komposit sebesar **90,70%**\n` +
+        `6. **Sandhi Maulana Adha, SP** — dengan Indeks Kecerdasan Komposit sebesar **90,43%**\n\n`;
     } else {
-      ans += `Catatan mode santai/candaan internal DKPP memuat profil keakraban pegawai (skor ketampanan/kecantikan, aura pesona, kerajinan, hingga kecerdasan santai):\n\n` +
-        `• **Ketampanan Puncak:** Paulus Dwi Ari, Subandi, Yuki Suryarizki, Asep Qomaruzzaman, Ridwan Sugiarto, S.Pi\n` +
-        `• **Kecantikan Puncak:** Sri Rahmadani Piliang, SE, Minarni, SE, Sri Ratnaningsih, S.Pi, Winda Ratnasari, SP\n` +
-        `• **Juara Pemikat Terpesona:** Subandi (50 orang), Asep Qomaruzzaman (48 orang), Yuki Suryarizki (45 orang)\n\n`;
+      ans += `Catatan mode santai/keakraban internal DKPP menyajikan Indeks Komposit Pegawai sebagai berikut:\n\n` +
+        `• **Indeks Ketampanan Komposit Tertinggi:** Subandi (95,10%), Asep Qomaruzzaman, S.AP (94,67%), Paulus Dwi Ari K D, ST (94,42%), Yuki Suryarizki, S.Kom (93,47%)\n` +
+        `• **Indeks Kecantikan Komposit Tertinggi:** Sri Rahmadani Piliang, SE (97,66%), Sri Ratnaningsih, S.Pi (96,58%), Minarni, SE (95,20%), Winda Ratnasari, SP (89,82%)\n` +
+        `• **Indeks Kharisma & Terpesona Tertinggi:** Subandi (96,70%), Sri Ratnaningsih, S.Pi (94,58%), Yuki Suryarizki, S.Kom (93,87%)\n\n`;
     }
-    ans += `> _*Catatan:* Ini adalah data humor / mode santai internal DKPP khusus untuk mencairkan suasana dan keakraban, bukan instrumen penilaian dinas resmi ya! 😄_`;
+    ans += `> _*Catatan:* Ini adalah data humor / mode santai internal DKPP khusus untuk mencairkan suasana dan keakraban keluarga besar dinas, bukan instrumen penilaian kedinasan resmi ya! 😄_`;
     return ans;
   }
 
