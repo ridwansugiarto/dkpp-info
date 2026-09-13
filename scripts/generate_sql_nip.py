@@ -2,9 +2,9 @@ import openpyxl
 import re
 import os
 
-f1 = r'public\daftar nip pegawai internal DKPP\nama dan nip pegawai internal dkpp (asn) 2023.xlsx'
-f2 = r'public\daftar nip pegawai internal DKPP\nama dan npwp pegawai internal dkpp (asn) 2023.xlsx'
-f3 = r'public\daftar nip pegawai internal DKPP\nama THL internal dkpp (asn) 2023.xlsx'
+f1 = r'private_docs\daftar nip pegawai internal DKPP\nama dan nip pegawai internal dkpp (asn) 2023.xlsx'
+f2 = r'private_docs\daftar nip pegawai internal DKPP\nama dan npwp pegawai internal dkpp (asn) 2023.xlsx'
+f3 = r'private_docs\daftar nip pegawai internal DKPP\nama THL internal dkpp (asn) 2023.xlsx'
 
 wb1 = openpyxl.load_workbook(f1, data_only=True)
 ws1 = wb1['Lampiran I']

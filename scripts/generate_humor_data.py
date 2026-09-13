@@ -2,7 +2,7 @@ import openpyxl
 import json
 import os
 
-excel_path = os.path.join('public', 'daftar nip pegawai internal DKPP', 'nama dan data pendukung (mode bercanda) pegawai internal dkpp.xlsx')
+excel_path = os.path.join('private_docs', 'daftar nip pegawai internal DKPP', 'nama dan data pendukung (mode bercanda) pegawai internal dkpp.xlsx')
 
 wb = openpyxl.load_workbook(excel_path)
 sheet = wb.active
