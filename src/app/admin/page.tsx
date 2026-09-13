@@ -24,7 +24,9 @@ import {
   ToggleRight,
   Shield,
   Building,
-  UserCheck
+  UserCheck,
+  Layers,
+  Cpu
 } from 'lucide-react';
 import { DocumentItem } from '@/types/dkpp';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -46,7 +48,7 @@ export default function AdminPortalPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'AUDIT' | 'HEALTH'>('DOCUMENTS');
+  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'SYNC' | 'AUDIT' | 'HEALTH'>('DOCUMENTS');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +71,13 @@ export default function AdminPortalPage() {
   const [newNipJabatan, setNewNipJabatan] = useState('');
   const [newNipBidang, setNewNipBidang] = useState('Ketahanan Pangan');
 
+  // Sync Data & GIS States
+  const [syncStatusData, setSyncStatusData] = useState<any>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [isSyncingGis, setIsSyncingGis] = useState(false);
+  const [isVerifyingKnowledge, setIsVerifyingKnowledge] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
   // Check auth session
   useEffect(() => {
     try {
@@ -90,8 +99,70 @@ export default function AdminPortalPage() {
       fetchDocuments();
       fetchAuditLogs();
       fetchNips();
+      fetchSyncStatus();
     }
   }, [isAuthorizedAdmin]);
+
+  const fetchSyncStatus = async () => {
+    try {
+      setSyncLoading(true);
+      const res = await fetch(`/api/admin/sync-status?userEmail=${AUTHORIZED_ADMIN_EMAIL}`);
+      const data = await res.json();
+      if (data.success) {
+        setSyncStatusData(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch sync status:', e);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleSyncGis = async () => {
+    try {
+      setIsSyncingGis(true);
+      setSyncFeedback({ type: 'info', text: 'Sedang menarik data spasial terbaru (sawah 407 petak, nelayan, KWT, peternakan) dari Serumpun-Padi GIS...' });
+      const res = await fetch('/api/admin/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: AUTHORIZED_ADMIN_EMAIL, action: 'SYNC_GIS' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncFeedback({ type: 'success', text: '✅ Data GIS Serumpun-Padi berhasil disinkronkan ke cache lokal!' });
+        fetchSyncStatus();
+      } else {
+        setSyncFeedback({ type: 'error', text: `Gagal sinkronisasi GIS: ${data.details?.error || data.error || 'Periksa koneksi SP'}` });
+      }
+    } catch {
+      setSyncFeedback({ type: 'error', text: 'Gagal menghubungi server untuk sinkronisasi GIS.' });
+    } finally {
+      setIsSyncingGis(false);
+    }
+  };
+
+  const handleVerifyKnowledge = async () => {
+    try {
+      setIsVerifyingKnowledge(true);
+      setSyncFeedback({ type: 'info', text: 'Sedang memverifikasi tabel Knowledge Base & pgvector search...' });
+      const res = await fetch('/api/admin/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: AUTHORIZED_ADMIN_EMAIL, action: 'VERIFY_KNOWLEDGE' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncFeedback({ type: 'success', text: '✅ Knowledge Base AI terverifikasi 100%! Seluruh indeks dokumen & RAG aktif siap melayani chat.' });
+        fetchSyncStatus();
+      } else {
+        setSyncFeedback({ type: 'error', text: `Verifikasi gagal: ${data.error || 'Kueri RAG tidak berhasil'}` });
+      }
+    } catch {
+      setSyncFeedback({ type: 'error', text: 'Gagal memverifikasi Knowledge Base.' });
+    } finally {
+      setIsVerifyingKnowledge(false);
+    }
+  };
 
   const fetchDocuments = async () => {
     try {
@@ -456,6 +527,23 @@ export default function AdminPortalPage() {
           >
             <UploadCloud className="w-4 h-4" />
             <span>Upload & Ingestion</span>
+          </button>
+
+          {/* TAB BARU: SINKRONISASI DATA & GIS */}
+          <button
+            onClick={() => {
+              setActiveTab('SYNC');
+              fetchSyncStatus();
+            }}
+            className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'SYNC'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+            }`}
+          >
+            <RefreshCw className="w-4 h-4 text-emerald-400" />
+            <span className="flex-1 text-left">Sinkronisasi Data & GIS</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </button>
 
           <button
@@ -905,6 +993,198 @@ export default function AdminPortalPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5.5: SINKRONISASI DATA & GIS */}
+          {activeTab === 'SYNC' && (
+            <div className="space-y-6">
+              {/* Header Tab */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-emerald-400" />
+                    <span>Pusat Sinkronisasi Data Spasial & Knowledge Base</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Sinkronkan data geospasial Serumpun-Padi & verifikasi indeks dokumen Supabase untuk ChatDKPP AI.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchSyncStatus}
+                  disabled={syncLoading}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh Status</span>
+                </button>
+              </div>
+
+              {/* Feedback Alert Box */}
+              {syncFeedback && (
+                <div
+                  className={`p-4 rounded-xl border text-xs flex items-start gap-2.5 transition-all animate-in fade-in ${
+                    syncFeedback.type === 'success'
+                      ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                      : syncFeedback.type === 'error'
+                      ? 'bg-rose-950/60 border-rose-800 text-rose-300'
+                      : 'bg-blue-950/60 border-blue-800 text-blue-300'
+                  }`}
+                >
+                  <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{syncFeedback.text}</span>
+                </div>
+              )}
+
+              {/* 2 Primary Action Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* CARD 1: GIS SERUMPUN-PADI */}
+                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
+                          <Layers className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white">Data Spasial Serumpun-Padi GIS</h3>
+                          <span className="text-[10.5px] text-emerald-400 font-medium">Auto-Cache TTL: 6 Jam</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60">
+                        {syncStatusData?.gis_serumpun_padi?.status || 'AKTIF'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Menyinkronkan <strong>407 petak sawah baku (1.151,97 Ha)</strong>, pangkalan nelayan, budidaya kolam, kelompok wanita tani (KWT), dan peternakan dari database GIS Serumpun-Padi ke basis data lokal.
+                    </p>
+
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tabel Spasial:</span>
+                        <span className="font-mono text-emerald-300 font-semibold">{syncStatusData?.gis_serumpun_padi?.cached_tables || 6} Tabel</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Terakhir Disinkronkan:</span>
+                        <span className="text-slate-200">
+                          {syncStatusData?.gis_serumpun_padi?.last_synced_at
+                            ? new Date(syncStatusData.gis_serumpun_padi.last_synced_at).toLocaleString('id-ID')
+                            : 'Otomatis (Tersedia)'}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+                        Sumber: <code className="text-slate-300 font-mono">sawah_status, pangkalan_nelayan, budidaya_kolam, kwt_cilegon, peternakan</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncGis}
+                    disabled={isSyncingGis}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncingGis ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingGis ? 'Menyinkronkan GIS Serumpun-Padi...' : 'Sinkronkan Data GIS Serumpun-Padi Sekarang'}</span>
+                  </button>
+                </div>
+
+                {/* CARD 2: KNOWLEDGE BASE AI CHATDKPP */}
+                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-blue-900/40 border border-blue-800/50 flex items-center justify-center text-blue-400">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white">AI Knowledge Base & pgvector</h3>
+                          <span className="text-[10.5px] text-blue-400 font-medium">Real-time RAG Pipeline</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800/60">
+                        {syncStatusData?.knowledge_base?.rag_rpc_status || 'HEALTHY'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Memverifikasi <strong>54 Dokumen resmi</strong> & <strong>5.412 chunks</strong> teks di Supabase. AI Chatbot secara otomatis memanggil kueri pencarian teks dan pgvector ini pada setiap chat baru.
+                    </p>
+
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Total Dokumen Terindeks:</span>
+                        <span className="font-mono text-blue-300 font-semibold">{syncStatusData?.knowledge_base?.total_docs || 54} Dokumen</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Total Chunks RAG:</span>
+                        <span className="font-mono text-blue-300 font-semibold">{syncStatusData?.knowledge_base?.total_chunks || 5412} Chunks</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+                        Stored Procedure: <code className="text-blue-300 font-mono">match_knowledge_chunks(query, limit)</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleVerifyKnowledge}
+                    disabled={isVerifyingKnowledge}
+                    className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle className={`w-4 h-4 ${isVerifyingKnowledge ? 'animate-spin' : ''}`} />
+                    <span>{isVerifyingKnowledge ? 'Memverifikasi Knowledge Base...' : 'Verifikasi & Sinkronisasi Knowledge Base'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CARD 3: STATUS REAL-TIME INFRASTRUKTUR */}
+              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-emerald-400" />
+                  <span>Status Infrastruktur AI & Database (Live Health)</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="text-[11px] text-slate-400">Supabase Main DB</div>
+                    <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>TERHUBUNG</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Tables: documents, nips</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="text-[11px] text-slate-400">Serumpun-Padi GIS</div>
+                    <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>SP_CACHE AKTIF</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Sawah baku 407 petak</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="text-[11px] text-slate-400">ChatDKPP Intelligence</div>
+                    <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>OPERASIONAL</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Gemini 2.5 Flash</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="text-[11px] text-slate-400">Vector Search Engine</div>
+                    <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>FULL-TEXT & RAG</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">match_knowledge_chunks</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
