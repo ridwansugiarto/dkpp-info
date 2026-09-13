@@ -91,8 +91,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {/* Sidebar Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-200/70 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-amber-300 shadow-sm">
-              <Wheat className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
+              <img
+                src="/ikon-chatDKPP.png"
+                alt="Chat DKPP"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-semibold text-gray-900 text-base tracking-tight leading-tight">

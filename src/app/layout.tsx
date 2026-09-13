@@ -166,7 +166,12 @@ export const metadata: Metadata = {
 
   // ── ICONS ──────────────────────────────────────────────────
   icons: {
-    icon: '/icon',
+    icon: [
+      { url: '/ikon-chatDKPP.png', type: 'image/png' },
+      { url: '/favicon.ico' },
+    ],
+    shortcut: '/ikon-chatDKPP.png',
+    apple: '/ikon-chatDKPP.png',
   },
 
   // ── VERIFICATION ───────────────────────────────────────────
@@ -187,6 +192,11 @@ export default function RootLayout({
 
   return (
     <html lang="id" className="light" style={{ colorScheme: 'light' }}>
+      <head>
+        <link rel="icon" type="image/png" href="/ikon-chatDKPP.png" />
+        <link rel="shortcut icon" type="image/png" href="/ikon-chatDKPP.png" />
+        <link rel="apple-touch-icon" href="/ikon-chatDKPP.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8FAFC] text-[#1E293B]`}
         style={{ colorScheme: 'light' }}

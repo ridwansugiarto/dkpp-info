@@ -324,10 +324,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
       {messages.length === 0 ? (
-        /* Empty State (Capture 5 Minimalist Vibes) */
-        <div className="max-w-xl mx-auto py-14 sm:py-20 flex flex-col items-center text-center animate-in fade-in duration-300">
-          <div className="w-12 h-12 rounded-2xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-sm mb-5">
-            <Sparkles className="w-6 h-6" />
+        /* Empty State (Sesuai Mockup Desktop dengan Logo Besar) */
+        <div className="max-w-xl mx-auto py-10 sm:py-16 flex flex-col items-center text-center animate-in fade-in duration-300">
+          <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 relative mb-5 sm:mb-6 flex items-center justify-center select-none">
+            <img
+              src="/ikon-chatDKPP.png"
+              alt="Chat DKPP Kota Cilegon"
+              className="w-full h-full object-contain drop-shadow-sm select-none"
+            />
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-2.5">
@@ -372,13 +376,17 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 key={msg.id || idx}
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Assistant Sleek Avatar (Celadon Green #A8DCAB) */}
+                {/* Assistant Sleek Avatar (Ikon Resmi Chat DKPP) */}
                 {!isUser && (
                   <div
-                    className="w-8 h-8 rounded-xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-xs shrink-0 mt-0.5"
+                    className="w-8 h-8 rounded-xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-center shrink-0 mt-0.5 overflow-hidden p-0.5"
                     title="DKPP-INFO Intelligence Assistant"
                   >
-                    <Sparkles className="w-4 h-4" />
+                    <img
+                      src="/ikon-chatDKPP.png"
+                      alt="DKPP AI"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 )}
 
@@ -526,8 +534,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex gap-3 justify-start items-center">
-              <div className="w-8 h-8 rounded-xl bg-[#A8DCAB] flex items-center justify-center text-emerald-900 shadow-xs shrink-0">
-                <Sparkles className="w-4 h-4 animate-spin" />
+              <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-center shrink-0 overflow-hidden p-0.5">
+                <img
+                  src="/ikon-chatDKPP.png"
+                  alt="DKPP AI"
+                  className="w-full h-full object-contain animate-pulse"
+                />
               </div>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex gap-1">
