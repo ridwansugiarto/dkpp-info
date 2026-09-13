@@ -330,7 +330,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             <img
               src="/ikon-chatDKPP.png"
               alt="Chat DKPP Kota Cilegon"
-              className="w-full h-full object-contain drop-shadow-sm select-none"
+              className="w-full h-full object-contain select-none"
             />
           </div>
 
@@ -385,7 +385,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     <img
                       src="/ikon-chatDKPP.png"
                       alt="DKPP AI"
-                      className="w-full h-full object-contain drop-shadow-xs"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 )}
@@ -538,7 +538,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 <img
                   src="/ikon-chatDKPP.png"
                   alt="DKPP AI"
-                  className="w-full h-full object-contain animate-pulse drop-shadow-xs"
+                  className="w-full h-full object-contain animate-pulse"
                 />
               </div>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
