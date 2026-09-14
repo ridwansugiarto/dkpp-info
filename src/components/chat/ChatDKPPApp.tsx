@@ -133,7 +133,7 @@ export const ChatDKPPApp: React.FC = () => {
       const isAdmin = email === 'ridwansugiarto.mail@gmail.com';
       const savedNip = user.user_metadata?.nip || '';
       let isVerified = isAdmin || !!savedNip;
-      let finalFullName = user.user_metadata?.full_name || user.user_metadata?.name || (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : email.split('@')[0]);
+      let finalFullName = user.user_metadata?.full_name || user.user_metadata?.name || (isAdmin ? 'Ridwan Sugiarto, S.Pi' : email.split('@')[0]);
       let finalDept = user.user_metadata?.department || (isAdmin ? 'Pimpinan DKPP' : undefined);
       let finalPosition = user.user_metadata?.position || (isAdmin ? 'Kepala Dinas DKPP (Super Admin)' : undefined);
 

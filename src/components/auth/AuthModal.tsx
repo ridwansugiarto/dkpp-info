@@ -29,7 +29,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [nip, setNip] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // NIP validation states
   const [nipValidating, setNipValidating] = useState(false);
   const [nipVerifiedData, setNipVerifiedData] = useState<{ nama?: string; jabatan?: string; bidang?: string } | null>(null);
@@ -199,12 +199,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               try {
                 localStorage.setItem('dkpp_user_session', JSON.stringify(apiData.user));
                 sessionStorage.setItem('dkpp_user_session', JSON.stringify(apiData.user));
-              } catch {}
+              } catch { }
               onSuccess(apiData.user);
               onClose();
               return;
             }
-          } catch {}
+          } catch { }
         }
 
         if (!authResult.error && authResult.data?.user) {
@@ -213,7 +213,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           let isVerified = isAdmin || !!savedNip;
           let finalFullName =
             u.user_metadata?.full_name ||
-            (isAdmin ? 'Dr. Ir. Ridwan Sugiarto, M.Si' : cleanEmail.split('@')[0]);
+            (isAdmin ? 'Ridwan Sugiarto, S.Pi' : cleanEmail.split('@')[0]);
 
           const profile: UserProfile = {
             id: u.id,
@@ -231,7 +231,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           try {
             localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
             sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
-          } catch {}
+          } catch { }
           onSuccess(profile);
           onClose();
           return;
@@ -242,7 +242,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const adminProfile: UserProfile = {
             id: 'admin-super-ridwan',
             email: cleanEmail,
-            full_name: 'Dr. Ir. Ridwan Sugiarto, M.Si',
+            full_name: 'Ridwan Sugiarto, S.Pi',
             role: 'ADMIN',
             is_verified_employee: true,
             can_access_sensitive: true,
@@ -254,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           try {
             localStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
             sessionStorage.setItem('dkpp_user_session', JSON.stringify(adminProfile));
-          } catch {}
+          } catch { }
           onSuccess(adminProfile);
           onClose();
           return;
@@ -326,7 +326,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         try {
           localStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
           sessionStorage.setItem('dkpp_user_session', JSON.stringify(newProfile));
-        } catch {}
+        } catch { }
         onSuccess(newProfile);
         onClose();
         return;
@@ -351,7 +351,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       {/* Modal Card (Persis Capture 3 Style) */}
-      <div 
+      <div
         className="relative z-[100000] w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-200 text-gray-900 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         user: {
           id: 'admin-super-ridwan',
           email: 'ridwansugiarto.mail@gmail.com',
-          full_name: 'Dr. Ir. Ridwan Sugiarto, M.Si',
+          full_name: 'Ridwan Sugiarto, S.Pi',
           role: 'ADMIN',
           is_verified_employee: true,
           can_access_sensitive: true,

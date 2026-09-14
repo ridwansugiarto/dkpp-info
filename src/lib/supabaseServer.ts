@@ -24,7 +24,7 @@ export async function resolveUserAuth(userEmail?: string, userId?: string, userN
     return {
       id: userId || 'admin-user',
       email: userEmail,
-      full_name: 'Dr. Ir. Ridwan Sugiarto, M.Si (Super Admin)',
+      full_name: 'Ridwan Sugiarto, S.Pi (Super Admin)',
       role: 'ADMIN',
       is_verified_employee: true,
       can_access_sensitive: true,

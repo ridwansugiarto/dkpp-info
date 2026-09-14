@@ -629,7 +629,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   {
     "nomor": 94,
     "nip": "197610182002121002",
-    "nama": "Dr. Ir. Ridwan Sugiarto, M.Si",
+    "nama": "Ridwan Sugiarto, S.Pi",
     "tanggal_lahir": "1976-10-18",
     "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
