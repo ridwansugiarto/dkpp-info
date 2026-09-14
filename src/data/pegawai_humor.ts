@@ -4,8 +4,11 @@
 
 export interface PegawaiHumorItem {
   nomor: number | null;
+  nip?: string | null;
   nama: string;
-  jenis_kelamin: 'L' | 'P' | null;
+  tanggal_lahir?: string | null; // Format: YYYY-MM-DD (diektrak dari NIP 1-8)
+  tanggal_mulai_kerja_cpns?: string | null; // Format: YYYY-MM (diekstrak dari NIP 9-14)
+  jenis_kelamin: 'L' | 'P' | null; // L / P (diekstrak dari NIP digit 15: 1=L, 2=P)
   skor_ketampanan_kecantikan: number; // 1-10
   skor_daya_tarik_aura: number; // 1-10
   jumlah_terpesona: number; // Jumlah orang/penggemar yang terpesona
@@ -85,7 +88,10 @@ export const EXCLUDED_SERIOUS_PEGAWAI: string[] = [
 export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   {
     "nomor": 9,
+    "nip": "197604152002121006",
     "nama": "Sutisna, SP",
+    "tanggal_lahir": "1976-04-15",
+    "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 9,
@@ -97,7 +103,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 10,
+    "nip": "197204081998021002",
     "nama": "Udin Saprudin, SE, M.M.",
+    "tanggal_lahir": "1972-04-08",
+    "tanggal_mulai_kerja_cpns": "1998-02",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 9,
     "skor_daya_tarik_aura": 9,
@@ -109,7 +118,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 12,
+    "nip": "197610182002121002",
     "nama": "Ridwan Sugiarto, Spi",
+    "tanggal_lahir": "1976-10-18",
+    "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 9,
     "skor_daya_tarik_aura": 9,
@@ -121,7 +133,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 14,
+    "nip": "197703142006041012",
     "nama": "Abdul Latif, S.KH.",
+    "tanggal_lahir": "1977-03-14",
+    "tanggal_mulai_kerja_cpns": "2006-04",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 6,
@@ -133,7 +148,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 18,
+    "nip": "197708102007011011",
     "nama": "Wahyudi, SE",
+    "tanggal_lahir": "1977-08-10",
+    "tanggal_mulai_kerja_cpns": "2007-01",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 8,
@@ -145,7 +163,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 22,
+    "nip": "197603162009011003",
     "nama": "Paulus Dwi  Ari K D, ST",
+    "tanggal_lahir": "1976-03-16",
+    "tanggal_mulai_kerja_cpns": "2009-01",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -157,7 +178,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 24,
+    "nip": "197910162010012008",
     "nama": "Winda Ratnasari, SP",
+    "tanggal_lahir": "1979-10-16",
+    "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 9,
     "skor_daya_tarik_aura": 9,
@@ -169,7 +193,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 25,
+    "nip": "198111032010012005",
     "nama": "Sanlin Novitriana, SP",
+    "tanggal_lahir": "1981-11-03",
+    "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 6,
     "skor_daya_tarik_aura": 6,
@@ -181,7 +208,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 26,
+    "nip": "198209262010012005",
     "nama": "Linda Setiawati, SP",
+    "tanggal_lahir": "1982-09-26",
+    "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 7,
@@ -193,7 +223,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 27,
+    "nip": "198602152010012006",
     "nama": "Febrika Indah Cahyani, SE, MM",
+    "tanggal_lahir": "1986-02-15",
+    "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 4,
     "skor_daya_tarik_aura": 4,
@@ -205,7 +238,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 28,
+    "nip": "198203222010012008",
     "nama": "Maryori, S.Pi",
+    "tanggal_lahir": "1982-03-22",
+    "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 10,
@@ -217,7 +253,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 31,
+    "nip": "197705252008011010",
     "nama": "Arifudin, SP",
+    "tanggal_lahir": "1977-05-25",
+    "tanggal_mulai_kerja_cpns": "2008-01",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 7,
@@ -229,7 +268,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 32,
+    "nip": "198611152009011001",
     "nama": "Mas Akhmad Rangga P, SE, MM",
+    "tanggal_lahir": "1986-11-15",
+    "tanggal_mulai_kerja_cpns": "2009-01",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 8,
@@ -241,7 +283,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 35,
+    "nip": "198908242015032006",
     "nama": "Ghesika Tiandra Yusty, SP",
+    "tanggal_lahir": "1989-08-24",
+    "tanggal_mulai_kerja_cpns": "2015-03",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 7,
@@ -253,7 +298,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 37,
+    "nip": "198907132022211001",
     "nama": "Sandhi Maulana Adha, SP",
+    "tanggal_lahir": "1989-07-13",
+    "tanggal_mulai_kerja_cpns": "2022-21",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 8,
@@ -265,7 +313,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 39,
+    "nip": "198107152014062001",
     "nama": "Sri Rahmadani Piliang, SE",
+    "tanggal_lahir": "1981-07-15",
+    "tanggal_mulai_kerja_cpns": "2014-06",
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -277,7 +328,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 40,
+    "nip": "198705022017061001",
     "nama": "Subandi",
+    "tanggal_lahir": "1987-05-02",
+    "tanggal_mulai_kerja_cpns": "2017-06",
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -289,7 +343,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 54,
+    "nip": null,
     "nama": "Minarni.SE",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 9,
@@ -301,7 +358,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 57,
+    "nip": null,
     "nama": "Tandis Destalana, SE.MM",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 9,
     "skor_daya_tarik_aura": 9,
@@ -313,7 +373,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 58,
+    "nip": null,
     "nama": "Sri Ratnaningsih, S.Pi",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -325,7 +388,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 59,
+    "nip": null,
     "nama": "Yuki Suryarizki.S.kom",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -337,7 +403,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 60,
+    "nip": null,
     "nama": "Edwin Maulana,SE",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 8,
@@ -349,7 +418,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 61,
+    "nip": null,
     "nama": "Ita Titalia",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 6,
@@ -361,7 +433,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 63,
+    "nip": null,
     "nama": "Ayu Lestari",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 7,
@@ -373,7 +448,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 65,
+    "nip": null,
     "nama": "Nova Khaerdayanti, A.Md",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 8,
@@ -385,7 +463,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 66,
+    "nip": null,
     "nama": "Maisaroh, SP",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 9,
     "skor_daya_tarik_aura": 9,
@@ -397,7 +478,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 69,
+    "nip": null,
     "nama": "Driantama Bayu Saputra",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 9,
@@ -409,7 +493,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 70,
+    "nip": null,
     "nama": "Tomi Mardiyanto",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 2,
     "skor_daya_tarik_aura": 2,
@@ -421,7 +508,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 75,
+    "nip": null,
     "nama": "Mariatul Hofat, SM",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 7,
@@ -433,7 +523,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 79,
+    "nip": null,
     "nama": "Mas Adi Maulana.SP",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 8,
@@ -445,7 +538,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 80,
+    "nip": null,
     "nama": "Hadiri",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 5,
     "skor_daya_tarik_aura": 4,
@@ -457,7 +553,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 81,
+    "nip": null,
     "nama": "Asep Qomaruzzaman, S.AP",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
     "skor_ketampanan_kecantikan": 10,
     "skor_daya_tarik_aura": 10,
@@ -469,7 +568,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 84,
+    "nip": null,
     "nama": "Ailsa Bhanuwati, A.Md. Vet",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 8,
     "skor_daya_tarik_aura": 8,
@@ -481,7 +583,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 91,
+    "nip": null,
     "nama": "Ninin Anjani",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 7,
     "skor_daya_tarik_aura": 7,
@@ -493,7 +598,10 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   },
   {
     "nomor": 92,
+    "nip": null,
     "nama": "Mastufah",
+    "tanggal_lahir": null,
+    "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
     "skor_ketampanan_kecantikan": 5,
     "skor_daya_tarik_aura": 4,
