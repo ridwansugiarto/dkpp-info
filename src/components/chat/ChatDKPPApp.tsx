@@ -27,15 +27,15 @@ import Link from 'next/link';
 
 type ViewMode = 'SPLIT' | 'PETA' | 'CHAT';
 
-// Helper to get or create an isolated client ID strictly scoped to this browser session.
-// When the browser/tab is closed, sessionStorage is purged, so another user opening the browser
-// will NEVER see the previous user's chat sessions or memory.
+// Helper to get or create an isolated guest session ID scoped to this browser tab.
+// NOTE: For authenticated (logged-in) users, the session is stored in localStorage
+// and persists across browser restarts — exactly like ChatGPT and other professional apps.
+// The session is only cleared on explicit logout.
 const getBrowserSessionId = (): string => {
   if (typeof window === 'undefined') return 'guest_default';
   try {
-    // Purge any legacy shared persistent ID from localStorage
+    // Only remove legacy device ID (not user session — that's needed for persistence!)
     localStorage.removeItem('dkpp_browser_device_id');
-    localStorage.removeItem('dkpp_user_session');
 
     let id = sessionStorage.getItem('dkpp_browser_session_id');
     if (!id || id === 'guest' || id.startsWith('sess-')) {
@@ -100,12 +100,16 @@ export const ChatDKPPApp: React.FC = () => {
     };
 
     try {
-      // ONLY read from sessionStorage to prevent cross-session / cross-user chat leakage on shared devices
-      const saved = sessionStorage.getItem('dkpp_user_session');
+      // Read from localStorage first (persistent across sessions — like ChatGPT).
+      // For guest/shared-device safety, users should logout explicitly.
+      // Fallback to sessionStorage for backward compatibility.
+      const saved = localStorage.getItem('dkpp_user_session') || sessionStorage.getItem('dkpp_user_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && (parsed.email || parsed.role)) {
+        if (parsed && (parsed.email || parsed.role) && parsed.role !== 'GUEST') {
           initialUser = parsed;
+          // Sync to sessionStorage as well for cross-tab consistency
+          try { sessionStorage.setItem('dkpp_user_session', saved); } catch {}
         }
       }
     } catch {}
@@ -159,9 +163,9 @@ export const ChatDKPPApp: React.FC = () => {
       };
       setCurrentUser(profile);
       try {
+        // Persist to localStorage so session survives browser restarts (like ChatGPT)
+        localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
         sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
-        // Remove from localStorage so closing browser tab destroys the active session on shared device
-        localStorage.removeItem('dkpp_user_session');
       } catch {}
       fetchSessions(profile.id);
 
@@ -229,18 +233,21 @@ export const ChatDKPPApp: React.FC = () => {
     setActiveSessionId(null);
     setCurrentUser(user);
     try {
+      // Persist session to localStorage so it survives browser restarts
+      localStorage.setItem('dkpp_user_session', JSON.stringify(user));
       sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
-      localStorage.removeItem('dkpp_user_session');
     } catch {}
     fetchSessions(user.id);
   };
 
   const handleLogout = async () => {
     try {
+      // On explicit logout: clear ALL stored session data from both storages
       sessionStorage.removeItem('dkpp_user_session');
       sessionStorage.removeItem('dkpp_browser_session_id');
       localStorage.removeItem('dkpp_user_session');
       localStorage.removeItem('dkpp_browser_device_id');
+      // Sign out from Supabase (also clears Supabase tokens from localStorage)
       await supabase.auth.signOut();
     } catch {}
     // Rotate to a fresh session-isolated guest ID
@@ -418,21 +425,38 @@ export const ChatDKPPApp: React.FC = () => {
     let currentSessId = activeSessionId;
     if (!currentSessId) {
       const autoTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
-      try {
-        const sRes = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUser.id, title: autoTitle }),
-        });
-        const sData = await sRes.json();
-        if (sData.session) {
-          currentSessId = sData.session.id;
-          setActiveSessionId(sData.session.id);
-          setSessions((prev) => [sData.session, ...prev.slice(0, 9)]);
-        }
-      } catch {
+      const isGuest = currentUser.role === 'GUEST' || currentUser.id.startsWith('guest_');
+
+      if (isGuest) {
+        // Guest: use ephemeral in-memory session only (not persisted to DB)
+        // This is cleared automatically when the browser session ends.
         currentSessId = `sess-${Date.now()}`;
         setActiveSessionId(currentSessId);
+        const guestSess: ChatSession = {
+          id: currentSessId,
+          user_id: currentUser.id,
+          title: autoTitle,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setSessions((prev) => [guestSess, ...prev.slice(0, 9)]);
+      } else {
+        try {
+          const sRes = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id, title: autoTitle }),
+          });
+          const sData = await sRes.json();
+          if (sData.session) {
+            currentSessId = sData.session.id;
+            setActiveSessionId(sData.session.id);
+            setSessions((prev) => [sData.session, ...prev.slice(0, 9)]);
+          }
+        } catch {
+          currentSessId = `sess-${Date.now()}`;
+          setActiveSessionId(currentSessId);
+        }
       }
     }
 

@@ -80,11 +80,13 @@ export async function POST(req: NextRequest) {
       userMemoryContext: memoryContext,
     });
 
-    // 5. Persist to DB if sessionId exists
+    // 5. Persist to DB only for authenticated (non-guest) users
+    // Guest messages live only in React state and are cleared when the session ends.
+    const isGuestUser = !userId || userId === 'guest' || (userId as string).startsWith('guest_');
     let userMsgId = 'msg-user-' + Date.now();
     let assistantMsgId = 'msg-ai-' + Date.now();
 
-    if (sessionId) {
+    if (sessionId && !isGuestUser) {
       try {
         const { data: insertedUserMsg } = await supabaseAdmin
           .from('chat_messages')

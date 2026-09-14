@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
-    if (!userId || userId === 'guest') {
+    if (!userId || userId === 'guest' || userId.startsWith('guest_')) {
       return NextResponse.json({ sessions: [] });
     }
 
@@ -33,7 +33,11 @@ export async function POST(req: NextRequest) {
     const userId = body.userId || 'guest';
     const title = body.title || 'Chat Baru';
 
-    // Create session
+    // Block guest users from persisting sessions to DB
+    // Guest chat exists only in React state (ephemeral, cleared on session end)
+    if (!userId || userId === 'guest' || userId.startsWith('guest_')) {
+      return NextResponse.json({ error: 'Sesi tamu tidak disimpan ke database.' }, { status: 403 });
+    }
     const { data: session, error } = await supabaseAdmin
       .from('chat_sessions')
       .insert({
