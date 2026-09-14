@@ -610,6 +610,36 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "skor_kecerdasan": 2,
     "is_sensitive": true,
     "kategori": "MODE_BERCANDA_INTERNAL"
+  },
+  {
+    "nomor": 93,
+    "nip": "197910162010012008",
+    "nama": "Winda Ratnasari",
+    "tanggal_lahir": "1979-10-16",
+    "tanggal_mulai_kerja_cpns": "2010-01",
+    "jenis_kelamin": "P",
+    "skor_ketampanan_kecantikan": 9,
+    "skor_daya_tarik_aura": 9,
+    "jumlah_terpesona": 20,
+    "skor_rajin_kehadiran": 9,
+    "skor_kecerdasan": 9,
+    "is_sensitive": true,
+    "kategori": "MODE_BERCANDA_INTERNAL"
+  },
+  {
+    "nomor": 94,
+    "nip": "197610182002121002",
+    "nama": "Dr. Ir. Ridwan Sugiarto, M.Si",
+    "tanggal_lahir": "1976-10-18",
+    "tanggal_mulai_kerja_cpns": "2002-12",
+    "jenis_kelamin": "L",
+    "skor_ketampanan_kecantikan": 9,
+    "skor_daya_tarik_aura": 9,
+    "jumlah_terpesona": 25,
+    "skor_rajin_kehadiran": 9,
+    "skor_kecerdasan": 10,
+    "is_sensitive": true,
+    "kategori": "MODE_BERCANDA_INTERNAL"
   }
 ];
 
