@@ -76,6 +76,11 @@ export const ChatDKPPApp: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [nipClaimModalOpen, setNipClaimModalOpen] = useState(false);
 
+  // Guest message gate: after 2 messages, guest must log in or sign up
+  const [guestMessageCount, setGuestMessageCount] = useState(0);
+  const [pendingGuestMessage, setPendingGuestMessage] = useState<string | null>(null);
+  const GUEST_MESSAGE_LIMIT = 2;
+
   // Mobile detection & ViewMode guard (Mobile only allows CHAT or PETA, never SPLIT)
   useEffect(() => {
     const handleResize = () => {
@@ -232,12 +237,22 @@ export const ChatDKPPApp: React.FC = () => {
     setMessages([]);
     setActiveSessionId(null);
     setCurrentUser(user);
+    // Reset guest gate
+    setGuestMessageCount(0);
     try {
       // Persist session to localStorage so it survives browser restarts
       localStorage.setItem('dkpp_user_session', JSON.stringify(user));
       sessionStorage.setItem('dkpp_user_session', JSON.stringify(user));
     } catch {}
     fetchSessions(user.id);
+
+    // If there was a pending guest message, send it now after auth succeeds
+    if (pendingGuestMessage) {
+      const msgToSend = pendingGuestMessage;
+      setPendingGuestMessage(null);
+      // Small delay to let state settle
+      setTimeout(() => handleSendMessage(msgToSend), 300);
+    }
   };
 
   const handleLogout = async () => {
@@ -421,6 +436,17 @@ export const ChatDKPPApp: React.FC = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    // ── GUEST GATE ───────────────────────────────────────────────────────────
+    // After GUEST_MESSAGE_LIMIT messages, require login/signup.
+    // The pending message is saved and automatically sent after auth succeeds.
+    const isCurrentlyGuest = currentUser.role === 'GUEST' || currentUser.id.startsWith('guest_');
+    if (isCurrentlyGuest && guestMessageCount >= GUEST_MESSAGE_LIMIT) {
+      setPendingGuestMessage(text);
+      setAuthModalMode('signup');
+      setAuthModalOpen(true);
+      return;
+    }
+
     // Ensure session exists or create on the fly strictly for this user/browser
     let currentSessId = activeSessionId;
     if (!currentSessId) {
@@ -471,6 +497,11 @@ export const ChatDKPPApp: React.FC = () => {
 
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsLoading(true);
+
+    // Increment guest message counter (only for actual guest users)
+    if (isCurrentlyGuest) {
+      setGuestMessageCount((prev) => prev + 1);
+    }
 
     // Update session title if it's the first message
     if (messages.length === 0 && currentSessId) {
@@ -856,7 +887,12 @@ export const ChatDKPPApp: React.FC = () => {
       <AuthModal
         isOpen={authModalOpen}
         initialMode={authModalMode}
-        onClose={() => setAuthModalOpen(false)}
+        guestLimitReached={!!pendingGuestMessage}
+        onClose={() => {
+          setAuthModalOpen(false);
+          // If closed without auth while gate is active, discard the pending message
+          setPendingGuestMessage(null);
+        }}
         onSuccess={handleAuthSuccess}
         onContinueAsGuest={() => {
           handleLogout();

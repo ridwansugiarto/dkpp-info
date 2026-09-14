@@ -11,6 +11,8 @@ interface AuthModalProps {
   onClose: () => void;
   onSuccess: (user: UserProfile) => void;
   onContinueAsGuest?: () => void;
+  /** When true: guest hit the free message limit. Hide 'continue as guest' option. */
+  guestLimitReached?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -19,6 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess,
   onContinueAsGuest,
+  guestLimitReached = false,
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
@@ -363,12 +366,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Modal Header */}
         <div className="text-center pt-2 mb-6">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-            {mode === 'login' ? 'Log in or sign up' : 'Buat Akun DKPP'}
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
-            Masuk untuk menyimpan riwayat analisis, sinkronisasi antar perangkat, dan respon yang lebih presisi.
-          </p>
+          {guestLimitReached ? (
+            <>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold mb-3">
+                <span>💬</span>
+                <span>Batas chat tamu tercapai (2/2)</span>
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+                Daftar atau masuk untuk lanjutkan
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
+                Chat tamu gratis hingga <strong>2 pesan</strong>. Daftar gratis untuk lanjutkan — atau verifikasi NIP pegawai DKPP untuk membuka akses data sensitif.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {mode === 'login' ? 'Log in or sign up' : 'Buat Akun DKPP'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
+                Masuk untuk menyimpan riwayat analisis, sinkronisasi antar perangkat, dan respon yang lebih presisi.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Continue with Google (Persis Capture 3 - Apple & Phone DIHAPUS) */}
@@ -580,16 +600,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </form>
 
-        {/* OPSI GUEST DI BAWAHNYA TANPA MENGINPUT NIP (Sesuai Permintaan User) */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-center">
-          <button
-            type="button"
-            onClick={handleGuestSelect}
-            className="w-full py-2.5 px-4 text-xs font-semibold text-emerald-950 bg-[#A8DCAB] hover:bg-[#97cf9a] rounded-full transition-all shadow-xs cursor-pointer"
-          >
-            Atau Lanjutkan sebagai Tamu (Guest) tanpa NIP
-          </button>
-        </div>
+        {/* OPSI GUEST DI BAWAHNYA — disembunyikan saat gate aktif */}
+        {!guestLimitReached && (
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-center">
+            <button
+              type="button"
+              onClick={handleGuestSelect}
+              className="w-full py-2.5 px-4 text-xs font-semibold text-emerald-950 bg-[#A8DCAB] hover:bg-[#97cf9a] rounded-full transition-all shadow-xs cursor-pointer"
+            >
+              Atau Lanjutkan sebagai Tamu (Guest) tanpa NIP
+            </button>
+          </div>
+        )}
 
         {/* Switch Mode Tab */}
         <div className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
