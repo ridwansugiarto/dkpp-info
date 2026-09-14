@@ -1007,3 +1007,103 @@ export const OFFICIAL_DKPP_THL = [
     "is_sensitive": true
   }
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUERY DETECTION & CONTEXT BUILDER — Data Faktual Kepegawaian
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Deteksi apakah query user menyebut nama pegawai atau menanyakan
+ * profil/jabatan/bidang yang memerlukan data faktual dari OFFICIAL_DKPP_PEGAWAI.
+ */
+export function isPegawaiProfileQuery(userMessage: string): boolean {
+  const q = userMessage.toLowerCase();
+  const profileKeywords = [
+    'jabatan', 'posisi', 'menjabat', 'golongan', 'bidang', 'bagian',
+    'tugasnya', 'fungsinya', 'kerja di', 'bekerja di', 'bagian apa',
+    'siapa', 'profil', 'biodata', 'struktural', 'fungsional', 'nip',
+    'kepala', 'kasubag', 'kasi', 'analis', 'penyuluh', 'pengawas',
+    'bendahara', 'medik', 'veteriner', 'uptd', 'sekretaris',
+    'tenaga', 'honorer', 'thl', 'kontrak', 'pegawai',
+  ];
+  const hasKeyword = profileKeywords.some(k => q.includes(k));
+
+  // Cek apakah ada potongan nama pegawai dalam query (min 4 char)
+  const allNames = [
+    ...OFFICIAL_DKPP_PEGAWAI.map(p => p.nama),
+    ...OFFICIAL_DKPP_THL.map(p => p.nama),
+  ];
+  const qWords = q.split(/\s+/).filter(w => w.length >= 4);
+  const hasName = allNames.some(nama => {
+    const namaLower = nama.toLowerCase();
+    return qWords.some(word => namaLower.includes(word) || word.includes(namaLower.split(/[\s,./]+/)[0]));
+  });
+
+  return hasKeyword || hasName;
+}
+
+/**
+ * Bangun konteks faktual kepegawaian untuk AI.
+ * Mencari nama yang relevan dengan query dan mengembalikan data terverifikasi.
+ * Jika tidak ada nama spesifik, kembalikan daftar ringkas semua pegawai aktif.
+ */
+export function buildPegawaiDkppContext(userMessage: string): string {
+  const q = userMessage.toLowerCase();
+  const qWords = q.split(/\s+/).filter(w => w.length >= 3);
+
+  // Fuzzy match: cari pegawai ASN yang namanya disebut dalam query
+  const matchedAsn = OFFICIAL_DKPP_PEGAWAI.filter(p => {
+    const namaLower = p.nama.toLowerCase();
+    const tokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 3);
+    return qWords.some(word =>
+      tokens.some(tok => tok.includes(word) || word.includes(tok))
+    );
+  });
+
+  // Fuzzy match THL
+  const matchedThl = OFFICIAL_DKPP_THL.filter(p => {
+    const namaLower = p.nama.toLowerCase();
+    const tokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 3);
+    return qWords.some(word =>
+      tokens.some(tok => tok.includes(word) || word.includes(tok))
+    );
+  });
+
+  let ctx = `=== DATA KEPEGAWAIAN RESMI DKPP KOTA CILEGON (TERVERIFIKASI) ===\n`;
+  ctx += `INSTRUKSI AI: Gunakan HANYA data berikut untuk menjawab pertanyaan tentang jabatan, bidang, golongan, atau profil pegawai. DILARANG KERAS mengarang atau menambahkan informasi di luar data ini.\n\n`;
+
+  if (matchedAsn.length > 0 || matchedThl.length > 0) {
+    // Ada nama spesifik yang ditemukan
+    if (matchedAsn.length > 0) {
+      ctx += `PEGAWAI ASN YANG DITEMUKAN:\n`;
+      matchedAsn.forEach(p => {
+        ctx += `• ${p.nama}\n`;
+        ctx += `  NIP       : ${p.nip}\n`;
+        ctx += `  Jabatan   : ${p.jabatan}\n`;
+        ctx += `  Bidang    : ${p.bidang}\n`;
+        ctx += `  Status    : ${p.status_pegawai}\n`;
+        if (p.golongan) ctx += `  Golongan  : ${p.golongan}\n`;
+        if (p.kelas_jabatan) ctx += `  Kelas Jab : ${p.kelas_jabatan}\n`;
+        ctx += `\n`;
+      });
+    }
+    if (matchedThl.length > 0) {
+      ctx += `TENAGA HARIAN LEPAS / NON-ASN YANG DITEMUKAN:\n`;
+      matchedThl.forEach(p => {
+        ctx += `• ${p.nama} — Status: ${(p as any).status || 'THL'} | Instansi: DKPP Kota Cilegon\n`;
+      });
+      ctx += `\n`;
+    }
+  } else {
+    // Tidak ada nama spesifik — tampilkan ringkasan struktur
+    ctx += `STRUKTUR ORGANISASI RINGKAS DKPP KOTA CILEGON:\n`;
+    const pimpinan = OFFICIAL_DKPP_PEGAWAI.filter(p => p.bidang === 'Pimpinan' || p.status_pegawai === 'Struktural');
+    pimpinan.slice(0, 10).forEach(p => {
+      ctx += `• ${p.nama} — ${p.jabatan} (${p.bidang})\n`;
+    });
+    ctx += `\n(Data selengkapnya tersedia, sebutkan nama spesifik untuk detail lebih lanjut)\n`;
+  }
+
+  ctx += `CATATAN: Jika nama yang ditanyakan tidak ditemukan di atas, jawab bahwa nama tersebut tidak terdapat dalam basis data resmi DKPP — JANGAN mengarang jabatan atau profil.\n`;
+  return ctx;
+}

@@ -22,6 +22,10 @@ import {
   isPersonalityQuery,
   buildPersonalityContext,
 } from '@/data/personality_calculator';
+import {
+  isPegawaiProfileQuery,
+  buildPegawaiDkppContext,
+} from '@/data/pegawai_dkpp';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -215,7 +219,8 @@ function buildSystemPrompt(
   knowledgeContext: string = '',
   canAccessSensitive: boolean = false,
   humorContext: string | null = null,
-  personalityContext: string | null = null
+  personalityContext: string | null = null,
+  pegawaiProfileContext: string | null = null
 ): string {
   return `# SYSTEM PROMPT — ChatDKPP: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
 Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
@@ -250,6 +255,16 @@ Petunjuk jawaban:
 - Gunakan istilah: "gaya kerja simulatif", "karakter hiburan", "potensi dinamika kerja".
 
 ${personalityContext}
+` : ''}
+
+${pegawaiProfileContext ? `
+## DATA KEPEGAWAIAN TERVERIFIKASI — PROFIL & JABATAN RESMI
+⚠️ INSTRUKSI KRITIS: Data jabatan, bidang, golongan, dan status pegawai di bawah ini bersumber dari database resmi DKPP Kota Cilegon.
+- GUNAKAN data ini sebagai satu-satunya sumber kebenaran untuk pertanyaan tentang profil pegawai.
+- DILARANG KERAS mengarang, menambah, atau memodifikasi informasi jabatan yang tidak tercantum di sini.
+- Jika nama tidak ditemukan di data ini, nyatakan bahwa data tidak tersedia — JANGAN berasumsi.
+
+${pegawaiProfileContext}
 ` : ''}
 
 ## PROTOKOL TATA KELOLA & KEAMANAN AKSES DATA SENSITIF (GOVERNANCE POLICY):
@@ -1054,6 +1069,10 @@ export async function generateChatResponse(params: {
     personalityContext = buildPersonalityContext(lastUserMsg, personalityDataset);
   }
 
+  // 2c. Cek apakah pertanyaan menyebut nama/jabatan pegawai — inject data faktual
+  const isPegawaiProfile = isPegawaiProfileQuery(lastUserMsg);
+  const pegawaiProfileContext = isPegawaiProfile ? buildPegawaiDkppContext(lastUserMsg) : null;
+
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
     dynamicDbContext + serumpunContext + ketapangContext,
@@ -1063,7 +1082,8 @@ export async function generateChatResponse(params: {
     knowledgeContext,
     canAccessSensitive,
     humorContext,
-    personalityContext
+    personalityContext,
+    pegawaiProfileContext
   );
 
   // 4. Build conversation contents (multi-turn, token-efficient)
