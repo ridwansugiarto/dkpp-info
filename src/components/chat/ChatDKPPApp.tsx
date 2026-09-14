@@ -797,14 +797,16 @@ export const ChatDKPPApp: React.FC = () => {
               <div
                 className={`shrink-0 ${
                   viewMode === 'CHAT'
-                    ? 'p-3 sm:p-4 bg-white max-w-4xl lg:max-w-5xl mx-auto w-full'
+                    ? 'px-4 sm:px-6 pb-4 pt-2 bg-white w-full'
                     : 'p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm'
                 }`}
               >
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  isLoading={isLoading}
-                />
+                <div className={viewMode === 'CHAT' ? 'max-w-3xl mx-auto' : ''}>
+                  <ChatInput
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                  />
+                </div>
               </div>
             </div>
           )}

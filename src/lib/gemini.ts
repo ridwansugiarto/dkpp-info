@@ -18,6 +18,10 @@ import {
   OFFICIAL_DKPP_HUMOR_DATA,
   type PegawaiHumorItem
 } from '@/data/pegawai_humor';
+import {
+  isPersonalityQuery,
+  buildPersonalityContext,
+} from '@/data/personality_calculator';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -210,7 +214,8 @@ function buildSystemPrompt(
   memoryContext: string,
   knowledgeContext: string = '',
   canAccessSensitive: boolean = false,
-  humorContext: string | null = null
+  humorContext: string | null = null,
+  personalityContext: string | null = null
 ): string {
   return `# SYSTEM PROMPT — ChatDKPP: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
 Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
@@ -232,6 +237,20 @@ ${humorContext}
 - Pertanyaan pengguna saat ini adalah PERTANYAAN FORMAL / TEKNIS KEDINASAN.
 - DILARANG KERAS memuat, memunculkan, atau mencampuradukkan data humor, candaan, atau guyonan internal pegawai ke dalam jawaban analisis teknis, neraca pangan, spasial GIS, SKPG, FSVA, atau pelayanan publik. Pertahankan integritas dan profesionalitas jawaban resmi Anda.
 `}
+
+${personalityContext ? `
+## KALKULATOR ANALISIS KEPRIBADIAN PEGAWAI (MODE HIBURAN KEAKRABAN)
+⚠️ DATA BERIKUT ADALAH HASIL KALKULASI NUMEROLOGI & ASTROLOGI UNTUK HIBURAN — BUKAN PENILAIAN KEPEGAWAIAN RESMI.
+Petunjuk jawaban:
+- Gunakan data di bawah sebagai dasar analisis.
+- Tulis dengan gaya yang hangat, jenaka, dan santun — seperti obrolan santai rekan kerja.
+- Tampilkan tabel zodiak, shio, angka numerologi, dan skor kecocokan dengan menarik.
+- WAJIB sertakan disclaimer di akhir jawaban bahwa ini untuk hiburan semata.
+- DILARANG menyebut kata-kata negatif tentang pegawai ("tidak layak", "tidak jujur", "tidak kompeten").
+- Gunakan istilah: "gaya kerja simulatif", "karakter hiburan", "potensi dinamika kerja".
+
+${personalityContext}
+` : ''}
 
 ## PROTOKOL TATA KELOLA & KEAMANAN AKSES DATA SENSITIF (GOVERNANCE POLICY):
 Status Pengguna: ${userRole} | Terverifikasi ASN/Pegawai: ${isVerified} | Izin Akses Sensitif: ${canAccessSensitive ? 'DIIZINKAN' : 'DIBATASI'}
@@ -1027,6 +1046,14 @@ export async function generateChatResponse(params: {
   }
   const humorContext = (isHumor && isAuthorizedForInternal) ? buildPegawaiHumorContext(lastUserMsg, liveHumorData) : null;
 
+  // 2b. Cek apakah pertanyaan adalah analisis kepribadian/zodiak/kecocokan
+  const isPersonality = isPersonalityQuery(lastUserMsg);
+  let personalityContext: string | null = null;
+  if (isPersonality && isAuthorizedForInternal) {
+    const personalityDataset = liveHumorData || OFFICIAL_DKPP_HUMOR_DATA;
+    personalityContext = buildPersonalityContext(lastUserMsg, personalityDataset);
+  }
+
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
     dynamicDbContext + serumpunContext + ketapangContext,
@@ -1035,7 +1062,8 @@ export async function generateChatResponse(params: {
     userMemoryContext,
     knowledgeContext,
     canAccessSensitive,
-    humorContext
+    humorContext,
+    personalityContext
   );
 
   // 4. Build conversation contents (multi-turn, token-efficient)

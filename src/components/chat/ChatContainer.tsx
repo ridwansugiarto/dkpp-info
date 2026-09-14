@@ -367,7 +367,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         <div
           className={
             viewMode === 'CHAT'
-              ? 'max-w-4xl lg:max-w-5xl mx-auto space-y-6 px-3 sm:px-6 w-full'
+              ? 'max-w-3xl mx-auto space-y-6 w-full'
               : 'max-w-3xl mx-auto space-y-5'
           }
         >
