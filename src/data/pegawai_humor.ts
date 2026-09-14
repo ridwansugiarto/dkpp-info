@@ -695,9 +695,35 @@ export function findPegawaiHumorByName(namaQuery: string, dataset: PegawaiHumorI
 /**
  * Deteksi apakah pertanyaan user adalah pertanyaan bercanda / santai seputar pegawai
  */
-export function isPegawaiHumorQuery(userMessage: string): boolean {
+export function isPegawaiHumorQuery(userMessage: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): boolean {
   const q = userMessage.toLowerCase();
   
+  // Helper: apakah token query kemungkinan bagian dari nama (fuzzy partial, min 3 char)
+  const qWords = q.split(/\s+/).filter(w => w.length >= 3);
+  const matchedEmployee = dataset.some(p => {
+    const namaLower = p.nama.toLowerCase();
+    return qWords.some(word => {
+      if (namaLower.includes(word)) return true;
+      const namaTokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 4);
+      return namaTokens.some(tok => {
+        if (tok.includes(word) || word.includes(tok)) return true;
+        if (Math.abs(tok.length - word.length) <= 1) {
+          let diff = 0;
+          const shorter = tok.length <= word.length ? tok : word;
+          const longer  = tok.length <= word.length ? word : tok;
+          let si = 0, li = 0;
+          while (si < shorter.length && li < longer.length) {
+            if (shorter[si] === longer[li]) { si++; li++; }
+            else { diff++; li++; if (diff > 1) break; }
+          }
+          diff += (longer.length - li);
+          return diff <= 1;
+        }
+        return false;
+      });
+    });
+  });
+
   const humorKeywords = [
     'ganteng', 'paling ganteng', 'tampan', 'paling tampan',
     'cantik', 'paling cantik', 'ayu', 'jelita',
@@ -705,14 +731,23 @@ export function isPegawaiHumorQuery(userMessage: string): boolean {
     'terpesona', 'terpikat', 'banyak cewek', 'banyak perempuan', 'banyak wanita',
     'paling memikat', 'fans', 'idola',
     'paling rajin', 'rajin', 'paling cerdas', 'paling pintar', 'paling jenius',
-    'mode bercanda', 'candaan', 'lucu-lucuan', 'santai'
+    'mode bercanda', 'candaan', 'lucu-lucuan', 'santai',
+    // Kepribadian & kecocokan
+    'hubungan', 'kecocokan', 'cocok', 'relasi', 'pasangan', 'jodoh',
+    'kepribadian', 'zodiak', 'shio', 'karakter', 'sifat',
+    'numerologi', 'tanggal lahir', 'analisis'
   ];
 
   const hasHumorKeyword = humorKeywords.some(k => q.includes(k));
   
   const contextKeywords = [
     'pegawai', 'dkpp', 'staf', 'staff', 'asn', 'internal', 'kantor', 'dinas', 'orang',
-    'siapa', 'cowok', 'cewek', 'bapak', 'ibu'
+    'siapa', 'cowok', 'cewek', 'bapak', 'ibu',
+    // Nama-nama pegawai DKPP (sebagian, untuk deteksi konteks)
+    'ratnasari', 'sugiarto', 'sutisna', 'wahyudi', 'yuliantina', 'sarifah',
+    'piliang', 'saprudin', 'mulyani', 'hartati', 'fitriyani', 'kurniawan',
+    'hidayat', 'nugraha', 'purnama', 'setiawan', 'rahmawati', 'winda', 'wnda',
+    'ridwan', 'ridwa', 'wanda', 'anda', 'sari', 'nani'
   ];
   const hasContext = contextKeywords.some(c => q.includes(c));
 

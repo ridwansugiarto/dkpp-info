@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building, Loader2, RefreshCw } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Sparkles, User, Lock, Mail, Shield, Building, Loader2, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { UserProfile } from '@/types/dkpp';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +28,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [nip, setNip] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // NIP validation states
   const [nipValidating, setNipValidating] = useState(false);
@@ -533,14 +534,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
-            <input
-              type="password"
-              required
-              placeholder="Kata sandi minimal 6 karakter"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1f2026] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder="Kata sandi minimal 6 karakter"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 pr-10 text-xs sm:text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1f2026] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {/* INPUT NIP KHUSUS PEGAWAI DKPP (Hanya saat Sign up) */}

@@ -516,46 +516,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                     </div>
                   )}
 
-                  {/* Source Citations */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-1.5">
-                      <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        <span>Sumber Rujukan ({msg.sources.length})</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.sources.map((src, sIdx) => {
-                          const badgeColor =
-                            src.type === 'LOCAL DATA'
-                              ? 'bg-emerald-100/70 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
-                              : src.type === 'KNOWLEDGE BASE'
-                              ? 'bg-blue-100/70 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-                              : 'bg-amber-100/70 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300';
 
-                          return (
-                            <div
-                              key={sIdx}
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium ${badgeColor}`}
-                            >
-                              <Database className="w-2.5 h-2.5" />
-                              <span className="font-semibold">[{src.type}]</span>
-                              <span className="truncate max-w-[200px]">{src.title}</span>
-                              {src.url && (
-                                <a
-                                  href={src.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:underline ml-0.5"
-                                >
-                                  <ExternalLink className="w-2.5 h-2.5 inline" />
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );

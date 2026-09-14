@@ -270,17 +270,39 @@ export function buildPersonalityContext(
   ctx += `DISCLAIMER: Analisis berbasis numerologi & astrologi untuk HIBURAN semata. Bukan penilaian psikologis atau kepegawaian resmi.\n`;
   ctx += `ATURAN AI: Tulis hasil dengan gaya hangat, jenaka, dan santun. WAJIB sertakan disclaimer di akhir. DILARANG menyebut kata negatif seperti "tidak layak" atau "tidak jujur".\n\n`;
 
-  // Cari nama pegawai yang disebut dalam pesan
+  // Cari nama pegawai yang disebut dalam pesan (fuzzy partial match, toleran typo 1 karakter)
   const withData = dataset.filter(p => p.tanggal_lahir);
+  const qWords = q.split(/\s+/).filter(w => w.length >= 3);
+
   const disebut: Array<{ p: PegawaiHumorItem; a: AnalisisPegawai }> = [];
 
   for (const p of withData) {
-    const namaDepan = p.nama.split(',')[0].trim().toLowerCase();
-    if (namaDepan.length > 3 && q.includes(namaDepan)) {
+    const namaLower = p.nama.toLowerCase();
+    const namaTokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 3);
+    const matched = qWords.some(word =>
+      namaTokens.some(tok => {
+        if (tok.includes(word) || word.includes(tok)) return true;
+        // Levenshtein sederhana: toleransi 1 karakter
+        if (Math.abs(tok.length - word.length) <= 1 && Math.min(tok.length, word.length) >= 3) {
+          let diff = 0;
+          const [shorter, longer] = tok.length <= word.length ? [tok, word] : [word, tok];
+          let si = 0, li = 0;
+          while (si < shorter.length && li < longer.length) {
+            if (shorter[si] === longer[li]) { si++; li++; }
+            else { diff++; li++; if (diff > 1) break; }
+          }
+          diff += (longer.length - li);
+          return diff <= 1;
+        }
+        return false;
+      })
+    );
+    if (matched) {
       const a = analisaPegawai(p);
       if (a) disebut.push({ p, a });
     }
   }
+
 
   const formatSatu = (a: AnalisisPegawai): string => {
     let s = `📋 ${a.nama.toUpperCase()} | Lahir: ${a.tanggal_display}\n`;
