@@ -209,6 +209,144 @@ async function getDynamicSupabaseContext(): Promise<string> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Keyword detector: apakah query berkaitan dengan perikanan?
+// ─────────────────────────────────────────────────────────────────────────────
+function isPerikananQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return [
+    'nelayan', 'perikanan', 'ikan', 'budidaya', 'tangkap', 'kub', 'koperasi nelayan',
+    'pokdakan', 'poklashar', 'pangkalan', 'perahu', 'kapal', 'alat tangkap',
+    'bagan', 'pancing', 'jaring', 'bubu', 'lele', 'nila', 'gurame', 'ikan hias',
+    'kolam', 'pembudidaya', 'produksi ikan', 'pengolah', 'asuransi nelayan', 'bpan',
+    'tanjung peni', 'tanjung leneng', 'suralaya', 'mabak', 'lelean', 'terate',
+    'pulau', 'pantai', 'laut', 'selat sunda',
+  ].some(k => q.includes(k));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch data perikanan lengkap dari 11 tabel Supabase → konteks RAG
+// ─────────────────────────────────────────────────────────────────────────────
+async function getPerikananContext(): Promise<string> {
+  const lines: string[] = ['\n=== DATA PERIKANAN KOTA CILEGON 2025 (LIVE DATABASE) ==='];
+  try {
+    const [
+      rekapRes, prodTahunanRes, prodBulananRes,
+      kubRes, koperasiRes, pangkalanRes,
+      armadaRes, armadaJenisRes,
+      anggaranRes, asuransiRes,
+    ] = await Promise.allSettled([
+      supabase.from('perikanan_rekap_potensi').select('uraian,jumlah,jumlah_teks,tahun').order('no'),
+      supabase.from('perikanan_produksi_tahunan').select('tahun,produksi_tangkap_ton,produksi_budidaya_ton,total_produksi_ton').order('tahun'),
+      supabase.from('perikanan_produksi_bulanan').select('jenis_komoditas,total_produksi_kg').eq('tahun', 2025),
+      supabase.from('perikanan_kub').select('no,nama_kub,alamat,ketua,no_telp,jumlah_anggota,status,kelas_kub,bantuan_pernah_diterima').order('no'),
+      supabase.from('perikanan_koperasi').select('nama_koperasi,alamat,ketua,no_telp,jumlah_anggota'),
+      supabase.from('perikanan_pangkalan_nelayan').select('kecamatan,nama_pangkalan,asal_nelayan,jumlah_nelayan').order('no'),
+      supabase.from('perikanan_armada_kapal').select('kecamatan,nama_pangkalan,jumlah_perahu_kapal').order('no'),
+      supabase.from('perikanan_armada_jenis_usaha').select('jenis_usaha_penangkapan,perahu_tanpa_motor,mesin_tempel_ketingting,kapal_motor_0_5gt,kapal_motor_5_10gt,kapal_30gt,total').order('no'),
+      supabase.from('perikanan_anggaran_program').select('nama_program,anggaran_2024,anggaran_2025,anggaran_2026'),
+      supabase.from('perikanan_asuransi_nelayan').select('tahun,jumlah_nelayan,sumber_anggaran,keterangan').order('tahun'),
+    ]);
+
+    // Rekap Potensi
+    if (rekapRes.status === 'fulfilled' && rekapRes.value.data?.length) {
+      lines.push('\n--- Rekap Potensi Perikanan ---');
+      for (const r of rekapRes.value.data) {
+        const val = r.jumlah !== null ? `${Number(r.jumlah).toLocaleString('id-ID')} ${r.jumlah_teks ?? ''}` : '-';
+        lines.push(`• ${r.uraian} (${r.tahun}): ${val}`);
+      }
+    }
+
+    // Produksi Tahunan
+    if (prodTahunanRes.status === 'fulfilled' && prodTahunanRes.value.data?.length) {
+      lines.push('\n--- Produksi Perikanan Tahunan (Ton) ---');
+      lines.push('Tahun | Tangkap | Budidaya | Total');
+      for (const r of prodTahunanRes.value.data) {
+        lines.push(`${r.tahun} | ${r.produksi_tangkap_ton} | ${r.produksi_budidaya_ton} | ${r.total_produksi_ton}`);
+      }
+    }
+
+    // Produksi Bulanan 2025
+    if (prodBulananRes.status === 'fulfilled' && prodBulananRes.value.data?.length) {
+      lines.push('\n--- Produksi Perikanan Bulanan 2025 ---');
+      for (const r of prodBulananRes.value.data) {
+        lines.push(`• ${r.jenis_komoditas}: ${Number(r.total_produksi_kg).toLocaleString('id-ID')} Kg`);
+      }
+    }
+
+    // Pangkalan
+    if (pangkalanRes.status === 'fulfilled' && pangkalanRes.value.data?.length) {
+      lines.push('\n--- Pangkalan Nelayan ---');
+      for (const r of pangkalanRes.value.data) {
+        lines.push(`• ${r.nama_pangkalan} (${r.kecamatan}): ${r.jumlah_nelayan} nelayan — Asal: ${r.asal_nelayan ?? '-'}`);
+      }
+    }
+
+    // Armada Kapal
+    if (armadaRes.status === 'fulfilled' && armadaRes.value.data?.length) {
+      lines.push('\n--- Armada Kapal/Perahu per Pangkalan ---');
+      for (const r of armadaRes.value.data) {
+        lines.push(`• ${r.nama_pangkalan} (${r.kecamatan}): ${r.jumlah_perahu_kapal} unit`);
+      }
+    }
+
+    // Armada per Jenis Usaha
+    if (armadaJenisRes.status === 'fulfilled' && armadaJenisRes.value.data?.length) {
+      lines.push('\n--- Armada per Jenis Alat Tangkap ---');
+      lines.push('Jenis | Tanpa Motor | Ketingting | 0-5GT | 5-10GT | 30GT | Total');
+      for (const r of armadaJenisRes.value.data) {
+        if ((r.total ?? 0) > 0) {
+          lines.push(`${r.jenis_usaha_penangkapan} | ${r.perahu_tanpa_motor} | ${r.mesin_tempel_ketingting} | ${r.kapal_motor_0_5gt} | ${r.kapal_motor_5_10gt} | ${r.kapal_30gt} | ${r.total}`);
+        }
+      }
+    }
+
+    // Koperasi Nelayan
+    if (koperasiRes.status === 'fulfilled' && koperasiRes.value.data?.length) {
+      lines.push('\n--- Koperasi Nelayan ---');
+      for (const r of koperasiRes.value.data) {
+        lines.push(`• ${r.nama_koperasi} | Ketua: ${r.ketua} | Telp: ${r.no_telp ?? '-'} | Anggota: ${r.jumlah_anggota}`);
+        lines.push(`  Alamat: ${r.alamat}`);
+      }
+    }
+
+    // KUB
+    if (kubRes.status === 'fulfilled' && kubRes.value.data?.length) {
+      lines.push(`\n--- Kelompok Usaha Bersama (KUB) Nelayan — Total: ${kubRes.value.data.length} KUB ---`);
+      for (const r of kubRes.value.data) {
+        const bantuan = r.bantuan_pernah_diterima ? ` | Bantuan: ${r.bantuan_pernah_diterima}` : '';
+        lines.push(`• KUB #${r.no}: ${r.nama_kub} | Ketua: ${r.ketua}${r.no_telp ? ` (${r.no_telp})` : ''} | ${r.jumlah_anggota} anggota | ${r.status} | ${r.kelas_kub}${bantuan}`);
+        lines.push(`  Alamat: ${r.alamat}`);
+      }
+    }
+
+    // Anggaran Program
+    if (anggaranRes.status === 'fulfilled' && anggaranRes.value.data?.length) {
+      lines.push('\n--- Anggaran Program Perikanan (APBD, Rupiah) ---');
+      for (const r of anggaranRes.value.data) {
+        const fmt = (v: number | null) => v !== null ? `Rp ${Number(v).toLocaleString('id-ID')}` : '-';
+        lines.push(`• ${r.nama_program}: 2024=${fmt(r.anggaran_2024)} | 2025=${fmt(r.anggaran_2025)} | 2026=${fmt(r.anggaran_2026)}`);
+      }
+    }
+
+    // Asuransi Nelayan
+    if (asuransiRes.status === 'fulfilled' && asuransiRes.value.data?.length) {
+      lines.push('\n--- Asuransi Nelayan (BPAN) Historis ---');
+      for (const r of asuransiRes.value.data) {
+        if (r.jumlah_nelayan !== null) {
+          lines.push(`• ${r.tahun}: ${r.jumlah_nelayan} nelayan — ${r.sumber_anggaran ?? 'Sumber tidak tersedia'} (${r.keterangan})`);
+        } else {
+          lines.push(`• ${r.tahun}: Tidak ada data asuransi`);
+        }
+      }
+    }
+
+  } catch (err) {
+    console.warn('[DKPP Gemini] getPerikananContext error:', err);
+  }
+  return lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // System Prompt komprehensif — meniru persis algoritma dashboard-ketapang
 // ─────────────────────────────────────────────────────────────────────────────
 function buildSystemPrompt(
@@ -441,15 +579,14 @@ BERAS: Konsumsi 185,22 g/hari -> 32.475,55 Ton/tahun | Produksi Lokal 8.816,83 T
 SINGKONG: Konsumsi 12,06 g/hari -> 2.070,38 Ton/tahun | Produksi 2.007,6 Ton | Kemandirian 96,97% (hampir swasembada)
 UBI JALAR: Konsumsi 1.065,09 Ton | Produksi 4.415,10 Ton (SURPLUS)
 JAGUNG: Konsumsi 1.099,78 Ton | Produksi 143,56 Ton (Kemandirian ~13%)
-IKAN LAUT: Konsumsi 6.229,82 Ton/tahun | Produksi Tangkap ~240 Ton (Kemandirian ~3,9%)
-IKAN AIR TAWAR: Konsumsi 4.660,10 Ton/tahun | Produksi Budidaya ~371,63 Ton (Kemandirian ~8%)
+IKAN LAUT: Konsumsi 6.229,82 Ton/tahun | Produksi Tangkap 2025: 238,864 Ton (Kemandirian ~3,8%) — Data live lihat Bagian L
+IKAN AIR TAWAR: Konsumsi 4.660,10 Ton/tahun | Produksi Budidaya 2025: 361,455 Ton (Kemandirian ~7,8%) — Data live lihat Bagian L
 Proyeksi 2026 (486.623 Jiwa @ +1,30% BPS): Konsumsi Beras 32.897,74 Ton | Kebutuhan Impor 24.080,91 Ton
 
 === J. DATA SERUMPUN PADI GIS (NELAYAN, BUDIDAYA, KWT, PETERNAKAN) ===
-Nelayan Tangkap: 715 Orang | 9 Pangkalan/TPI | 410 Unit Perahu Motor Tempel | Produksi 2026: 136 Kg
-  - Pangkalan: Tanjung Peni, Suralaya, Mabak, Kaltex, Lebak Gede, Tamansari (Pulomerak), Tanjung Leneng, Terate (Ciwandan)
-Perikanan Budidaya: 2 Unit Aktif | Kolam 270 m2 | Produksi Agu 2026: 55 Kg | Jenis: Lele, Nila, Gurame
-  - Lokasi: Nurholis (Citangkil: Kolam Tanah+Terpal 170 m2)
+Nelayan Tangkap: 723 Orang (2025) | 8 Pangkalan | 410 Unit Perahu | 58 KUB | 3 Koperasi
+  - Pangkalan: Tanjung Peni (Citangkil/191 nelayan), Suralaya (126), Medaksa Seberang (76), Tamansari/Kaltek (91+15), Lebak Gede (24), Tanjung Leneng Ciwandan (72), Lelean Grogol (110), Terate Cibeber (18)
+Perikanan Budidaya: 395 Pembudidaya | 28 POKDAKAN | 37.461 m2 Kolam | Jenis: Lele (360 Pembesaran+30 Pembenihan), Ikan Hias (45 Pelaku)
 KWT: 3 Kelompok | 79 Anggota | Lahan 200 m2
   - KWT Gerogol: 23 Anggota, Cabai | KWT Gerem: 23 Anggota, Sayuran | KWT Kotabumi: 33 Anggota
 Peternakan: Sapi 2 Ekor + Kambing 2 Ekor di Kelurahan Masigit, Kec. Jombang
@@ -957,11 +1094,14 @@ export async function generateChatResponse(params: {
   const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
   const apiKey = process.env.GEMINI_API_KEY || '';
 
-  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi + ketapang (paralel)
-  const [dynamicDbContext, liveData, ketapangData] = await Promise.all([
+  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi + ketapang + perikanan (paralel)
+  // Perikanan: hanya fetch jika query relevan (hemat token & latency)
+  const isPerikanan = isPerikananQuery(lastUserMsg);
+  const [dynamicDbContext, liveData, ketapangData, perikananContext] = await Promise.all([
     getDynamicSupabaseContext().catch(() => ''),
     fetchAllSerumpunData().catch(() => undefined as SerumpunData | undefined),
     fetchKetapangData().catch(() => undefined),
+    isPerikanan ? getPerikananContext().catch(() => '') : Promise.resolve(''),
   ]);
   const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
   const ketapangContext = ketapangData ? buildKetapangContext(ketapangData) : '';
@@ -1097,7 +1237,7 @@ export async function generateChatResponse(params: {
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
-    dynamicDbContext + serumpunContext + ketapangContext,
+    dynamicDbContext + serumpunContext + ketapangContext + perikananContext,
     userRole,
     isVerified,
     userMemoryContext,
