@@ -162,6 +162,32 @@ async function callGeminiWithFallback(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// In-memory cache dengan TTL — hindari fetch berulang data statis
+// ─────────────────────────────────────────────────────────────────────────────
+const _cache = new Map<string, { data: unknown; expiry: number }>();
+function getCached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const hit = _cache.get(key);
+  if (hit && Date.now() < hit.expiry) return Promise.resolve(hit.data as T);
+  return fetcher().then(data => { _cache.set(key, { data, expiry: Date.now() + ttlMs }); return data; });
+}
+const TTL_5M  = 5  * 60_000;  // data semi-statis (IKP, SKPG, FSVA)
+const TTL_30S = 30 * 1_000;   // data harga harian (tetap segar tapi kurangi roundtrip)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keyword detectors — agar fetch hanya dipicu saat relevan
+// ─────────────────────────────────────────────────────────────────────────────
+function isGisQuery(q: string): boolean {
+  return /nelayan|kolam|kwt|poktan|peta|gis|spasial|ternak|sawah baku|petak|poligon/.test(q.toLowerCase());
+}
+function isKetapangQuery(q: string): boolean {
+  return /ikp|pou|pph|inflasi|cv beras|benchmark|produksi padi|produksi beras|ketersediaan|konsumsi energi|konsumsi protein|harga sagon|harga pangan|komoditas/.test(q.toLowerCase());
+}
+function isTrivialQuery(q: string): boolean {
+  // Pertanyaan ringan yang tidak butuh RAG dokumen 54 kb
+  return /^(halo|hai|hello|hi|selamat|tanggal|hari ini|sekarang|jam berapa|waktu|siapa kamu|apa itu|kamu siapa|test|coba|tes)/.test(q.trim().toLowerCase());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Ambil data dinamis dari Supabase DKPP secara paralel
 // ─────────────────────────────────────────────────────────────────────────────
 async function getDynamicSupabaseContext(): Promise<string> {
@@ -1094,26 +1120,41 @@ export async function generateChatResponse(params: {
   const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
   const apiKey = process.env.GEMINI_API_KEY || '';
 
-  // 1. Ambil konteks dinamis Supabase + semua data live dari serumpunpadi + ketapang + perikanan (paralel)
-  // Perikanan: hanya fetch jika query relevan (hemat token & latency)
-  const isPerikanan = isPerikananQuery(lastUserMsg);
+  // 1. Ambil konteks dinamis — conditional & cached untuk minimasi latency
+  const qLower = lastUserMsg.toLowerCase();
+  const isPerikanan  = isPerikananQuery(lastUserMsg);
+  const needsGis     = isGisQuery(qLower);
+  const needsKetapang = isKetapangQuery(qLower);
+
   const [dynamicDbContext, liveData, ketapangData, perikananContext] = await Promise.all([
-    getDynamicSupabaseContext().catch(() => ''),
-    fetchAllSerumpunData().catch(() => undefined as SerumpunData | undefined),
-    fetchKetapangData().catch(() => undefined),
+    // Data DKPP lokal: di-cache 5 menit karena IKP/FSVA/SKPG tidak berubah per menit
+    getCached('dynamic_supabase', TTL_5M, getDynamicSupabaseContext).catch(() => ''),
+    // Serumpunpadi GIS: hanya jika query menyebut nelayan/kolam/peta/dll
+    needsGis
+      ? getCached('serumpun', TTL_30S, fetchAllSerumpunData).catch(() => undefined as SerumpunData | undefined)
+      : Promise.resolve(undefined as SerumpunData | undefined),
+    // Ketapang (19 req!): hanya jika query menyebut harga/IKP/produksi/dll
+    needsKetapang
+      ? getCached('ketapang', TTL_30S, fetchKetapangData).catch(() => undefined)
+      : Promise.resolve(undefined),
+    // Perikanan DB: hanya jika query menyebut nelayan/KUB/ikan/dll
     isPerikanan ? getPerikananContext().catch(() => '') : Promise.resolve(''),
   ]);
   const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
   const ketapangContext = ketapangData ? buildKetapangContext(ketapangData) : '';
 
   // 1b. Ambil kutipan dokumen relevan dari 54 Dokumen Knowledge Base (RAG)
+  // Skip untuk query trivial ("halo", "tanggal berapa", dll) — hemat 0.5–2 detik
   let knowledgeContext = '';
   const matchingDocSources: SourceCitation[] = [];
+  const skipRag = isTrivialQuery(lastUserMsg);
   try {
-    const { data: matchedChunks } = await supabase.rpc('match_knowledge_chunks', {
-      query_text: lastUserMsg,
-      match_limit: 6,
-    });
+    const { data: matchedChunks } = skipRag
+      ? { data: null }
+      : await supabase.rpc('match_knowledge_chunks', {
+          query_text: lastUserMsg,
+          match_limit: 6,
+        });
     if (matchedChunks && matchedChunks.length > 0) {
       let validChunks = matchedChunks;
 

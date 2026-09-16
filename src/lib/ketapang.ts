@@ -95,7 +95,6 @@ export async function fetchKetapangData(): Promise<KetapangData> {
     ktFetch('konsumsi_energi_data',       '*', 'order=tahun.desc',   20),
     ktFetch('konsumsi_protein_data',      '*', 'order=tahun.desc',   20),
     ktFetch('intervensi_kelurahan',       '*', 'order=tahun.desc',   30),
-    ktFetch('master_wilayah_bps',         '*', '',                   50),
   ]);
 
   const get = (i: number) =>
@@ -120,7 +119,7 @@ export async function fetchKetapangData(): Promise<KetapangData> {
     konsumsiEnergi:     get(15),
     konsumsiProtein:    get(16),
     intervensiKelurahan:get(17),
-    masterWilayah:      get(18),
+    masterWilayah:      [],   // dihapus dari fetch, tidak dipakai di context builder
   };
 }
 
