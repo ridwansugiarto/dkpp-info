@@ -243,9 +243,11 @@ function isPerikananQuery(query: string): boolean {
     'nelayan', 'perikanan', 'ikan', 'budidaya', 'tangkap', 'kub', 'koperasi nelayan',
     'pokdakan', 'poklashar', 'pangkalan', 'perahu', 'kapal', 'alat tangkap',
     'bagan', 'pancing', 'jaring', 'bubu', 'lele', 'nila', 'gurame', 'ikan hias',
-    'kolam', 'pembudidaya', 'produksi ikan', 'pengolah', 'asuransi nelayan', 'bpan',
+    'kolam', 'pembudidaya', 'produksi ikan', 'pengolah', 'asuransi nelayan', 'asuransi', 'bpan',
     'tanjung peni', 'tanjung leneng', 'suralaya', 'mabak', 'lelean', 'terate',
-    'pulau', 'pantai', 'laut', 'selat sunda',
+    'pulau', 'pantai', 'laut', 'selat sunda', 'distribusi nelayan', 'sebaran nelayan',
+    'sebaran', 'distribusi', 'rekap', 'potensi', 'profil perikanan', 'jumlah nelayan',
+    'kelompok nelayan', 'kelompok usaha bersama', 'kelompok pembudidaya', 'kelompok pengolah'
   ].some(k => q.includes(k));
 }
 
@@ -256,12 +258,13 @@ async function getPerikananContext(): Promise<string> {
   const lines: string[] = ['\n=== DATA PERIKANAN KOTA CILEGON 2025 (LIVE DATABASE) ==='];
   try {
     const [
-      rekapRes, prodTahunanRes, prodBulananRes,
+      rekapRes, distribusiRes, prodTahunanRes, prodBulananRes,
       kubRes, koperasiRes, pangkalanRes,
       armadaRes, armadaJenisRes,
       anggaranRes, asuransiRes,
     ] = await Promise.allSettled([
       supabase.from('perikanan_rekap_potensi').select('uraian,jumlah,jumlah_teks,tahun').order('no'),
+      supabase.from('perikanan_nelayan_distribusi').select('kecamatan,jumlah_kecamatan,kelurahan,jumlah_nelayan').order('id'),
       supabase.from('perikanan_produksi_tahunan').select('tahun,produksi_tangkap_ton,produksi_budidaya_ton,total_produksi_ton').order('tahun'),
       supabase.from('perikanan_produksi_bulanan').select('jenis_komoditas,total_produksi_kg').eq('tahun', 2025),
       supabase.from('perikanan_kub').select('no,nama_kub,alamat,ketua,no_telp,jumlah_anggota,status,kelas_kub,bantuan_pernah_diterima').order('no'),
@@ -279,6 +282,23 @@ async function getPerikananContext(): Promise<string> {
       for (const r of rekapRes.value.data) {
         const val = r.jumlah !== null ? `${Number(r.jumlah).toLocaleString('id-ID')} ${r.jumlah_teks ?? ''}` : '-';
         lines.push(`• ${r.uraian} (${r.tahun}): ${val}`);
+      }
+    }
+
+    // Distribusi Nelayan per Kecamatan & Kelurahan
+    if (distribusiRes.status === 'fulfilled' && distribusiRes.value.data?.length) {
+      lines.push('\n--- Distribusi Nelayan per Kecamatan & Kelurahan (Total 723 Nelayan) ---');
+      const grouped: Record<string, { total: number; kel: string[] }> = {};
+      for (const r of distribusiRes.value.data) {
+        if (!grouped[r.kecamatan]) {
+          grouped[r.kecamatan] = { total: r.jumlah_kecamatan ?? 0, kel: [] };
+        }
+        if (r.jumlah_nelayan > 0) {
+          grouped[r.kecamatan].kel.push(`${r.kelurahan}: ${r.jumlah_nelayan}`);
+        }
+      }
+      for (const [kec, info] of Object.entries(grouped)) {
+        lines.push(`• Kec. ${kec} (${info.total} nelayan): ${info.kel.join(', ') || 'tidak ada nelayan'}`);
       }
     }
 
@@ -1137,8 +1157,10 @@ export async function generateChatResponse(params: {
     needsKetapang
       ? getCached('ketapang', TTL_30S, fetchKetapangData).catch(() => undefined)
       : Promise.resolve(undefined),
-    // Perikanan DB: hanya jika query menyebut nelayan/KUB/ikan/dll
-    isPerikanan ? getPerikananContext().catch(() => '') : Promise.resolve(''),
+    // Perikanan DB: di-cache 5 menit (11 tabel perikanan 2025)
+    isPerikanan
+      ? getCached('perikanan', TTL_5M, getPerikananContext).catch(() => '')
+      : Promise.resolve(''),
   ]);
   const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
   const ketapangContext = ketapangData ? buildKetapangContext(ketapangData) : '';
