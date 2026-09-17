@@ -3,6 +3,7 @@ import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
 import { fetchAllSerumpunData, buildSerumpunContext, type NelayenPin, type KolamPin, type PokTanPin, type TernakPin, type SerumpunData } from './serumpunpadi';
 import { fetchKetapangData, buildKetapangContext } from './ketapang';
+import { isRenstraQuery, fetchRenstraData, buildRenstraContext, type RenstraData } from './renstra';
 import { DKPP_MASTER_PROMPT } from './masterPrompt';
 import { reconstructContextualQuery } from './conversationalContextEngine';
 import {
@@ -407,13 +408,21 @@ function buildSystemPrompt(
   canAccessSensitive: boolean = false,
   humorContext: string | null = null,
   personalityContext: string | null = null,
-  pegawaiProfileContext: string | null = null
+  pegawaiProfileContext: string | null = null,
+  renstraContext: string = ''
 ): string {
   return `# SYSTEM PROMPT — ChatDKPP: Sistem Intelijen Ketahanan Pangan, Pertanian, Perikanan & Peternakan Kota Cilegon
-Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **3 PILAR UTAMA DATA KETAHANAN PANGAN**:
+Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS) Dinas Ketahanan Pangan dan Pertanian Kota Cilegon. Anda memiliki akses penuh ke **4 PILAR UTAMA DATA KETAHANAN PANGAN & PROGRAM DINAS**:
 1. **DATA BERANDA & DATABASE SUPABASE** (KPI, IKP, POU, FSVA, SKPG, EWS, FORECASTING HARGA, PANEL HARGA HARIAN SAGON)
 2. **PETA SPASIAL GIS** (Sawah Baku 407 Petak, ECMWF Lengas Tanah, Nelayan, Budidaya Kolam, KWT, Ternak, Pohon Sukun)
-3. **BASIS DATA AGREGAT & KNOWLEDGE BASE 54 DOKUMEN** (Juknis Bapanas, Susenas 2023, DKB Penduduk 2025, Realisasi DKPP 2014-2025, Neraca Pangan, Kemandirian Komoditas)
+3. **DOKUMEN & TABEL PROGRAM RENSTRA 2025-2030** (Tujuan & Sasaran Strategis, Cascading Program, IKU, IKK, IKD, Subkegiatan Prioritas, serta Rincian Program, Kegiatan, Output, & Pagu Anggaran per Tahun)
+4. **BASIS DATA AGREGAT & KNOWLEDGE BASE DOKUMEN** (Juknis Bapanas, Susenas, DKB Penduduk, Realisasi DKPP, Neraca Pangan)
+
+${renstraContext ? `
+## BASIS DATA PROGRAM & RENSTRA DKPP KOTA CILEGON (2025 - 2030)
+Gunakan data resmi di bawah ini untuk menjawab secara presisi, akurat, dan lengkap jika user menanyakan tentang Program, Kegiatan, Subkegiatan, Target Capaian, Indikator Kinerja Utama (IKU), Indikator Kinerja Kunci (IKK), Indikator Kinerja Daerah (IKD), Sasaran RPJMD/Dinas, atau Alokasi Pagu Anggaran per Tahun:
+${renstraContext}
+` : ''}
 
 ${humorContext ? `
 ## KHUSUS: MODE BERCANDA & HUMOR KEAKRABAN PEGAWAI INTERNAL DKPP
@@ -1184,11 +1193,12 @@ export async function generateChatResponse(params: {
 
   // 1. Ambil konteks dinamis — conditional & cached untuk minimasi latency
   const qLower = activeQuery.toLowerCase();
-  const isPerikanan  = isPerikananQuery(activeQuery);
-  const needsGis     = isGisQuery(qLower);
+  const isPerikanan   = isPerikananQuery(activeQuery);
+  const needsGis      = isGisQuery(qLower);
   const needsKetapang = isKetapangQuery(qLower);
+  const isRenstra     = isRenstraQuery(activeQuery);
 
-  const [dynamicDbContext, liveData, ketapangData, perikananContext] = await Promise.all([
+  const [dynamicDbContext, liveData, ketapangData, perikananContext, renstraData] = await Promise.all([
     // Data DKPP lokal: di-cache 5 menit karena IKP/FSVA/SKPG tidak berubah per menit
     getCached('dynamic_supabase', TTL_5M, getDynamicSupabaseContext).catch(() => ''),
     // Serumpunpadi GIS: hanya jika query menyebut nelayan/kolam/peta/dll
@@ -1203,9 +1213,14 @@ export async function generateChatResponse(params: {
     isPerikanan
       ? getCached('perikanan', TTL_5M, getPerikananContext).catch(() => '')
       : Promise.resolve(''),
+    // Renstra DB: Tujuan, Sasaran, Cascading, IKU, IKK, IKD, Subkegiatan Prioritas, & Pagu 2025-2030
+    isRenstra
+      ? getCached(`renstra_${qLower.slice(0, 30)}`, TTL_5M, () => fetchRenstraData(activeQuery)).catch(() => undefined as RenstraData | undefined)
+      : Promise.resolve(undefined as RenstraData | undefined),
   ]);
   const serumpunContext = liveData ? buildSerumpunContext(liveData) : '';
   const ketapangContext = ketapangData ? buildKetapangContext(ketapangData) : '';
+  const renstraContext = renstraData ? buildRenstraContext(renstraData, activeQuery) : '';
 
   // 1b. Ambil kutipan dokumen relevan dari 54 Dokumen Knowledge Base (RAG)
   // Skip untuk query trivial ("halo", "tanggal berapa", dll) — hemat 0.5–2 detik
@@ -1350,8 +1365,17 @@ export async function generateChatResponse(params: {
     canAccessSensitive,
     humorContext,
     personalityContext,
-    pegawaiProfileContext
+    pegawaiProfileContext,
+    renstraContext
   );
+
+  if (renstraContext && renstraContext.length > 50) {
+    matchingDocSources.push({
+      type: 'KNOWLEDGE BASE',
+      title: 'Dokumen Renstra DKPP Kota Cilegon 2025-2030',
+      detail: 'Tabel Tujuan, Sasaran, Cascading Program, IKU, IKK, IKD, Subkegiatan Prioritas & Pagu Anggaran',
+    });
+  }
 
   // 4. Build conversation contents (multi-turn, token-efficient)
   const contents = buildGeminiContents(messages);
