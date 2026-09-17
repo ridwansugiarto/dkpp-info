@@ -60,6 +60,7 @@ export const ChatDKPPApp: React.FC = () => {
   const [highlightPins, setHighlightPins] = useState<any[]>([]);
   const [activeMapAnswer, setActiveMapAnswer] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
+  const syncedUserIdRef = useRef<string | null>(null);
 
   const GUEST_DEFAULT: UserProfile = {
     id: 'guest_init',
@@ -113,6 +114,7 @@ export const ChatDKPPApp: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.role) && parsed.role !== 'GUEST') {
           initialUser = parsed;
+          syncedUserIdRef.current = parsed.id;
           // Sync to sessionStorage as well for cross-tab consistency
           try { sessionStorage.setItem('dkpp_user_session', saved); } catch {}
         }
@@ -124,10 +126,7 @@ export const ChatDKPPApp: React.FC = () => {
 
     const syncUserFromSupabase = async (user: any) => {
       if (!user) return;
-      // Strict isolation: immediately purge existing browser sessions/messages to prevent any visual cross-leakage
-      setSessions([]);
-      setMessages([]);
-      setActiveSessionId(null);
+      const isSameUser = syncedUserIdRef.current === user.id;
 
       const email = user.email?.toLowerCase() || '';
       const isAdmin = email === 'ridwansugiarto.mail@gmail.com';
@@ -166,13 +165,21 @@ export const ChatDKPPApp: React.FC = () => {
         department: finalDept,
         position: finalPosition,
       };
+
       setCurrentUser(profile);
       try {
-        // Persist to localStorage so session survives browser restarts (like ChatGPT)
         localStorage.setItem('dkpp_user_session', JSON.stringify(profile));
         sessionStorage.setItem('dkpp_user_session', JSON.stringify(profile));
       } catch {}
-      fetchSessions(profile.id);
+
+      // ONLY purge state and refetch sessions if this is a genuinely NEW/different user
+      if (!isSameUser) {
+        syncedUserIdRef.current = user.id;
+        setSessions([]);
+        setMessages([]);
+        setActiveSessionId(null);
+        fetchSessions(profile.id);
+      }
 
       // Auto-prompt dialog klaim NIP jika user login Google dan belum memiliki NIP terverifikasi
       if (!isAdmin && !isVerified) {
@@ -233,6 +240,7 @@ export const ChatDKPPApp: React.FC = () => {
 
   const handleAuthSuccess = (user: UserProfile) => {
     // Immediately isolate state
+    syncedUserIdRef.current = user.id;
     setSessions([]);
     setMessages([]);
     setActiveSessionId(null);
@@ -256,6 +264,7 @@ export const ChatDKPPApp: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    syncedUserIdRef.current = null;
     try {
       // On explicit logout: clear ALL stored session data from both storages
       sessionStorage.removeItem('dkpp_user_session');
