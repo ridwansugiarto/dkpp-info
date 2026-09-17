@@ -72,6 +72,68 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { userEmail, id, folder, visibility, is_sensitive, filename } = body;
+
+    const authProfile = await resolveUserAuth(userEmail);
+    if (authProfile.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized: Akses khusus Super Admin' }, { status: 403 });
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID dokumen diperlukan' }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+    if (folder !== undefined) {
+      updatePayload.folder = folder;
+      // Otomatis tandai sensitif jika masuk folder sensitif atau kepegawaian
+      if (folder === 'sensitif' || folder === 'kepegawaian') {
+        updatePayload.is_sensitive = true;
+      }
+    }
+    if (visibility !== undefined) {
+      updatePayload.visibility = visibility;
+      if (visibility === 'RESTRICTED' || visibility === 'ADMIN') {
+        updatePayload.is_sensitive = true;
+      }
+    }
+    if (is_sensitive !== undefined) {
+      updatePayload.is_sensitive = Boolean(is_sensitive);
+    }
+    if (filename !== undefined) {
+      updatePayload.filename = filename;
+    }
+
+    const { data: updatedDoc, error } = await supabaseAdmin
+      .from('documents')
+      .update(updatePayload)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    await logAudit({
+      userId: authProfile.id,
+      action: 'ADMIN_UPDATE_DOC',
+      resourceType: 'DOCUMENT',
+      resourceId: id,
+      accessResult: 'SUCCESS',
+      metadata: { updatePayload },
+    });
+
+    return NextResponse.json({ success: true, document: updatedDoc });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: 'Gagal memperbarui dokumen', details: msg }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

@@ -12,10 +12,9 @@ import { matchLocationToWilayah } from '@/lib/spatialWilayahMatcher';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 jam
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSPClient(): any {
-  const url = process.env.SP_SUPABASE_URL;
-  const key = process.env.SP_SUPABASE_ANON_KEY;
+  const url = process.env.SP_SUPABASE_URL || process.env.SERUMPUNPADI_SUPABASE_URL || 'https://xxdbgnxxlumdfczflytg.supabase.co';
+  const key = process.env.SP_SUPABASE_ANON_KEY || process.env.SERUMPUNPADI_SUPABASE_SERVICE_KEY || process.env.SERUMPUNPADI_SUPABASE_ANON_KEY || '';
   if (!url || !key) throw new Error('Serumpun-Padi credentials tidak ditemukan di env');
   return createClient(url, key);
 }
