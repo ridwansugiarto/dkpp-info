@@ -319,19 +319,20 @@ async function getPerikananContext(): Promise<string> {
       }
     }
 
-    // Pangkalan
+    // Pangkalan Nelayan (9 Pangkalan Resmi)
     if (pangkalanRes.status === 'fulfilled' && pangkalanRes.value.data?.length) {
-      lines.push('\n--- Pangkalan Nelayan ---');
+      lines.push('\n--- Daftar 9 Pangkalan Nelayan Kota Cilegon (Total: 723 Nelayan, 410 Perahu) ---');
+      lines.push('CATATAN KHUSUS JUMLAH PANGKALAN (9 vs 8): Secara fisik dan kewilayahan terdapat 9 Pangkalan Nelayan di Cilegon. Jika dokumen/rekap administratif menulis 8 pangkalan, hal itu karena Pangkalan Terate (Kec. Cibeber) menjual produk tangkapannya ke luar wilayah Cilegon (berstatus Nelayan Andon), sehingga data produksinya tidak dicatat oleh petugas pencatat Cilegon. Pangkalan Terate tetap sah sebagai bagian dari 9 pangkalan nelayan Kota Cilegon.');
       for (const r of pangkalanRes.value.data) {
-        lines.push(`• ${r.nama_pangkalan} (${r.kecamatan}): ${r.jumlah_nelayan} nelayan — Asal: ${r.asal_nelayan ?? '-'}`);
+        lines.push(`• ${r.nama_pangkalan} (Kec. ${r.kecamatan}): ${r.jumlah_nelayan} nelayan — Asal: ${r.asal_nelayan ?? 'Cibeber'}`);
       }
     }
 
-    // Armada Kapal
+    // Armada Kapal per Pangkalan
     if (armadaRes.status === 'fulfilled' && armadaRes.value.data?.length) {
-      lines.push('\n--- Armada Kapal/Perahu per Pangkalan ---');
+      lines.push('\n--- Armada Kapal/Perahu per 9 Pangkalan (Total: 410 Unit) ---');
       for (const r of armadaRes.value.data) {
-        lines.push(`• ${r.nama_pangkalan} (${r.kecamatan}): ${r.jumlah_perahu_kapal} unit`);
+        lines.push(`• ${r.nama_pangkalan} (Kec. ${r.kecamatan}): ${r.jumlah_perahu_kapal} unit`);
       }
     }
 
@@ -629,10 +630,24 @@ IKAN LAUT: Konsumsi 6.229,82 Ton/tahun | Produksi Tangkap 2025: 238,864 Ton (Kem
 IKAN AIR TAWAR: Konsumsi 4.660,10 Ton/tahun | Produksi Budidaya 2025: 361,455 Ton (Kemandirian ~7,8%) — Data live lihat Bagian L
 Proyeksi 2026 (486.623 Jiwa @ +1,30% BPS): Konsumsi Beras 32.897,74 Ton | Kebutuhan Impor 24.080,91 Ton
 
-=== J. DATA SERUMPUN PADI GIS (NELAYAN, BUDIDAYA, KWT, PETERNAKAN) ===
-Nelayan Tangkap: 723 Orang (2025) | 8 Pangkalan | 410 Unit Perahu | 58 KUB | 3 Koperasi
-  - Pangkalan: Tanjung Peni (Citangkil/191 nelayan), Suralaya (126), Medaksa Seberang (76), Tamansari/Kaltek (91+15), Lebak Gede (24), Tanjung Leneng Ciwandan (72), Lelean Grogol (110), Terate Cibeber (18)
-Perikanan Budidaya: 395 Pembudidaya | 28 POKDAKAN | 37.461 m2 Kolam | Jenis: Lele (360 Pembesaran+30 Pembenihan), Ikan Hias (45 Pelaku)
+=== J. DATA PERIKANAN & NELAYAN KOTA CILEGON (723 NELAYAN, 410 PERAHU, 9 PANGKALAN) ===
+Nelayan Tangkap: 723 Orang (2025) | 9 Pangkalan Nelayan Resmi | 410 Unit Perahu/Kapal | 58 KUB | 3 Koperasi Nelayan
+ATURAN WAJIB JUMLAH PANGKALAN (9 PANGKALAN RESMI):
+1. Tanjung Leneng (Kec. Ciwandan) — 72 nelayan | 64 unit perahu
+2. Pantai Mabak (Kec. Pulomerak, Kel. Mekarsari) — 65 nelayan | 10 unit perahu
+3. Medaksa Seberang (Kec. Pulomerak, Kel. Tamansari) — 76 nelayan | 52 unit perahu
+4. Kaltek (Kec. Pulomerak, Kel. Tamansari) — 15 nelayan | 40 unit perahu
+5. Lebak Gede / Pantai Lebakgede (Kec. Pulomerak, Kel. Lebakgede) — 24 nelayan | 16 unit perahu
+6. Suralaya (Kec. Pulomerak, Kel. Suralaya) — 144 nelayan | 67 unit perahu
+7. Lelean (Kec. Grogol, Kel. Gerem) — 110 nelayan | 54 unit perahu
+8. Tanjung Peni (Kec. Citangkil) — 191 nelayan (gabungan Citangkil, Ciwandan, Purwakarta, Cilegon, Jombang) | 102 unit perahu
+9. Pangkalan Terate (Kec. Cibeber) — 18 nelayan | 5 unit perahu
+(Total: 723 Nelayan, 410 Perahu/Kapal)
+
+CATATAN KHUSUS PANGKALAN TERATE & PENJELASAN 9 vs 8 PANGKALAN:
+- Jika ada pertanyaan mengapa dokumen atau rekapitulasi administratif menyebut 8 pangkalan, jelaskan bahwa secara kewilayahan dan fisik ada 9 Pangkalan Nelayan di Kota Cilegon. Pangkalan Terate di Kec. Cibeber menjual dan mendaratkan hasil tangkapannya ke luar wilayah Cilegon (berstatus Nelayan Andon), sehingga volume produksinya tidak dicatat oleh petugas DKPP Cilegon. Meskipun demikian, Pangkalan Terate dengan 18 nelayan dan 5 perahunya tetap sah merupakan 1 dari 9 pangkalan nelayan Kota Cilegon.
+
+Perikanan Budidaya: 395 Pembudidaya | 28 POKDAKAN | 37.461 m2 Kolam | Jenis: Lele (360 Pembesaran+30 Pembenihan), Ikan Hias (45 Pelaku), Pengolah Ikan (131 Orang, 17 POKLASHAR)
 KWT: 3 Kelompok | 79 Anggota | Lahan 200 m2
   - KWT Gerogol: 23 Anggota, Cabai | KWT Gerem: 23 Anggota, Sayuran | KWT Kotabumi: 33 Anggota
 Peternakan: Sapi 2 Ekor + Kambing 2 Ekor di Kelurahan Masigit, Kec. Jombang
@@ -1110,6 +1125,26 @@ Seluruh **407 petak sawah baku (1.151,97 Ha)** terpantau realtime via ECMWF ERA5
 | Kritis (Merah) | < 0,18 m3/m3 | Siagakan pompanisasi darurat |
 
 ET0 rata-rata: 3,8-4,5 mm/hari. Resolusi piksel: 10m x 10m per petak.`;
+  }
+
+  if (q.includes('nelayan') || q.includes('pangkalan') || q.includes('perikanan') || q.includes('terate') || q.includes('perahu') || q.includes('kub')) {
+    return `### Profil Perikanan & Pangkalan Nelayan Kota Cilegon 2025
+
+**Total Nelayan:** 723 Orang | **Armada:** 410 Perahu/Kapal | **KUB:** 58 Kelompok | **Koperasi:** 3 Unit
+
+**Daftar 9 Pangkalan Nelayan Resmi Kota Cilegon:**
+1. **Tanjung Leneng** (Kec. Ciwandan): 72 Nelayan | 64 Perahu
+2. **Pantai Mabak** (Kec. Pulomerak, Kel. Mekarsari): 65 Nelayan | 10 Perahu
+3. **Medaksa Seberang** (Kec. Pulomerak, Kel. Tamansari): 76 Nelayan | 52 Perahu
+4. **Kaltek** (Kec. Pulomerak, Kel. Tamansari): 15 Nelayan | 40 Perahu
+5. **Lebak Gede** (Kec. Pulomerak, Kel. Lebakgede): 24 Nelayan | 16 Perahu
+6. **Suralaya** (Kec. Pulomerak, Kel. Suralaya): 144 Nelayan | 67 Perahu
+7. **Lelean** (Kec. Grogol, Kel. Gerem): 110 Nelayan | 54 Perahu
+8. **Tanjung Peni** (Kec. Citangkil): 191 Nelayan | 102 Perahu
+9. **Pangkalan Terate** (Kec. Cibeber): 18 Nelayan | 5 Perahu
+
+💡 *Catatan Pangkalan Terate (9 vs 8 Pangkalan):*
+Secara fisik & kewilayahan, Kota Cilegon memiliki **9 Pangkalan Nelayan**. Jika pada beberapa rekapitulasi administratif hanya tercatat 8 pangkalan, hal itu dikarenakan nelayan di **Pangkalan Terate (Kec. Cibeber)** menjual produk hasil tangkapannya di luar wilayah Cilegon (**Nelayan Andon**), sehingga volume produksinya tidak dicatat oleh petugas pencatat Cilegon. Namun pangkalan, 18 nelayan, dan 5 perahunya tetap sah sebagai 1 dari 9 pangkalan di Kota Cilegon.`;
   }
 
   return `### ChatDKPP — Sistem Intelijen Ketahanan Pangan Kota Cilegon
