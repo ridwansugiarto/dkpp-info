@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { searchKnowledgeBase, MatchedKnowledgeChunk } from '@/app/api/knowledge/search/route';
 import { KELURAHAN_COORDINATES } from '@/lib/kamera-normatif';
 import { BASELINE_KELURAHAN_DATA } from '@/lib/thematic-indicators';
+import { DKPP_MASTER_PROMPT } from '@/lib/masterPrompt';
 
 // Data Luas Sawah Resmi per Kelurahan (Ha) untuk GIS Intelligence Pin
 const KELURAHAN_SAWAH: Record<string, number> = {
@@ -979,6 +980,8 @@ Sertakan blok JSON grafik dengan format \`\`\`json:chart di dalam respons Anda:
   ]
 }
 \`\`\`
+
+${DKPP_MASTER_PROMPT}
 
 === BASIS DATA TERPADU KETAHANAN PANGAN KOTA CILEGON ===
 ${homepageDbNarrative}

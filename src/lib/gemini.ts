@@ -3,6 +3,7 @@ import { BASELINE_KELURAHAN_DATA } from './thematic-indicators';
 import { supabase } from './supabase';
 import { fetchAllSerumpunData, buildSerumpunContext, type NelayenPin, type KolamPin, type PokTanPin, type TernakPin, type SerumpunData } from './serumpunpadi';
 import { fetchKetapangData, buildKetapangContext } from './ketapang';
+import { DKPP_MASTER_PROMPT } from './masterPrompt';
 import {
   isPegawaiHumorQuery,
   buildPegawaiHumorContext,
@@ -520,6 +521,8 @@ Saat menyebut wilayah yang perlu di-highlight pada peta: [KELURAHAN:NamaKeluraha
 - DILARANG memberi baris kosong di antara baris tabel Markdown (| baris 1 |\n| baris 2 |). Tabel harus rapat tanpa jeda baris kosong agar render tabel sempurna.
 - DILARANG template "Ringkasan Eksekutif" generik. Sajikan langsung data berbobot.
 - DILARANG halusinasi. Jika data tidak tersedia, jelaskan berbasis data makro terdekat.
+
+${DKPP_MASTER_PROMPT}
 
 [USER CONTEXT]: Role: ${userRole} | Verified Employee: ${isVerified} | Can Access Sensitive: ${canAccessSensitive}
 ${memoryContext ? `[USER MEMORY]:\n${memoryContext}\n` : ''}

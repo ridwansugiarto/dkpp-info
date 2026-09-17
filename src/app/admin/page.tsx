@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   ShieldAlert, 
@@ -77,6 +77,8 @@ export default function AdminPortalPage() {
   const [isSavingEditDoc, setIsSavingEditDoc] = useState(false);
 
   // New Doc Form
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [newDocName, setNewDocName] = useState('');
   const [newDocFolder, setNewDocFolder] = useState('ketahanan-pangan');
   const [newDocVisibility, setNewDocVisibility] = useState('INTERNAL');
@@ -319,32 +321,80 @@ export default function AdminPortalPage() {
 
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDocName) return;
+    if (!newDocName && !selectedFile) return;
     setLoading(true);
-    setUploadStatus('Mengunggah dan membuat vector embeddings...');
+    setUploadStatus('Mengunggah berkas dan memproses vector embeddings...');
 
     try {
-      const res = await fetch('/api/admin/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userEmail: AUTHORIZED_ADMIN_EMAIL,
-          filename: newDocName,
-          folder: newDocFolder,
-          visibility: newDocVisibility,
-          is_sensitive: newDocSensitive,
-        }),
-      });
-      const data = await res.json();
-      if (data.document) {
-        setDocuments((prev) => [data.document, ...prev]);
-        setUploadStatus('✅ Dokumen berhasil diindeks ke pgvector!');
+      if (selectedFile) {
+        // 1. Upload file fisik ke /api/knowledge/upload untuk di-chunk & diekstrak teksnya
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('judul', newDocName || selectedFile.name);
+        formData.append('deskripsi', `Dokumen unggahan Admin ke folder ${newDocFolder}`);
+        formData.append('folder', newDocFolder);
+        formData.append('visibility', newDocVisibility);
+        formData.append('is_sensitive', String(newDocSensitive));
+
+        const resUpload = await fetch('/api/knowledge/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await resUpload.json();
+
+        if (!resUpload.ok) {
+          throw new Error(uploadData.error || 'Gagal memproses file dokumen');
+        }
+
+        // 2. Daftarkan juga ke tabel documents agar tampil di Manajemen Dokumen
+        const resDoc = await fetch('/api/admin/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userEmail: AUTHORIZED_ADMIN_EMAIL,
+            filename: newDocName || selectedFile.name,
+            folder: newDocFolder,
+            visibility: newDocVisibility,
+            is_sensitive: newDocSensitive,
+            file_size: selectedFile.size,
+            mime_type: selectedFile.type || 'application/pdf',
+          }),
+        });
+        const docData = await resDoc.json();
+
+        if (docData.document) {
+          setDocuments((prev) => [docData.document, ...prev]);
+        }
+
+        const totalChunksMsg = uploadData.total_chunks ? ` (${uploadData.total_chunks} chunks)` : '';
+        setUploadStatus(`✅ Berhasil! File "${selectedFile.name}" telah diunggah${totalChunksMsg} dan diindeks ke pgvector!`);
+        setSelectedFile(null);
         setNewDocName('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
       } else {
-        setUploadStatus(`❌ ${data.error || 'Gagal membuat dokumen'}`);
+        const res = await fetch('/api/admin/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userEmail: AUTHORIZED_ADMIN_EMAIL,
+            filename: newDocName,
+            folder: newDocFolder,
+            visibility: newDocVisibility,
+            is_sensitive: newDocSensitive,
+          }),
+        });
+        const data = await res.json();
+        if (data.document) {
+          setDocuments((prev) => [data.document, ...prev]);
+          setUploadStatus('✅ Dokumen berhasil dibuat dan diindeks ke pgvector!');
+          setNewDocName('');
+        } else {
+          setUploadStatus(`❌ ${data.error || 'Gagal membuat dokumen'}`);
+        }
       }
-    } catch {
-      setUploadStatus('❌ Terjadi kesalahan server');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan server saat upload';
+      setUploadStatus(`❌ ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -1329,11 +1379,91 @@ export default function AdminPortalPage() {
 
           {/* TAB 4: Upload & Ingestion Tab */}
           {activeTab === 'UPLOAD' && (
-            <div className="space-y-4 max-w-xl">
-              <h2 className="text-lg font-bold text-white">Upload Dokumen & Ingestion RAG</h2>
-              <form onSubmit={handleCreateDocument} className="space-y-4">
+            <div className="space-y-6 max-w-2xl">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <UploadCloud className="w-5 h-5 text-emerald-400" />
+                  Upload Dokumen & Ingestion RAG
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Unggah berkas dokumen (PDF, Word, Excel, PPTX, CSV, TXT) untuk diparsing otomatis, diekstrak menjadi chunks, dan diindeks ke basis data vektor (pgvector) ChatDKPP AI.
+                </p>
+              </div>
+
+              <form onSubmit={handleCreateDocument} className="space-y-5">
+                {/* File Upload Dropzone / Picker Area */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Dokumen</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Pilih Berkas Dokumen <span className="text-emerald-400">*</span>
+                  </label>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSelectedFile(file);
+                      if (file && !newDocName) {
+                        setNewDocName(file.name);
+                      }
+                    }}
+                    accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.csv,.txt,.md,.png,.jpg,.jpeg"
+                    className="hidden"
+                    id="admin-file-upload-input"
+                  />
+
+                  {!selectedFile ? (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-700 hover:border-emerald-500/70 bg-slate-950/60 hover:bg-slate-900/60 rounded-2xl p-6 text-center cursor-pointer transition-all group"
+                    >
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
+                        <UploadCloud className="w-6 h-6" />
+                      </div>
+                      <p className="text-xs font-bold text-white mb-1">
+                        <span className="text-emerald-400 underline decoration-emerald-400/40 underline-offset-4">Klik untuk memilih berkas</span> atau seret file ke sini
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Mendukung format PDF, Word (.docx/.doc), Excel (.xlsx/.xls), PPTX, CSV, TXT, Gambar (Maks 4.5 MB)
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/80 border border-emerald-500/30 text-white">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-100 truncate">{selectedFile.name}</p>
+                          <p className="text-[11px] text-slate-400">{(selectedFile.size / 1024).toFixed(1)} KB • {selectedFile.type || 'Berkas Dokumen'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2.5 py-1 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-all cursor-pointer"
+                        >
+                          Ganti File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="p-1 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-all cursor-pointer"
+                          title="Hapus file terpilih"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nama / Judul Dokumen</label>
                   <input
                     type="text"
                     required
@@ -1344,32 +1474,34 @@ export default function AdminPortalPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Target Folder</label>
-                  <select
-                    value={newDocFolder}
-                    onChange={(e) => setNewDocFolder(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    {FOLDERS.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Target Folder</label>
+                    <select
+                      value={newDocFolder}
+                      onChange={(e) => setNewDocFolder(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    >
+                      {FOLDERS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Visibilitas</label>
-                  <select
-                    value={newDocVisibility}
-                    onChange={(e) => setNewDocVisibility(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="PUBLIC">PUBLIC (Tamu + Pegawai + Admin)</option>
-                    <option value="INTERNAL">INTERNAL (Hanya Pegawai Terverifikasi & Admin)</option>
-                    <option value="ADMIN">ADMIN (Hanya Super Admin)</option>
-                  </select>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Visibilitas</label>
+                    <select
+                      value={newDocVisibility}
+                      onChange={(e) => setNewDocVisibility(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="PUBLIC">PUBLIC (Tamu + Pegawai + Admin)</option>
+                      <option value="INTERNAL">INTERNAL (Hanya Pegawai Terverifikasi & Admin)</option>
+                      <option value="ADMIN">ADMIN (Hanya Super Admin)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -1380,24 +1512,30 @@ export default function AdminPortalPage() {
                     onChange={(e) => setNewDocSensitive(e.target.checked)}
                     className="rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500"
                   />
-                  <label htmlFor="sensitif" className="text-xs text-slate-300 font-medium">
-                    Tandai sebagai dokumen sensitif (hanya dapat diakses melalui verifikasi ganda)
+                  <label htmlFor="sensitif" className="text-xs text-slate-300 font-medium cursor-pointer">
+                    Tandai sebagai dokumen sensitif (hanya dapat diakses melalui verifikasi ganda NIP)
                   </label>
                 </div>
 
                 {uploadStatus && (
-                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200">
+                  <div className={`p-3.5 rounded-xl border text-xs ${
+                    uploadStatus.startsWith('✅')
+                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                      : uploadStatus.startsWith('❌')
+                      ? 'bg-red-950/40 border-red-500/30 text-red-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-200'
+                  }`}>
                     {uploadStatus}
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (!newDocName && !selectedFile)}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <UploadCloud className="w-4 h-4" />
-                  <span>Proses Ingestion & Vector Index</span>
+                  <span>{loading ? 'Memproses Berkas & Ingestion...' : 'Proses Ingestion & Vector Index'}</span>
                 </button>
               </form>
             </div>
