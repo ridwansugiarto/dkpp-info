@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { fetchAllSerumpunData, buildSerumpunContext, type NelayenPin, type KolamPin, type PokTanPin, type TernakPin, type SerumpunData } from './serumpunpadi';
 import { fetchKetapangData, buildKetapangContext } from './ketapang';
 import { DKPP_MASTER_PROMPT } from './masterPrompt';
+import { reconstructContextualQuery } from './conversationalContextEngine';
 import {
   isPegawaiHumorQuery,
   buildPegawaiHumorContext,
@@ -764,7 +765,8 @@ function evaluateSpatialFilter(query: string): { filteredWilayah: string[]; filt
 // ─────────────────────────────────────────────────────────────────────────────
 function buildGeminiContents(history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>) {
   const contents: Array<{ role: string; parts: { text: string }[] }> = [];
-  const recentHistory = history.slice(-5);
+  // Ambil hingga 10 pesan terakhir untuk mempertahankan kesinambungan konteks percakapan
+  const recentHistory = history.slice(-10);
   for (const h of recentHistory) {
     if (h.role === 'system') continue;
     if (h.content && h.content.trim()) {
@@ -1175,12 +1177,14 @@ export async function generateChatResponse(params: {
   userMemoryContext?: string;
 }) {
   const { messages, userRole = 'GUEST', isVerified = false, canAccessSensitive = false, userMemoryContext = '' } = params;
-  const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+  const contextualQuery = reconstructContextualQuery(lastUserMsg, messages);
+  const activeQuery = contextualQuery || lastUserMsg;
   const apiKey = process.env.GEMINI_API_KEY || '';
 
   // 1. Ambil konteks dinamis — conditional & cached untuk minimasi latency
-  const qLower = lastUserMsg.toLowerCase();
-  const isPerikanan  = isPerikananQuery(lastUserMsg);
+  const qLower = activeQuery.toLowerCase();
+  const isPerikanan  = isPerikananQuery(activeQuery);
   const needsGis     = isGisQuery(qLower);
   const needsKetapang = isKetapangQuery(qLower);
 
@@ -1207,12 +1211,12 @@ export async function generateChatResponse(params: {
   // Skip untuk query trivial ("halo", "tanggal berapa", dll) — hemat 0.5–2 detik
   let knowledgeContext = '';
   const matchingDocSources: SourceCitation[] = [];
-  const skipRag = isTrivialQuery(lastUserMsg);
+  const skipRag = isTrivialQuery(activeQuery);
   try {
     const { data: matchedChunks } = skipRag
       ? { data: null }
       : await supabase.rpc('match_knowledge_chunks', {
-          query_text: lastUserMsg,
+          query_text: activeQuery,
           match_limit: 6,
         });
     if (matchedChunks && matchedChunks.length > 0) {
@@ -1267,7 +1271,7 @@ export async function generateChatResponse(params: {
   }
 
   // 2. Cek apakah pertanyaan user adalah mode bercanda / humor internal
-  const isHumor = isPegawaiHumorQuery(lastUserMsg);
+  const isHumor = isPegawaiHumorQuery(activeQuery);
   const isAuthorizedForInternal = canAccessSensitive || isVerified || userRole === 'ADMIN' || userRole === 'EMPLOYEE';
 
   // PROTEKSI KETAT: Jika pengguna GUEST / belum login menanyakan data humor/peringkat pegawai, tolak langsung!
@@ -1302,19 +1306,19 @@ export async function generateChatResponse(params: {
       // Fallback ke in-memory jika db belum siap
     }
   }
-  const humorContext = (isHumor && isAuthorizedForInternal) ? buildPegawaiHumorContext(lastUserMsg, liveHumorData) : null;
+  const humorContext = (isHumor && isAuthorizedForInternal) ? buildPegawaiHumorContext(activeQuery, liveHumorData) : null;
 
   // 2b. Cek apakah pertanyaan adalah analisis kepribadian/zodiak/kecocokan
-  const isPersonality = isPersonalityQuery(lastUserMsg);
+  const isPersonality = isPersonalityQuery(activeQuery);
   let personalityContext: string | null = null;
   if (isPersonality && isAuthorizedForInternal) {
     const personalityDataset = liveHumorData || OFFICIAL_DKPP_HUMOR_DATA;
-    personalityContext = buildPersonalityContext(lastUserMsg, personalityDataset);
+    personalityContext = buildPersonalityContext(activeQuery, personalityDataset);
   }
 
   // 2c. Cek apakah pertanyaan menyebut nama/jabatan pegawai — inject data faktual
   // ⚠️ SECURITY GATE: HANYA untuk pegawai terverifikasi / admin
-  const isPegawaiProfile = isPegawaiProfileQuery(lastUserMsg);
+  const isPegawaiProfile = isPegawaiProfileQuery(activeQuery);
 
   // Blokir GUEST yang mencoba mengakses data kepegawaian
   if (isPegawaiProfile && !isAuthorizedForInternal) {
@@ -1333,7 +1337,7 @@ export async function generateChatResponse(params: {
   }
 
   const pegawaiProfileContext = (isPegawaiProfile && isAuthorizedForInternal)
-    ? buildPegawaiDkppContext(lastUserMsg)
+    ? buildPegawaiDkppContext(activeQuery)
     : null;
 
   // 3. Bangun system prompt komprehensif dengan isolasi ketat

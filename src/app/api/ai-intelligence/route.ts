@@ -4,6 +4,7 @@ import { searchKnowledgeBase, MatchedKnowledgeChunk } from '@/app/api/knowledge/
 import { KELURAHAN_COORDINATES } from '@/lib/kamera-normatif';
 import { BASELINE_KELURAHAN_DATA } from '@/lib/thematic-indicators';
 import { DKPP_MASTER_PROMPT } from '@/lib/masterPrompt';
+import { reconstructContextualQuery } from '@/lib/conversationalContextEngine';
 
 // Data Luas Sawah Resmi per Kelurahan (Ha) untuk GIS Intelligence Pin
 const KELURAHAN_SAWAH: Record<string, number> = {
@@ -787,8 +788,8 @@ function buildGeminiContents(
 ) {
   const contents = [];
 
-  // Ambil 4 pesan terakhir (2 putaran) untuk memangkas konsumsi token TPM (Tokens Per Minute)
-  const recentHistory = history.slice(-4);
+  // Ambil hingga 10 pesan terakhir untuk mempertahankan kesinambungan konteks percakapan
+  const recentHistory = history.slice(-10);
 
   for (const h of recentHistory) {
     if (h.text && h.text.trim()) {
@@ -887,9 +888,11 @@ export async function POST(request: Request) {
     let knowledgeNarrative = '';
     let referencedDocs: string[] = [];
     const kbCatalogNarrative = await getKnowledgeBaseCatalog();
+    const contextualQuery = reconstructContextualQuery(userMessage, history);
+    const activeQuery = contextualQuery || userMessage;
 
     try {
-      const matchedChunks: MatchedKnowledgeChunk[] = await searchKnowledgeBase(userMessage, 8);
+      const matchedChunks: MatchedKnowledgeChunk[] = await searchKnowledgeBase(activeQuery, 8);
 
       if (matchedChunks.length > 0) {
         referencedDocs = Array.from(new Set(matchedChunks.map(c => c.doc_title)));
