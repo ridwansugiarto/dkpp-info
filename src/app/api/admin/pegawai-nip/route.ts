@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       kelas_jabatan: null,
       jabatan: (jabatan || 'Pegawai DKPP').trim(),
       status_pegawai: 'Fungsional',
+      kategori_pegawai: 'PNS',
       bidang: (bidang || 'DKPP Cilegon').trim(),
       is_sensitive: true,
       is_active: true,

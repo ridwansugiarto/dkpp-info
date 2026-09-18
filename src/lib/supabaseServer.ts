@@ -2,7 +2,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { UserRole, UserProfile } from '@/types/dkpp';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fnhrdwfmwhglbrnzlxxv.supabase.co';
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const rawSecret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseSecretKey = (rawSecret && rawSecret.trim().length > 0)
+  ? rawSecret.trim()
+  : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 // Server-side privileged client
 export const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
@@ -92,11 +95,23 @@ export async function resolveUserAuth(userEmail?: string, userId?: string, userN
     }
   }
 
-  // 4. Default to Guest: User Guest tanpa NIP TIDAK BISA mengakses data sensitif
+  // 4. User yang sudah masuk Google/Gmail tapi belum verifikasi NIP adalah User Umum (CITIZEN), bukan GUEST
+  if (userEmail && userEmail !== 'guest@dkpp-cilegon.id' && userId !== 'guest') {
+    return {
+      id: userId || 'citizen-user',
+      email: userEmail,
+      full_name: userEmail.split('@')[0],
+      role: 'CITIZEN',
+      is_verified_employee: false,
+      can_access_sensitive: false,
+    };
+  }
+
+  // 5. Tamu murni: Belum masuk akun Google/Gmail sama sekali
   return {
     id: userId || 'guest',
-    email: userEmail || 'guest@dkpp-cilegon.id',
-    full_name: userEmail ? userEmail.split('@')[0] : 'Tamu / Guest DKPP',
+    email: 'guest@dkpp-cilegon.id',
+    full_name: 'Tamu DKPP',
     role: 'GUEST',
     is_verified_employee: false,
     can_access_sensitive: false,

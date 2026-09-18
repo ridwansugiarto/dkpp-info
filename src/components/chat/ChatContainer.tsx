@@ -18,11 +18,22 @@ import {
   ThumbsUp,
   ThumbsDown,
   Share2,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  ShieldCheck,
+  Lock,
+  Vote,
+  Award,
+  Users
 } from 'lucide-react';
-import { ChatMessage, SourceCitation } from '@/types/dkpp';
+import { ChatMessage, SourceCitation, UserProfile } from '@/types/dkpp';
 import { cleanResponseText } from '@/lib/gemini';
 import type { ChartConfig } from '@/components/ChatChart';
+
+import { PollCard } from '@/components/polling/PollCard';
+import { ThemeCatalog } from '@/components/polling/ThemeCatalog';
+import { LiveResultsCarousel } from '@/components/polling/LiveResultsCarousel';
+import { ChatInput } from './ChatInput';
 
 // Dynamic import ChatChart for interactive Recharts
 const ChatChart = dynamic(
@@ -34,9 +45,14 @@ interface ChatContainerProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onSuggestionClick: (prompt: string) => void;
+  onSendMessage?: (message: string) => void;
   onSelectKelurahan?: (kel: string) => void;
   viewMode?: 'SPLIT' | 'PETA' | 'CHAT';
   onOpenMap?: (action?: any, answerContent?: string) => void;
+  onLoginClick?: () => void;
+  onClaimNipClick?: () => void;
+  onOpenCarousel?: (initialThemeCode?: string) => void;
+  currentUser?: UserProfile;
 }
 
 // Suggestions removed per user request (Capture 1)
@@ -75,9 +91,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   messages,
   isLoading,
   onSuggestionClick,
+  onSendMessage,
   onSelectKelurahan,
   viewMode = 'CHAT',
   onOpenMap,
+  onLoginClick,
+  onClaimNipClick,
+  onOpenCarousel,
+  currentUser,
 }) => {
   const scrollEndRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -325,11 +346,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+    <div className="flex-1 overflow-y-auto px-4 py-4 sm:py-6 space-y-6">
       {messages.length === 0 ? (
-        /* Empty State (Sesuai Mockup Desktop dengan Logo Besar) */
-        <div className="max-w-xl mx-auto py-10 sm:py-16 flex flex-col items-center text-center animate-in fade-in duration-300">
-          <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 relative mb-5 sm:mb-6 flex items-center justify-center select-none">
+        /* Empty State (Sesuai Mockup ChatGPT dengan Logo ChatDKPP) */
+        <div className="max-w-2xl mx-auto min-h-[75vh] flex flex-col items-center justify-center text-center animate-in fade-in duration-300 space-y-6 px-2">
+          {/* Logo Resmi ChatDKPP */}
+          <div className="w-24 h-24 sm:w-32 sm:h-32 relative flex items-center justify-center select-none">
             <img
               src="/ikon-chatDKPP.png"
               alt="Chat DKPP Kota Cilegon"
@@ -337,26 +359,36 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             />
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-2.5">
-            What are you working on?
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-500 max-w-md mb-6 leading-relaxed">
-            Asisten cerdas DKPP Kota Cilegon untuk analisis ketahanan pangan, pertanian, perikanan, peternakan, agroklimat, dan data spasial GIS.
-          </p>
+          {/* Center Greeting Title */}
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              What’s on the agenda today?
+            </h1>
+          </div>
 
-          {/* Minimalist Action Pill (Persis Capture 5 "What can you do?") */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          {/* Centered Input Box (Capture 1 & 2: auto-expanding downwards) */}
+          <div className="w-full">
+            <ChatInput
+              onSendMessage={onSendMessage || onSuggestionClick}
+              isLoading={isLoading}
+              isCentered={true}
+              placeholder="Ask anything"
+            />
+          </div>
+
+          {/* Minimalist Action Pills below input */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
             <button
               type="button"
               onClick={() => onSuggestionClick('Apa saja data dan analisis ketahanan pangan yang bisa saya tanyakan?')}
-              className="px-4 py-2 rounded-full border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-xs transition-all cursor-pointer"
+              className="px-4 py-2 rounded-full border border-gray-300/90 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-2xs transition-all cursor-pointer"
             >
               What can you do?
             </button>
             <button
               type="button"
               onClick={() => onSuggestionClick('Tampilkan ringkasan status ketahanan pangan dan stabilitas pasokan beras Kota Cilegon.')}
-              className="px-4 py-2 rounded-full border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-xs transition-all cursor-pointer"
+              className="px-4 py-2 rounded-full border border-gray-300/90 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-2xs transition-all cursor-pointer"
             >
               Status Ketahanan Pangan
             </button>
@@ -439,7 +471,165 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                   {isUser ? (
                     <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   ) : (
-                    renderFormattedContent(msg.content)
+                    <>
+                      {msg.type !== 'poll_carousel' && !msg.poll_carousel && renderFormattedContent(msg.content)}
+
+                      {/* 1. Auth Action Card: Login Gmail Required */}
+                      {msg.auth_prompt === 'LOGIN_REQUIRED' && onLoginClick && (
+                        <div className="mt-3.5 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-950">
+                              <Shield className="w-4 h-4 text-emerald-700 shrink-0" />
+                              <span>Masuk via Akun Google (Gmail)</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-800 leading-tight">
+                              Masuk untuk membuka akses data, menyimpan riwayat, dan verifikasi NIP kepegawaian.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onLoginClick}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold shadow-sm transition-all shrink-0 cursor-pointer"
+                          >
+                            <span>Masuk dengan Gmail</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 2. Auth Action Card: NIP Verification Required for Citizen / Non-Pegawai */}
+                      {msg.auth_prompt === 'NIP_REQUIRED' && onClaimNipClick && (
+                        <div className="mt-3.5 p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-emerald-50 to-emerald-50 border border-emerald-300 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-950">
+                              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                              <span>Khusus Pegawai Aktif DKPP Kota Cilegon</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-800 leading-tight">
+                              Verifikasi 18 digit NIP resmi Anda untuk ikut memberikan hak suara voting.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onClaimNipClick}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold shadow-sm transition-all shrink-0 cursor-pointer"
+                          >
+                            <span>Verifikasi NIP Pegawai</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 3. In-Chat Interactive Poll Card */}
+                      {msg.poll_card?.poll && (
+                        <div className="mt-3.5 pt-1 space-y-3">
+                          <PollCard
+                            poll={msg.poll_card.poll}
+                            onExploreOther={() => onSendMessage?.('katalog semua polling')}
+                          />
+
+                          {/* Quick Category Switcher Pills in Chat */}
+                          <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                                Pilih Tema Polling Lainnya:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onOpenCarousel) {
+                                    onOpenCarousel(msg.poll_card?.poll?.code || 'cantik');
+                                  } else {
+                                    onSendMessage?.('lihat carousel live polling');
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+                              >
+                                <span>🎠 Live Carousel (15 Tema)</span>
+                              </button>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                { label: '💃 Paling Cantik', code: 'cantik' },
+                                { label: '💇 Paling Ganteng', code: 'ganteng' },
+                                { label: '📚 Paling Rajin', code: 'rajin' },
+                                { label: '🧠 Paling Cerdas', code: 'cerdas' },
+                                { label: '🕌 Paling Soleh', code: 'soleh' },
+                                { label: '😂 Paling Lucu', code: 'lucu' },
+                                { label: '🎁 Paling Royal', code: 'royal' },
+                                { label: '❤️ Paling Baik', code: 'baik' },
+                                { label: '📋 Semua 15 Tema', code: 'all' },
+                              ].map((cat) => (
+                                <button
+                                  key={cat.code}
+                                  type="button"
+                                  onClick={() => {
+                                    if (cat.code === 'all') {
+                                      onSendMessage?.('katalog semua polling');
+                                    } else {
+                                      onSendMessage?.(`siapa pegawai ${cat.label.replace(/^[^\s]+\s*/, '')}`);
+                                    }
+                                  }}
+                                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                                    msg.poll_card?.poll?.code === cat.code
+                                      ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                                      : 'bg-gray-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200/80 dark:border-gray-700'
+                                  }`}
+                                >
+                                  {cat.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. In-Chat Interactive Poll Catalog Grid (Screen 7) */}
+                      {msg.poll_catalog?.themes && (
+                        <div className="mt-3.5 space-y-3">
+                          <ThemeCatalog
+                            themes={msg.poll_catalog.themes}
+                            onSelectTheme={(themeCode) => {
+                              const selectedTheme = msg.poll_catalog?.themes.find((t) => t.code === themeCode);
+                              const label = selectedTheme?.short_label || themeCode;
+                              onSendMessage?.(`siapa pegawai ${label.toLowerCase()}`);
+                            }}
+                          />
+                          <div className="text-center pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onOpenCarousel) {
+                                  onOpenCarousel('cantik');
+                                } else {
+                                  onSendMessage?.('lihat carousel live polling');
+                                }
+                              }}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+                            >
+                              <span>🎠 Putar Live Carousel Hasil 15 Tema</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 5. In-Chat Interactive Live Results Carousel */}
+                      {(msg.type === 'poll_carousel' || msg.poll_carousel) && (
+                        <div className="mt-3.5">
+                          <LiveResultsCarousel
+                            initialThemeCode={msg.poll_carousel?.initialThemeCode || 'cantik'}
+                            onSelectThemeForVoting={(themeCode) => {
+                              onSendMessage?.(`siapa pegawai ${themeCode}`);
+                            }}
+                            onAskAi={(prompt) => {
+                              onSendMessage?.(prompt);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Interactive Action Bar on Assistant Responses */}

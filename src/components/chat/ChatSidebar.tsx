@@ -12,6 +12,7 @@ import {
   Shield,
   ShieldCheck, 
   UserCheck, 
+  User,
   LogOut, 
   LogIn,
   Layers,
@@ -132,8 +133,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <span className="text-[10.5px] text-emerald-600 font-semibold tracking-wide">
                 Cilegon AI Food Security
               </span>
-              <span className="text-[8.5px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mt-0.5">
-                UNOFFICIAL
+              <span className="text-[8.5px] font-extrabold text-emerald-700/80 dark:text-emerald-400 uppercase tracking-widest leading-none mt-0.5">
+                PROTOTYPE
               </span>
             </div>
           </div>
@@ -387,25 +388,30 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
                     {user.full_name}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {user.role === 'ADMIN' ? (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 font-medium">
+                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 font-medium">
                         <ShieldCheck className="w-2.5 h-2.5" /> Super Admin
                       </span>
                     ) : user.is_verified_employee ? (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-medium">
+                      <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-medium">
                         <UserCheck className="w-2.5 h-2.5" /> Pegawai DKPP
                       </span>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={onClaimNipClick}
-                        className="inline-flex items-center gap-1 text-[9px] text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
-                        title="Klaim NIP Pegawai untuk membuka mode dokumen sensitif"
-                      >
-                        <Shield className="w-2.5 h-2.5" />
-                        <span>Klaim NIP</span>
-                      </button>
+                      <>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-medium">
+                          <User className="w-2.5 h-2.5" /> User Umum
+                        </span>
+                        <button
+                          type="button"
+                          onClick={onClaimNipClick}
+                          className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 font-bold hover:underline cursor-pointer border border-emerald-200 dark:border-emerald-800 transition-colors"
+                          title="Verifikasi NIP Pegawai untuk membuka akses data internal & polling"
+                        >
+                          <Shield className="w-2.5 h-2.5" />
+                          <span>Verif NIP</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

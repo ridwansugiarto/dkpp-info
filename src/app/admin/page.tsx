@@ -34,10 +34,15 @@ import {
   X,
   ChevronRight,
   SlidersHorizontal,
-  FolderSync
+  FolderSync,
+  Trophy,
+  Download,
+  Award,
+  Vote
 } from 'lucide-react';
 import { DocumentItem, DocumentFolder, DocumentVisibility } from '@/types/dkpp';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 
 const AUTHORIZED_ADMIN_EMAIL = 'ridwansugiarto.mail@gmail.com';
 
@@ -56,11 +61,25 @@ export default function AdminPortalPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'SYNC' | 'AUDIT' | 'HEALTH'>('DOCUMENTS');
+  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'SYNC' | 'AUDIT' | 'HEALTH' | 'POLLING'>('DOCUMENTS');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+
+  // Polling Management States
+  const [selectedPollThemeCode, setSelectedPollThemeCode] = useState('cantik');
+  const [pollDetail, setPollDetail] = useState<any>(null);
+  const [pollResults, setPollResults] = useState<any[]>([]);
+  const [pollTotalVotes, setPollTotalVotes] = useState(0);
+  const [pollVoters, setPollVoters] = useState<any[]>([]);
+  const [pollAuditLogs, setPollAuditLogs] = useState<any[]>([]);
+  const [pollSubTab, setPollSubTab] = useState<'AGREGAT' | 'ANONIM' | 'AUDIT'>('AGREGAT');
+  const [pollLoading, setPollLoading] = useState(false);
+  const [pollActionMsg, setPollActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [resetReason, setResetReason] = useState('Audit berkala & pembersihan data uji');
+  const [isResetting, setIsResetting] = useState(false);
 
   // Filter & Search Documents
   const [selectedFolderFilter, setSelectedFolderFilter] = useState<string | null>(null);
@@ -566,6 +585,147 @@ export default function AdminPortalPage() {
     );
   }
 
+  // Polling fetch & mutation handlers
+  const fetchPollData = async (code: string) => {
+    setPollLoading(true);
+    setPollActionMsg(null);
+    try {
+      // 1. Fetch Aggregates
+      const res = await fetch(`/api/polling/results/${code}`);
+      const data = await res.json();
+      if (res.ok) {
+        setPollDetail(data.poll);
+        setPollResults(data.results || []);
+        setPollTotalVotes(data.total_votes || 0);
+      }
+
+      // 2. Fetch Superadmin Voter / Activity Details
+      const vRes = await fetch('/api/admin/polling/voters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poll_id: code,
+          adminEmail: currentUserEmail,
+          reason: 'Akses Portal Admin DKPP'
+        })
+      });
+      const vData = await vRes.json();
+      if (vRes.ok) {
+        setPollVoters(vData.voters || []);
+        setPollAuditLogs(vData.audit_logs || []);
+      }
+    } catch (err: any) {
+      console.error('Fetch poll admin error:', err);
+    } finally {
+      setPollLoading(false);
+    }
+  };
+
+  const handleResetPoll = async () => {
+    setIsResetting(true);
+    try {
+      const res = await fetch('/api/admin/polling/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'RESET_POLL',
+          poll_id: selectedPollThemeCode,
+          reason: resetReason,
+          adminEmail: currentUserEmail
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        setShowResetConfirmModal(false);
+        fetchPollData(selectedPollThemeCode);
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal mereset polling.' });
+      }
+    } catch (err: any) {
+      setPollActionMsg({ type: 'error', text: err.message || 'Koneksi terganggu.' });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleDeleteCandidateVote = async (employeeId: string, employeeName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus seluruh perolehan suara untuk kandidat "${employeeName}"?`)) return;
+    try {
+      const res = await fetch('/api/admin/polling/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'DELETE_CANDIDATE_VOTE',
+          poll_id: selectedPollThemeCode,
+          employee_id: employeeId,
+          employee_name: employeeName,
+          reason: 'Penghapusan suara kandidat oleh Super Admin untuk audit',
+          adminEmail: currentUserEmail
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        fetchPollData(selectedPollThemeCode);
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal menghapus suara kandidat.' });
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleDeleteUserVote = async (userId: string, userEmail?: string) => {
+    const label = userEmail || userId;
+    if (!confirm(`Apakah Anda yakin ingin menghapus seluruh pilihan suara dari akun "${label}" untuk audit & keamanan?`)) return;
+    try {
+      const res = await fetch('/api/admin/polling/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'DELETE_USER_VOTE',
+          poll_id: selectedPollThemeCode,
+          user_id: userId,
+          user_email: userEmail,
+          reason: 'Penghapusan pilihan suara user oleh Admin untuk audit keamanan',
+          adminEmail: currentUserEmail
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        fetchPollData(selectedPollThemeCode);
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal menghapus suara user.' });
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleExportPollCsv = () => {
+    if (!pollResults.length) {
+      alert('Tidak ada data hasil untuk diekspor.');
+      return;
+    }
+    const headers = ['No', 'Nama Pegawai', 'Jumlah Suara', 'Persentase'];
+    const rows = pollResults.map((r, idx) => [
+      idx + 1,
+      `"${r.full_name}"`,
+      r.total_votes,
+      `"${r.percentage}%"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Hasil_Polling_${selectedPollThemeCode}_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // 3. AUTHORIZED ADMIN PORTAL
   const filteredNips = nips.filter((n) => {
     if (!nipSearch) return true;
@@ -579,47 +739,41 @@ export default function AdminPortalPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Bar */}
-      <header className="h-16 border-b border-slate-800 px-6 flex items-center justify-between bg-slate-900/60 backdrop-blur-md sticky top-0 z-20">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      {/* Top Navbar */}
+      <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-            title="Kembali ke Beranda"
+            className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition-all shadow-sm"
+            title="Kembali ke ChatDKPP"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-              DK
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white leading-tight">Admin Portal ChatDKPP</h1>
-              <p className="text-[10px] text-emerald-400">Knowledge Base & System Administration</p>
-            </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+            DK
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white flex items-center gap-2">
+              <span>Admin Portal ChatDKPP</span>
+            </h1>
+            <p className="text-[10px] text-slate-400">
+              Knowledge Base & System Administration
+            </p>
           </div>
         </div>
 
-        {/* Governance Verified Admin Badge */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-emerald-500/40">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-emerald-300">SUPER ADMIN: ridwansugiarto.mail@gmail.com</span>
-          </div>
-          <Link
-            href="/"
-            className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-          >
-            Chat Portal →
-          </Link>
+        {/* User Badge */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-800 text-xs text-slate-300">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-[11px] font-mono">SUPER ADMIN: {currentUserEmail}</span>
         </div>
       </header>
 
-      {/* Admin Content */}
-      <div className="flex-1 flex flex-col md:flex-row p-6 gap-6 max-w-7xl mx-auto w-full">
-        {/* Navigation Sidebar */}
-        <div className="w-full md:w-64 space-y-1 shrink-0">
+      {/* Main Layout */}
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col md:flex-row gap-6">
+        {/* Sidebar Nav */}
+        <div className="w-full md:w-64 space-y-1.5 shrink-0">
           <button
             onClick={() => setActiveTab('DOCUMENTS')}
             className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
@@ -657,6 +811,25 @@ export default function AdminPortalPage() {
             <span className="flex-1 text-left">Daftar NIP Pegawai</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
               {nips.length}
+            </span>
+          </button>
+
+          {/* TAB BARU: POLLING PEGAWAI */}
+          <button
+            onClick={() => {
+              setActiveTab('POLLING');
+              fetchPollData(selectedPollThemeCode);
+            }}
+            className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'POLLING'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <span className="flex-1 text-left">Polling Pegawai</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 font-mono border border-emerald-800">
+              15 Tema
             </span>
           </button>
 
@@ -1811,6 +1984,355 @@ export default function AdminPortalPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 7: POLLING PEGAWAI */}
+          {activeTab === 'POLLING' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Header Polling Detail */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Detail Polling</h2>
+                  <div className="mt-2 flex items-center gap-2">
+                    <select
+                      value={selectedPollThemeCode}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setSelectedPollThemeCode(code);
+                        fetchPollData(code);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-emerald-300 font-bold text-sm focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
+                    >
+                      {OFFICIAL_POLL_THEMES.map((theme) => (
+                        <option key={theme.code} value={theme.code}>
+                          {theme.icon || '🏆'} {theme.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Meta Stats Badges */}
+                  <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full border border-slate-400" />
+                      <span>Total suara: <strong className="text-white font-mono">{pollTotalVotes}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Status: Aktif</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Action Buttons */}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleExportPollCsv}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-300" />
+                    <span>Ekspor Data &gt;</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirmModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Hapus / Reset Polling</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Feedback Message */}
+              {pollActionMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
+                    pollActionMsg.type === 'success'
+                      ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                      : 'bg-rose-950/60 border-rose-800 text-rose-300'
+                  }`}
+                >
+                  <span>{pollActionMsg.text}</span>
+                  <button onClick={() => setPollActionMsg(null)} className="text-slate-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* 3 Sub-Tabs Navigation */}
+              <div className="flex items-center gap-6 border-b border-slate-800 text-xs font-bold pb-2">
+                <button
+                  type="button"
+                  onClick={() => setPollSubTab('AGREGAT')}
+                  className={`pb-2 relative transition-all cursor-pointer ${
+                    pollSubTab === 'AGREGAT'
+                      ? 'text-emerald-400'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>Hasil (Agregat)</span>
+                  {pollSubTab === 'AGREGAT' && (
+                    <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPollSubTab('ANONIM')}
+                  className={`pb-2 relative transition-all cursor-pointer ${
+                    pollSubTab === 'ANONIM'
+                      ? 'text-emerald-400'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>Pilihan User (Anonim)</span>
+                  {pollSubTab === 'ANONIM' && (
+                    <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPollSubTab('AUDIT')}
+                  className={`pb-2 relative transition-all cursor-pointer ${
+                    pollSubTab === 'AUDIT'
+                      ? 'text-emerald-400'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>Log Aktivitas (Khusus Super Admin)</span>
+                  {pollSubTab === 'AUDIT' && (
+                    <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
+                  )}
+                </button>
+              </div>
+
+              {/* TAB 1: HASIL AGREGAT (Table with individual candidate vote deletion) */}
+              {pollSubTab === 'AGREGAT' && (
+                <div className="space-y-4">
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-900 text-slate-300 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="py-3 px-4 w-14 text-center">No</th>
+                          <th className="py-3 px-4">Nama Pegawai</th>
+                          <th className="py-3 px-4 text-center w-36">Jumlah Suara</th>
+                          <th className="py-3 px-4 text-right w-28">Persentase</th>
+                          <th className="py-3 px-4 text-center w-36">Aksi Tata Kelola</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {pollResults.length > 0 ? (
+                          pollResults.map((row, idx) => (
+                            <tr key={row.employee_id || idx} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-3 px-4 font-semibold text-white">
+                                <div>{row.full_name}</div>
+                                <div className="text-[10px] text-slate-400 font-normal">{row.position} • {row.unit}</div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-mono text-slate-200 font-bold">
+                                {row.total_votes}
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono text-emerald-400 font-bold">
+                                {row.percentage}%
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCandidateVote(row.employee_id, row.full_name)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-[11px] font-bold transition-all active:scale-95 cursor-pointer"
+                                  title={`Hapus seluruh suara untuk ${row.full_name}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                  <span>Hapus Suara</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
+                              Belum ada suara masuk untuk tema polling ini.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      {pollResults.length > 0 && (
+                        <tfoot className="bg-slate-900/90 font-bold text-slate-200 border-t border-slate-700">
+                          <tr>
+                            <td colSpan={2} className="py-3 px-4 text-slate-300">Total suara</td>
+                            <td className="py-3 px-4 text-center font-mono text-white text-sm">{pollTotalVotes}</td>
+                            <td className="py-3 px-4 text-right font-mono text-emerald-400">100%</td>
+                            <td className="py-3 px-4"></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PILIHAN USER (ANONIM) */}
+              {pollSubTab === 'ANONIM' && (
+                <div className="space-y-4">
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-900 text-slate-300 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="py-3 px-4 w-14 text-center">No</th>
+                          <th className="py-3 px-4">Token Pemilih (Anonim)</th>
+                          <th className="py-3 px-4 text-center">Jumlah Pilihan</th>
+                          <th className="py-3 px-4">Waktu Partisipasi</th>
+                          <th className="py-3 px-4 text-center">Status Keabsahan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {pollVoters.length > 0 ? (
+                          pollVoters.map((voter, idx) => (
+                            <tr key={voter.user_id || idx} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-3 px-4 font-mono text-slate-300">
+                                <span>anon-voter-#{String(idx + 1).padStart(3, '0')}</span>
+                                <span className="text-[10px] text-slate-500 block">Encrypted SHA256 Token</span>
+                              </td>
+                              <td className="py-3 px-4 text-center font-bold text-white font-mono">
+                                {voter.choices?.length || 1} Suara
+                              </td>
+                              <td className="py-3 px-4 text-slate-400 text-[11px]">
+                                {new Date(voter.voted_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-semibold">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  <span>Valid &amp; Terverifikasi</span>
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
+                              Belum ada catatan partisipasi pemilih.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: LOG AKTIVITAS (KHUSUS SUPER ADMIN) */}
+              {pollSubTab === 'AUDIT' && (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs flex items-center gap-2.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      <strong>Mode Audit Super Administrator:</strong> Menampilkan identitas akun Gmail pemilih, daftar kandidat yang dipilihnya, waktu submit, dan IP Address untuk audit transparansi &amp; keamanan.
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-900 text-slate-300 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="py-3 px-4 w-12 text-center">No</th>
+                          <th className="py-3 px-4">Akun Gmail &amp; Identitas Pemilih</th>
+                          <th className="py-3 px-4">Pilihan Pegawai (Hasil Polling Dia)</th>
+                          <th className="py-3 px-4">Waktu &amp; IP Address</th>
+                          <th className="py-3 px-4 text-center w-36">Aksi Keamanan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {pollVoters.length > 0 ? (
+                          pollVoters.map((voter, idx) => (
+                            <tr key={voter.user_id || idx} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                                  <span>📧 {voter.email || voter.user_id}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  User ID: {voter.user_id}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-wrap gap-1.5">
+                                  {voter.choices && voter.choices.length > 0 ? (
+                                    voter.choices.map((c: any, cIdx: number) => (
+                                      <span
+                                        key={c.vote_id || cIdx}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-300 text-xs font-semibold shadow-xs"
+                                      >
+                                        <span>✓ {c.full_name}</span>
+                                        <span className="text-[10px] text-slate-400 font-normal">({c.unit || 'DKPP'})</span>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-slate-500 italic text-[11px]">Tidak ada rincian pilihan</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-[11px] text-slate-400">
+                                <div>{new Date(voter.voted_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                                <div className="font-mono text-[10px] text-slate-500">IP: {voter.ip_address || '127.0.0.1'}</div>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUserVote(voter.user_id, voter.email)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-[11px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                                  title="Hapus seluruh pilihan suara dari user ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                  <span>Hapus Pilihan User</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
+                              Belum ada data pemilih yang tercatat.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* BOTTOM PRIVACY & AUDIT BADGES (Sesuai Mockup) */}
+              <div className="space-y-3 pt-2">
+                <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-900/50 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-300">Data pengguna yang memilih (anonim)</h4>
+                    <p className="text-[11px] text-emerald-400/80 mt-0.5">
+                      Hasil perolehan suara dihitung secara agregat dan disajikan secara anonim kepada publik &amp; pegawai dinas.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Log aktivitas (hanya untuk admin)</h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Dapat melihat siapa yang memilih, daftar pilihan, waktu, dan IP (untuk audit integritas &amp; transparansi tata kelola internal).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1924,6 +2446,76 @@ export default function AdminPortalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL RESET / HAPUS POLLING (SUPERADMIN ONLY) */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-600/20 border border-rose-500/30 text-rose-400 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Reset &amp; Hapus Suara Polling</h3>
+                  <span className="text-[10px] text-slate-400">Hak Akses: Super Administrator</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowResetConfirmModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-300">
+                Apakah Anda yakin ingin mereset seluruh perolehan suara untuk tema:
+                <strong className="block text-rose-400 mt-1 font-semibold">
+                  "{OFFICIAL_POLL_THEMES.find((t) => t.code === selectedPollThemeCode)?.title || selectedPollThemeCode}"
+                </strong>
+              </p>
+
+              <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 text-amber-300 text-[11px]">
+                Seluruh suara mentah, penanda partisipasi pemilih, dan agregat hasil akan dihapus secara permanen dari database &amp; memory store. Tindakan ini akan dicatat ke Audit Log.
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Alasan Audit / Reset:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={resetReason}
+                  onChange={(e) => setResetReason(e.target.value)}
+                  placeholder="Contoh: Audit berkala, pembersihan data uji coba"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirmModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetPoll}
+                  disabled={isResetting || !resetReason.trim()}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md active:scale-98 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isResetting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{isResetting ? 'Mereset...' : 'Ya, Reset Sekarang'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

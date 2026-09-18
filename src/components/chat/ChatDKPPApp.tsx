@@ -21,6 +21,7 @@ import { ChatContainer } from './ChatContainer';
 import { ChatInput } from './ChatInput';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { NipClaimModal } from '@/components/auth/NipClaimModal';
+import { LiveResultsCarousel } from '@/components/polling/LiveResultsCarousel';
 import { ChatSession, ChatMessage, UserProfile, MapAction } from '@/types/dkpp';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -58,6 +59,8 @@ export const ChatDKPPApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastMapAction, setLastMapAction] = useState<MapAction | null>(null);
   const [highlightPins, setHighlightPins] = useState<any[]>([]);
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselThemeCode, setCarouselThemeCode] = useState<string>('cantik');
   const [activeMapAnswer, setActiveMapAnswer] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const syncedUserIdRef = useRef<string | null>(null);
@@ -483,16 +486,24 @@ export const ChatDKPPApp: React.FC = () => {
             body: JSON.stringify({ userId: currentUser.id, title: autoTitle }),
           });
           const sData = await sRes.json();
-          if (sData.session) {
+          if (sData?.session?.id) {
             currentSessId = sData.session.id;
             setActiveSessionId(sData.session.id);
             setSessions((prev) => [sData.session, ...prev.slice(0, 9)]);
+          } else {
+            currentSessId = `sess-${Date.now()}`;
+            setActiveSessionId(currentSessId);
           }
         } catch {
           currentSessId = `sess-${Date.now()}`;
           setActiveSessionId(currentSessId);
         }
       }
+    }
+
+    if (!currentSessId) {
+      currentSessId = `sess-${Date.now()}`;
+      setActiveSessionId(currentSessId);
     }
 
     // Optimistically add user message
@@ -533,23 +544,29 @@ export const ChatDKPPApp: React.FC = () => {
 
       const data = await res.json();
 
-      if (data.content) {
+      const msgContent = data.content || data.message?.content || '';
+      if (msgContent || data.poll_card || data.poll_catalog || data.auth_prompt || data.message) {
         const aiMsg: ChatMessage = {
-          id: data.assistantMessageId || `ai-${Date.now()}`,
+          id: data.assistantMessageId || data.message?.id || `ai-${Date.now()}`,
           session_id: currentSessId || 'default',
           role: 'assistant',
-          content: data.content,
-          sources: data.sources || [],
-          tool_calls: data.tool_calls || [],
-          map_actions: data.map_actions || [],
-          created_at: new Date().toISOString(),
+          content: msgContent,
+          type: data.type || data.message?.type || 'text',
+          poll_card: data.poll_card || data.message?.poll_card,
+          poll_catalog: data.poll_catalog || data.message?.poll_catalog,
+          auth_prompt: data.auth_prompt || data.message?.auth_prompt,
+          sources: data.sources || data.message?.sources || [],
+          tool_calls: data.tool_calls || data.message?.tool_calls || [],
+          map_actions: data.map_actions || data.message?.map_actions || [],
+          created_at: data.message?.created_at || new Date().toISOString(),
         };
 
         setMessages((prev) => [...prev, aiMsg]);
 
         // Dispatch map action if any (simpan state peta tanpa otomatis berpindah mode)
-        if (data.map_actions && data.map_actions.length > 0) {
-          const act = data.map_actions[0];
+        const mapActions = data.map_actions || data.message?.map_actions;
+        if (mapActions && mapActions.length > 0) {
+          const act = mapActions[0];
           setLastMapAction({
             ...act,
             _id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -564,9 +581,9 @@ export const ChatDKPPApp: React.FC = () => {
           setHighlightPins(data.matched_pins);
         }
 
-        // Jika user memang sedang berada di tab PETA, perbarui ringkasan analisis untuk kartu mengambang di peta
-        if (viewMode === 'PETA') {
-          setActiveMapAnswer(data.content);
+        // Jika user sedang di tab PETA
+        if (viewMode === 'PETA' && msgContent) {
+          setActiveMapAnswer(msgContent);
         }
       }
     } catch {
@@ -799,24 +816,36 @@ export const ChatDKPPApp: React.FC = () => {
                 messages={messages}
                 isLoading={isLoading}
                 onSuggestionClick={handleSendMessage}
+                onSendMessage={handleSendMessage}
                 viewMode={viewMode}
                 onOpenMap={handleOpenMap}
+                onLoginClick={() => setAuthModalOpen(true)}
+                onClaimNipClick={() => setNipClaimModalOpen(true)}
+                onOpenCarousel={(code) => {
+                  handleSendMessage(code ? `lihat live hasil ${code}` : 'lihat carousel live polling');
+                }}
+                currentUser={currentUser}
               />
 
-              <div
-                className={`shrink-0 ${
-                  viewMode === 'CHAT'
-                    ? 'px-4 sm:px-6 pb-4 pt-2 bg-white w-full'
-                    : 'p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm'
-                }`}
-              >
-                <div className={viewMode === 'CHAT' ? 'max-w-3xl mx-auto' : ''}>
-                  <ChatInput
-                    onSendMessage={handleSendMessage}
-                    isLoading={isLoading}
-                  />
+              {/* Bottom Sticky ChatInput (Hanya muncul saat percakapan sudah berjalan - Capture 3) */}
+              {messages.length > 0 && (
+                <div
+                  className={`shrink-0 ${
+                    viewMode === 'CHAT'
+                      ? 'px-4 sm:px-6 pb-3 pt-1 bg-white w-full'
+                      : 'p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm'
+                  }`}
+                >
+                  <div className={viewMode === 'CHAT' ? 'max-w-3xl mx-auto' : ''}>
+                    <ChatInput
+                      onSendMessage={handleSendMessage}
+                      isLoading={isLoading}
+                      isCentered={false}
+                      placeholder="Ask anything"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

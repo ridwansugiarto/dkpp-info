@@ -1,13 +1,142 @@
 // ============================================================================
-// PERSONALITY CALCULATOR DKPP — Mode Humor Keakraban Internal
-// Berdasarkan: Numerologi Pythagoras, Zodiak Barat, Shio, Hari/Bulan/Tahun Lahir
-// DISCLAIMER: Dibuat untuk hiburan & refreshing, BUKAN penilaian psikologis resmi.
+// PERSONALITY & REGIONAL COMPATIBILITY CALCULATOR DKPP — Mode Humor Keakraban Internal
+// Berdasarkan: Tempat/Kota Lahir (Karakter Budaya Daerah), Numerologi, Zodiak & Shio
+// DISCLAIMER: Dibuat untuk hiburan & refreshing keakraban, BUKAN penilaian psikologis resmi.
 // ============================================================================
 
 import type { PegawaiHumorItem } from './pegawai_humor';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TABEL KARAKTER NUMEROLOGI
+// 1. PROFIL KARAKTER TEMPAT / KOTA LAHIR (BUDAYA DAERAH & ETOS KERJA HUMOR)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface KarakterDaerah {
+  wilayah: string;
+  sub_label: string;
+  ikon: string;
+  karakter_khas: string;
+  gaya_kerja: string;
+  humor_khas: string;
+}
+
+export const KARAKTER_DAERAH_MAP: Record<string, KarakterDaerah> = {
+  'pasundan': {
+    wilayah: 'Jawa Barat / Tatar Pasundan (Garut, Cianjur, Sukabumi, Bandung, Ciamis, Bogor, Subang)',
+    sub_label: 'Urang Sunda (Someah Hade ka Semah)',
+    ikon: '🍵',
+    karakter_khas: 'Santun, ramah, murah senyum, guyub, diplomatis, dan piawai mencairkan suasana yang kaku.',
+    gaya_kerja: 'Mengutamakan keharmonisan tim, komunikasi persuasif nan luwes, kerja produktif dalam suasana santai tanpa drama.',
+    humor_khas: 'Bisa mengubah rapat tegang jadi sesi ngopi santai penuh canda tawa tapi target tetap beres.'
+  },
+  'banten': {
+    wilayah: 'Banten (Serang, Cilegon, Pandeglang, Rangkasbitung, Bojonegara, Pulomerak, Tangerang)',
+    sub_label: 'Jawara Tangguh & Pejuang Lapangan Banten',
+    ikon: '⚔️',
+    karakter_khas: 'Lugas, pemberani, berjiwa ksatria, loyalitas tinggi, apa adanya, dan tidak suka bertele-tele.',
+    gaya_kerja: 'Eksekutor lapangan yang tanggap dan berdaya juang tinggi, tahan banting di cuaca terik pertanian & pesisir.',
+    humor_khas: 'Ceplas-ceplos penuh energi, solidaritas kental, sekali disenggol langsung turun tangan membantu rekan kerja.'
+  },
+  'mataram_banyumas': {
+    wilayah: 'Jawa Tengah & DIY (Banyumas, Kebumen, Magetan, Yogyakarta, Sleman, Gunung Kidul)',
+    sub_label: 'Kejawen / Mataraman & Banyumasan (Tekun & Ulet)',
+    ikon: '🌾',
+    karakter_khas: 'Tekun, sabar, teliti, bersahaja (nrimo ing pandum tapi pekerja keras), sopan dan taat azas.',
+    gaya_kerja: 'Sangat rapi dalam administrasi, perencana strategi yang matang, teliti memeriksa data hingga detail terkecil.',
+    humor_khas: 'Humor halus penuh makna (guyonan filosofis), diam-diam pekerjaan selesai sebelum tenggat waktu.'
+  },
+  'betawi': {
+    wilayah: 'DKI Jakarta / Betawi',
+    sub_label: 'Metropolitan & Betawi Dinamis',
+    ikon: '🏙️',
+    karakter_khas: 'Spontan, komunikatif, cepat beradaptasi dengan teknologi, berpikiran taktis dan praktis.',
+    gaya_kerja: 'Gesit dalam multitasking, menyukai koordinasi cepat via chat, solutif mengatasi bottleneck birokrasi.',
+    humor_khas: 'Jago pantun dan celetukan spontan yang bikin suasana kantor selalu hidup dan penuh canda.'
+  },
+  'sumatera': {
+    wilayah: 'Sumatera (Lampung, Bandar Lampung, Teluk Betung, OKU Sumsel, Sumatera Utara)',
+    sub_label: 'Sumatera Berani & Visioner',
+    ikon: '🦅',
+    karakter_khas: 'Berpendirian kokoh, percaya diri tinggi, berjiwa kepemimpinan, lugas dan pantang menyerah.',
+    gaya_kerja: 'Fokus pada hasil akhir (result-oriented), berani mengambil keputusan sulit saat situasi mendesak.',
+    humor_khas: 'Tegas tapi hangat, gaya bicara berbobot dengan argumen kuat yang meyakinkan semua pihak.'
+  },
+  'arekan': {
+    wilayah: 'Jawa Timur (Surabaya, Magetan, Pantura)',
+    sub_label: 'Arekan Gesit & Solutif',
+    ikon: '⚡',
+    karakter_khas: 'Terbuka, egaliter, pekerja ulet tanpa banyak teori, berani bicara lugas demi kemajuan bersama.',
+    gaya_kerja: 'Gerak cepat tanpa banyak birokrasi, mengutamakan eksekusi nyata di lapangan.',
+    humor_khas: 'Candaan spontan dan blak-blakan tapi penuh keakraban dan tidak pernah menyimpan dendam.'
+  },
+  'umum': {
+    wilayah: 'Nusantara / Seluruh Indonesia',
+    sub_label: 'Pilar Kebhinekaan DKPP',
+    ikon: '🇮🇩',
+    karakter_khas: 'Adaptif, menjunjung tinggi nilai persatuan dan toleransi, terbuka dengan berbagai latar belakang.',
+    gaya_kerja: 'Penyeimbang yang mampu menyatukan berbagai karakter rekan kerja menjadi satu tim solid.',
+    humor_khas: 'Fleksibel dan mudah membaur dengan seluruh kelompok di kantor.'
+  }
+};
+
+export function identifikasiDaerah(tempatLahir?: string | null): KarakterDaerah {
+  if (!tempatLahir) return KARAKTER_DAERAH_MAP.umum;
+  const t = tempatLahir.toLowerCase();
+
+  if (t.includes('garut') || t.includes('cianjur') || t.includes('sukabumi') || t.includes('bandung') ||
+      t.includes('ciamis') || t.includes('bogor') || t.includes('subang') || t.includes('jawa barat') || t.includes('tasik')) {
+    return KARAKTER_DAERAH_MAP.pasundan;
+  }
+  if (t.includes('serang') || t.includes('cilegon') || t.includes('pandeglang') || t.includes('rangkas') ||
+      t.includes('lebak') || t.includes('bojonegara') || t.includes('pulomerak') || t.includes('banten') || t.includes('tangerang')) {
+    return KARAKTER_DAERAH_MAP.banten;
+  }
+  if (t.includes('banyumas') || t.includes('kebumen') || t.includes('yogya') || t.includes('jogja') ||
+      t.includes('sleman') || t.includes('gunung kidul') || t.includes('solo') || t.includes('semarang') ||
+      t.includes('jawa tengah') || t.includes('klaten') || t.includes('purworejo')) {
+    return KARAKTER_DAERAH_MAP.mataram_banyumas;
+  }
+  if (t.includes('jakarta') || t.includes('betawi')) {
+    return KARAKTER_DAERAH_MAP.betawi;
+  }
+  if (t.includes('lampung') || t.includes('palembang') || t.includes('oku') || t.includes('ogan') ||
+      t.includes('sumatera') || t.includes('medan') || t.includes('padang') || t.includes('aceh') || t.includes('riau')) {
+    return KARAKTER_DAERAH_MAP.sumatera;
+  }
+  if (t.includes('surabaya') || t.includes('magetan') || t.includes('malang') || t.includes('jawa timur') || t.includes('kediri')) {
+    return KARAKTER_DAERAH_MAP.arekan;
+  }
+  return KARAKTER_DAERAH_MAP.umum;
+}
+
+export function analisaKecocokanDaerah(daerahA: KarakterDaerah, daerahB: KarakterDaerah): string {
+  const dA = daerahA.sub_label;
+  const dB = daerahB.sub_label;
+
+  if (dA === dB) {
+    return `🔥 **Duo Kompak Sendaerah (${daerahA.ikon})**: Memiliki ikatan emosional dan frekuensi humor yang sama sejak hari pertama. Koordinasi kerja berlangsung cair, saling paham kode dan candaan khas daerah tanpa perlu banyak penjelasan!`;
+  }
+
+  if ((dA.includes('Sunda') && dB.includes('Banten')) || (dA.includes('Banten') && dB.includes('Sunda'))) {
+    return `🤝 **Duo Harmoni Pasundan-Banten (🍵 & ⚔️)**: Perpaduan sempurna antara diplomasi santun dan ketegasan aksi lapangan. Staf Sunda memperhalus komunikasi dan negosiasi, sementara staf Banten menjadi penggerak eksekusi yang tak kenal gentar!`;
+  }
+
+  if ((dA.includes('Banten') && dB.includes('Mataraman')) || (dA.includes('Mataraman') && dB.includes('Banten'))) {
+    return `⚡ **Duo Aksi & Regulasi (⚔️ & 🌾)**: Kombinasi sangat efektif! Rekan Banten bergerak cepat memecahkan kebuntuan di lapangan, sedangkan rekan Jateng/DIY merapikan struktur data, regulasi, dan detail administrasi.`;
+  }
+
+  if ((dA.includes('Sunda') && dB.includes('Mataraman')) || (dA.includes('Mataraman') && dB.includes('Sunda'))) {
+    return `🕊️ **Duo Rukun & Teliti (🍵 & 🌾)**: Suasana kerja dijamin paling adem dan minim konflik. Sangat tekun menyelesaikan tugas bersama, saling menghormati, dan selalu mengutamakan musyawarah mufakat.`;
+  }
+
+  if (dA.includes('Sumatera') || dB.includes('Sumatera')) {
+    return `🦅 **Duo Strategis & Berani (🦅)**: Membawa visi berani dan dorongan target tinggi ke dalam tim. Sangat handal saat ditugaskan mengejar deadline mepet atau evaluasi program kerja skala besar.`;
+  }
+
+  return `🌟 **Duo Kolaborasi Nusantara (🇮🇩)**: Keberagaman latar belakang daerah menciptakan sinergi kerja yang kaya sudut pandang dan saling melengkapi dalam mencapai target dinas.`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. TABEL KARAKTER NUMEROLOGI & ASTROLOGI
 // ─────────────────────────────────────────────────────────────────────────────
 
 const KARAKTER_ANGKA: Record<number, { label: string; deskripsi: string; gaya_kerja: string }> = {
@@ -39,48 +168,44 @@ const KARAKTER_BULAN: Record<number, { label: string; deskripsi: string }> = {
 
 const KARAKTER_ZODIAK: Record<string, { nama: string; rentang: string; deskripsi: string }> = {
   aries:       { nama: 'Aries ♈', rentang: '21 Mar–19 Apr', deskripsi: 'Spontan, berani, kompetitif — selalu ingin jadi yang pertama selesai' },
-  taurus:      { nama: 'Taurus ♉', rentang: '20 Apr–20 Mei', deskripsi: 'Stabil, konsisten, suka kenyamanan — deadline tidak terlalu dikhawatirkan' },
-  gemini:      { nama: 'Gemini ♊', rentang: '21 Mei–20 Jun', deskripsi: 'Komunikatif, cepat beradaptasi — ahli multitasking tapi kadang susah fokus' },
+  taurus:      { nama: 'Taurus ♉', rentang: '20 Apr–20 Mei', deskripsi: 'Stabil, konsisten, suka kenyamanan — deadline dihadapi dengan tenang' },
+  gemini:      { nama: 'Gemini ♊', rentang: '21 Mei–20 Jun', deskripsi: 'Komunikatif, cepat beradaptasi — ahli multitasking dan koordinasi' },
   cancer:      { nama: 'Cancer ♋', rentang: '21 Jun–22 Jul', deskripsi: 'Peduli, emosional, protektif — menjaga suasana kantor tetap harmonis' },
-  leo:         { nama: 'Leo ♌', rentang: '23 Jul–22 Ags', deskripsi: 'Percaya diri, ekspresif — suka spotlight di rapat besar' },
-  virgo:       { nama: 'Virgo ♍', rentang: '23 Ags–22 Sep', deskripsi: 'Detail, teliti, perfeksionis — laporan selalu rapi sampai footnote' },
-  libra:       { nama: 'Libra ♎', rentang: '23 Sep–22 Okt', deskripsi: 'Diplomatis, mencari keseimbangan — jago bikin semua pihak setuju' },
-  scorpio:     { nama: 'Scorpio ♏', rentang: '23 Okt–21 Nov', deskripsi: 'Intens, fokus, misterius — tahu semua yang terjadi di kantor' },
-  sagitarius:  { nama: 'Sagitarius ♐', rentang: '22 Nov–21 Des', deskripsi: 'Optimistis, suka kebebasan — ide banyak, eksekusi perlu dikawal' },
-  capricorn:   { nama: 'Capricorn ♑', rentang: '22 Des–19 Jan', deskripsi: 'Disiplin, ambisius — naik pangkat adalah prioritas hidup' },
-  aquarius:    { nama: 'Aquarius ♒', rentang: '20 Jan–18 Feb', deskripsi: 'Inovatif, independen — suka sistem baru yang lebih efisien' },
-  pisces:      { nama: 'Pisces ♓', rentang: '19 Feb–20 Mar', deskripsi: 'Imajinatif, empatik — kadang melamun di tengah rapat koordinasi' },
+  leo:         { nama: 'Leo ♌', rentang: '23 Jul–22 Ags', deskripsi: 'Percaya diri, ekspresif — tampil memukau di forum rapat' },
+  virgo:       { nama: 'Virgo ♍', rentang: '23 Ags–22 Sep', deskripsi: 'Detail, teliti, perfeksionis — laporan selalu rapi dan presisi' },
+  libra:       { nama: 'Libra ♎', rentang: '23 Sep–22 Okt', deskripsi: 'Diplomatis, mencari keseimbangan — jago bikin semua pihak sepakat' },
+  scorpio:     { nama: 'Scorpio ♏', rentang: '23 Okt–21 Nov', deskripsi: 'Intens, fokus, jeli — memahami dinamika kerja hingga hal mendalam' },
+  sagitarius:  { nama: 'Sagitarius ♐', rentang: '22 Nov–21 Des', deskripsi: 'Optimistis, suka inovasi — kaya ide segar untuk program dinas' },
+  capricorn:   { nama: 'Capricorn ♑', rentang: '22 Des–19 Jan', deskripsi: 'Disiplin, berdedikasi tinggi — profesional dalam setiap penugasan' },
+  aquarius:    { nama: 'Aquarius ♒', rentang: '20 Jan–18 Feb', deskripsi: 'Inovatif, visioner — suka metode kerja cerdas yang efisien' },
+  pisces:      { nama: 'Pisces ♓', rentang: '19 Feb–20 Mar', deskripsi: 'Imajinatif, empatik — peka menciptakan suasana kerja nyaman' },
 };
 
 const SHIO_DATA: Array<{ shio: string; karakter: string; emoji: string }> = [
   { shio: 'Tikus', karakter: 'Cerdas dan adaptif — cepat menemukan solusi di situasi rumit', emoji: '🐭' },
   { shio: 'Kerbau', karakter: 'Tekun dan tahan banting — tidak mudah menyerah walau deadline mepet', emoji: '🐂' },
-  { shio: 'Macan', karakter: 'Berani dan tegas — tidak sungkan mengungkapkan pendapat di rapat', emoji: '🐯' },
-  { shio: 'Kelinci', karakter: 'Diplomatis dan lembut — suasana kantor lebih damai kalau ada yang ini', emoji: '🐰' },
-  { shio: 'Naga', karakter: 'Karismatik dan ambisius — natural leader, aura pimpinan terasa', emoji: '🐲' },
-  { shio: 'Ular', karakter: 'Strategis dan misterius — diam-diam sudah punya rencana B dan C', emoji: '🐍' },
-  { shio: 'Kuda', karakter: 'Energik dan mandiri — bisa kerja keras tanpa perlu diawasi', emoji: '🐴' },
-  { shio: 'Kambing', karakter: 'Kreatif dan sensitif — usulan program selalu unik dan menarik', emoji: '🐑' },
-  { shio: 'Monyet', karakter: 'Cerdik dan humoris — bisa mencairkan suasana rapat yang tegang', emoji: '🐵' },
-  { shio: 'Ayam', karakter: 'Detail dan percaya diri — tidak ragu mengoreksi laporan yang salah', emoji: '🐔' },
-  { shio: 'Anjing', karakter: 'Loyal dan bertanggung jawab — bisa diandalkan untuk tugas penting', emoji: '🐕' },
-  { shio: 'Babi', karakter: 'Ramah dan dermawan — selalu siap membantu rekan yang kesulitan', emoji: '🐷' },
+  { shio: 'Macan', karakter: 'Berani dan tegas — lugas mengungkapkan gagasan di rapat', emoji: '🐯' },
+  { shio: 'Kelinci', karakter: 'Diplomatis dan santun — membawa kedamaian dan ketenangan tim', emoji: '🐰' },
+  { shio: 'Naga', karakter: 'Karismatik dan ambisius — aura penggerak tim sangat menonjol', emoji: '🐲' },
+  { shio: 'Ular', karakter: 'Strategis dan matang — penuh perhitungan cermat dalam bertindak', emoji: '🐍' },
+  { shio: 'Kuda', karakter: 'Energik dan mandiri — gigih menuntaskan tugas secara tuntas', emoji: '🐴' },
+  { shio: 'Kambing', karakter: 'Kreatif dan penuh empati — usulan program selalu menarik', emoji: '🐑' },
+  { shio: 'Monyet', karakter: 'Cerdik dan humoris — pandai mencairkan ketegangan ruang kerja', emoji: '🐵' },
+  { shio: 'Ayam', karakter: 'Detail dan percaya diri — tidak ragu mengoreksi ketidakteraturan', emoji: '🐔' },
+  { shio: 'Anjing', karakter: 'Loyal dan berintegritas — rekan kerja paling amanah dan terpercaya', emoji: '🐕' },
+  { shio: 'Babi', karakter: 'Ramah dan berhati hangat — selalu siap membantu rekan yang membutuhkan', emoji: '🐷' },
 ];
 
 const LABEL_KECOCOKAN: Array<{ min: number; max: number; label: string; deskripsi: string }> = [
-  { min: 90, max: 100, label: '🌟 Duo Seirama', deskripsi: 'Harmonis luar biasa! Satu pikiran, satu tujuan. Rapat jadi cepat selesai.' },
-  { min: 75, max: 89,  label: '✅ Partner Kompak', deskripsi: 'Kerja sama solid. Saling melengkapi dengan natural.' },
-  { min: 60, max: 74,  label: '🤝 Kolaborasi Menarik', deskripsi: 'Berbeda gaya tapi bisa saling melengkapi kalau ada komunikasi yang baik.' },
-  { min: 40, max: 59,  label: '🎭 Beda Gaya, Satu Tujuan', deskripsi: 'Perlu lebih banyak koordinasi. Potensi adu pendapat tapi justru menghasilkan output yang lebih kaya.' },
-  { min: 0,  max: 39,  label: '⚡ Potensi Adu Argumen', deskripsi: 'Jangan ditempatkan dalam satu grup WhatsApp tanpa admin. Tapi bisa jadi dinamika yang produktif.' },
+  { min: 90, max: 100, label: '🌟 Duo Sinergi Emas', deskripsi: 'Harmonis luar biasa! Satu frekuensi dalam berpikir dan bertindak. Koordinasi sangat kilat.' },
+  { min: 75, max: 89,  label: '✅ Partner Kerja Kompak', deskripsi: 'Kerja sama solid dan saling melengkapi dengan sangat natural di kantor maupun lapangan.' },
+  { min: 60, max: 74,  label: '🤝 Kolaborasi Produktif', deskripsi: 'Berbeda gaya pendekatan namun saling melengkapi jika komunikasi tetap terbuka.' },
+  { min: 40, max: 59,  label: '🎭 Kombinasi Unik Lintas Gaya', deskripsi: 'Membutuhkan sinkronisasi awal, tetapi justru melahirkan terobosan kerja yang kreatif.' },
+  { min: 0,  max: 39,  label: '⚡ Duet Dinamis Penuh Kejutan', deskripsi: 'Gaya berpikir berbeda jauh, namun sangat dahsyat jika disatukan pada proyek yang butuh check-and-balance.' },
 ];
 
 const NAMA_BULAN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FUNGSI KALKULASI
-// ─────────────────────────────────────────────────────────────────────────────
 
 function reduceDigits(n: number): number {
   while (n > 9) {
@@ -136,11 +261,13 @@ function hitungSkorKepribadian(angkaHari: number, angkaBulan: number, angkaTahun
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIPE HASIL ANALISIS
+// 3. TIPE ANALISIS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AnalisisPegawai {
   nama: string;
+  tempat_lahir: string;
+  karakter_daerah: KarakterDaerah;
   tanggal_lahir: string;
   tanggal_display: string;
   angka_hari: number;
@@ -161,26 +288,8 @@ export interface AnalisisKecocokan {
   skor_kecocokan: number;
   label: string;
   deskripsi_kecocokan: string;
-  narasi_khas: string | null;
+  kecocokan_daerah: string;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NARASI KHAS PASANGAN
-// ─────────────────────────────────────────────────────────────────────────────
-
-const NARASI_PASANGAN: Array<{ kondisi: (a: number, b: number) => boolean; narasi: string }> = [
-  { kondisi: (a,b) => (a===4&&b===7)||(a===7&&b===4), narasi: 'Duet Penata & Pemikir — cocok menyusun laporan, tabel, dan strategi jangka panjang.' },
-  { kondisi: (a,b) => (a===5&&b===3)||(a===3&&b===5), narasi: 'Duet Kreatif — ide bisa bermunculan lebih cepat daripada notulen selesai.' },
-  { kondisi: (a,b) => (a===8&&b===4)||(a===4&&b===8), narasi: 'Duet Target & Struktur — sangat produktif, tapi perlu kesepakatan siapa yang pegang kendali.' },
-  { kondisi: (a,b) => (a===1&&b===9)||(a===9&&b===1), narasi: 'Duet Pemimpin & Pemersatu — satu mengarahkan, satu mengajak semua ikut. Kombinasi langka.' },
-  { kondisi: (a,b) => (a===3&&b===6)||(a===6&&b===3), narasi: 'Duet Pelayanan — komunikatif dan peduli, cocok untuk program yang bersentuhan langsung dengan masyarakat.' },
-  { kondisi: (a,b) => (a===2&&b===8)||(a===8&&b===2), narasi: 'Duet Diplomasi & Ambisi — satu menyejukkan suasana, satu mendorong target. Rapat bisa produktif.' },
-  { kondisi: (a,b) => a===b, narasi: 'Satu frekuensi! Mudah sepakat dalam kerja, tapi variasi sudut pandang tetap penting.' },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FUNGSI UTAMA
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function analisaPegawai(pegawai: PegawaiHumorItem): AnalisisPegawai | null {
   if (!pegawai.tanggal_lahir) return null;
@@ -201,8 +310,13 @@ export function analisaPegawai(pegawai: PegawaiHumorItem): AnalisisPegawai | nul
     }
   }
 
+  const tempat = pegawai.tempat_lahir || 'Banten';
+  const kDaerah = identifikasiDaerah(tempat);
+
   return {
     nama: pegawai.nama,
+    tempat_lahir: tempat,
+    karakter_daerah: kDaerah,
     tanggal_lahir: tgl,
     tanggal_display: `${d} ${NAMA_BULAN[m]} ${y}`,
     angka_hari,
@@ -225,7 +339,7 @@ export function analisaKecocokan(a: PegawaiHumorItem, b: PegawaiHumorItem): Anal
 
   const skor = Math.max(0, Math.min(100, 100 - Math.abs(ha.skor_kepribadian - hb.skor_kepribadian) * 12));
   const labelObj = LABEL_KECOCOKAN.find(l => skor >= l.min && skor <= l.max) || LABEL_KECOCOKAN[LABEL_KECOCOKAN.length - 1];
-  const narasiObj = NARASI_PASANGAN.find(n => n.kondisi(ha.angka_hari, hb.angka_hari));
+  const narasiDaerah = analisaKecocokanDaerah(ha.karakter_daerah, hb.karakter_daerah);
 
   return {
     pegawai_a: ha,
@@ -233,12 +347,12 @@ export function analisaKecocokan(a: PegawaiHumorItem, b: PegawaiHumorItem): Anal
     skor_kecocokan: skor,
     label: labelObj.label,
     deskripsi_kecocokan: labelObj.deskripsi,
-    narasi_khas: narasiObj?.narasi || null,
+    kecocokan_daerah: narasiDaerah,
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DETEKSI QUERY & BUILD CONTEXT
+// 4. DETEKSI QUERY & BUILD CONTEXT
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function isPersonalityQuery(userMessage: string): boolean {
@@ -247,15 +361,14 @@ export function isPersonalityQuery(userMessage: string): boolean {
     'kepribadian', 'karakter', 'sifat', 'zodiak', 'shio', 'numerologi',
     'cocok', 'kecocokan', 'pasangan kerja', 'tipe kepribadian',
     'analisis', 'analisa', 'tanggal lahir', 'hari lahir', 'lahirnya',
-    'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra',
-    'scorpio', 'sagitarius', 'capricorn', 'aquarius', 'pisces',
-    'naga', 'macan', 'monyet', 'ayam', 'anjing', 'tikus', 'kerbau',
-    'angka lahir', 'gaya kerja', 'cocok kerja sama',
+    'tempat lahir', 'kota lahir', 'asal daerah', 'kota asal', 'sunda', 'jawa barat',
+    'banten', 'orang serang', 'orang cilegon', 'orang jawa', 'banyumas', 'garut',
+    'cianjur', 'sukabumi', 'lampung', 'jakarta', 'gaya kerja', 'cocok kerja sama'
   ];
   const contextKeywords = ['pegawai', 'dkpp', 'staf', 'asn', ' si ', 'pak ', 'bu ', 'ibu ', 'bapak '];
   const hasKeyword = keywords.some(k => q.includes(k));
   const hasContext = contextKeywords.some(c => q.includes(c));
-  return hasKeyword && (hasContext || keywords.filter(k => q.includes(k) && k.length > 8).length > 0);
+  return hasKeyword && (hasContext || keywords.filter(k => q.includes(k) && k.length > 7).length > 0);
 }
 
 export function buildPersonalityContext(
@@ -266,11 +379,10 @@ export function buildPersonalityContext(
 
   const q = userMessage.toLowerCase();
 
-  let ctx = `=== KALKULATOR ANALISIS KEPRIBADIAN PEGAWAI DKPP (MODE HUMOR KEAKRABAN) ===\n`;
-  ctx += `DISCLAIMER: Analisis berbasis numerologi & astrologi untuk HIBURAN semata. Bukan penilaian psikologis atau kepegawaian resmi.\n`;
-  ctx += `ATURAN AI: Tulis hasil dengan gaya hangat, jenaka, dan santun. WAJIB sertakan disclaimer di akhir. DILARANG menyebut kata negatif seperti "tidak layak" atau "tidak jujur".\n\n`;
+  let ctx = `=== KALKULATOR ANALISIS KEPRIBADIAN & TEMPAT LAHIR PEGAWAI DKPP (MODE HUMOR KEAKRABAN) ===\n`;
+  ctx += `DISCLAIMER: Analisis berbasis karakter daerah kelahiran, numerologi, dan zodiak untuk HIBURAN & REFRESHING semata. Bukan penilaian psikologis atau kepegawaian resmi.\n`;
+  ctx += `ATURAN AI: Tulis hasil dengan gaya hangat, cerdas, jenaka, dan santun. Angkat keunikan karakter daerah lahir (misal: urang Sunda/Jawa Barat yang santun & guyub, Banten yang lugas & pemberani, Banyumas/Jateng yang tekun & teliti, Sumatera yang tegas, dll.). WAJIB sertakan disclaimer di akhir.\n\n`;
 
-  // Cari nama pegawai yang disebut dalam pesan (fuzzy partial match, toleran typo 1 karakter)
   const withData = dataset.filter(p => p.tanggal_lahir);
   const qWords = q.split(/\s+/).filter(w => w.length >= 3);
 
@@ -280,22 +392,7 @@ export function buildPersonalityContext(
     const namaLower = p.nama.toLowerCase();
     const namaTokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 3);
     const matched = qWords.some(word =>
-      namaTokens.some(tok => {
-        if (tok.includes(word) || word.includes(tok)) return true;
-        // Levenshtein sederhana: toleransi 1 karakter
-        if (Math.abs(tok.length - word.length) <= 1 && Math.min(tok.length, word.length) >= 3) {
-          let diff = 0;
-          const [shorter, longer] = tok.length <= word.length ? [tok, word] : [word, tok];
-          let si = 0, li = 0;
-          while (si < shorter.length && li < longer.length) {
-            if (shorter[si] === longer[li]) { si++; li++; }
-            else { diff++; li++; if (diff > 1) break; }
-          }
-          diff += (longer.length - li);
-          return diff <= 1;
-        }
-        return false;
-      })
+      namaTokens.some(tok => tok.includes(word) || word.includes(tok))
     );
     if (matched) {
       const a = analisaPegawai(p);
@@ -303,59 +400,43 @@ export function buildPersonalityContext(
     }
   }
 
-
   const formatSatu = (a: AnalisisPegawai): string => {
-    let s = `📋 ${a.nama.toUpperCase()} | Lahir: ${a.tanggal_display}\n`;
-    s += `  🔭 Zodiak: ${a.zodiak.nama} — ${a.zodiak.deskripsi}\n`;
-    s += `  ${a.shio.emoji} Shio ${a.shio.shio} — ${a.shio.karakter}\n`;
-    s += `  🔢 Angka Hari ${a.angka_hari} → Tipe: ${KARAKTER_ANGKA[a.angka_hari].label} (${KARAKTER_ANGKA[a.angka_hari].deskripsi})\n`;
-    s += `  📅 Bulan ${a.angka_bulan} → ${a.karakter_bulan.label}: ${a.karakter_bulan.deskripsi}\n`;
-    s += `  🔤 Angka Nama ${a.angka_nama} → Peran: ${KARAKTER_ANGKA[a.angka_nama].label}\n`;
-    s += `  ⭐ Skor Kepribadian Gabungan: Tipe ${a.skor_kepribadian} — ${a.karakter_utama.label}\n`;
-    s += `  💼 Gaya Kerja (simulatif): ${a.karakter_utama.gaya_kerja}\n`;
-    if (a.masa_kerja_tahun) s += `  📆 Masa Kerja: ±${a.masa_kerja_tahun} tahun\n`;
+    let s = `📋 **${a.nama.toUpperCase()}** | Tempat Lahir: **${a.tempat_lahir}** | Lahir: ${a.tanggal_display}\n`;
+    s += `  ${a.karakter_daerah.ikon} **Asal Daerah / Kultur**: ${a.karakter_daerah.sub_label}\n`;
+    s += `  🎭 **Karakter Khas Daerah**: ${a.karakter_daerah.karakter_khas}\n`;
+    s += `  💼 **Etos & Gaya Kerja Tim**: ${a.karakter_daerah.gaya_kerja}\n`;
+    s += `  ☕ **Sentuhan Humor**: ${a.karakter_daerah.humor_khas}\n`;
+    s += `  🔭 **Zodiak & Shio**: ${a.zodiak.nama} (${a.zodiak.deskripsi}) | ${a.shio.emoji} Shio ${a.shio.shio}\n`;
+    s += `  ⭐ **Skor Karakter Numerologi**: Tipe ${a.skor_kepribadian} (${a.karakter_utama.label} — ${a.karakter_utama.gaya_kerja})\n`;
+    if (a.masa_kerja_tahun) s += `  📆 **Masa Pengabdian**: ±${a.masa_kerja_tahun} tahun\n`;
     return s;
   };
 
   if (disebut.length >= 2) {
     const kecocokan = analisaKecocokan(disebut[0].p, disebut[1].p);
     if (kecocokan) {
-      ctx += `=== ANALISIS DUO PEGAWAI ===\n`;
+      ctx += `=== ANALISIS DUET & KECOCOKAN KOTA LAHIR PEGAWAI ===\n`;
       ctx += formatSatu(kecocokan.pegawai_a) + '\n';
       ctx += formatSatu(kecocokan.pegawai_b) + '\n';
-      ctx += `💞 SKOR KECOCOKAN KERJA: ${kecocokan.skor_kecocokan}%\n`;
-      ctx += `🏷️ LABEL: ${kecocokan.label}\n`;
-      ctx += `💬 DINAMIKA: ${kecocokan.deskripsi_kecocokan}\n`;
-      if (kecocokan.narasi_khas) ctx += `✨ NARASI KHUSUS: ${kecocokan.narasi_khas}\n`;
+      ctx += `💞 **SKOR KECOCOKAN KERJA SAMA**: ${kecocokan.skor_kecocokan}%\n`;
+      ctx += `🏷️ **PREDIKAT DUO**: ${kecocokan.label}\n`;
+      ctx += `💬 **DINAMIKA KOLABORASI**: ${kecocokan.deskripsi_kecocokan}\n`;
+      ctx += `🌍 **ANALISIS DINAMIKA ASAL DAERAH**: ${kecocokan.kecocokan_daerah}\n`;
     }
   } else if (disebut.length === 1) {
-    ctx += `=== ANALISIS KEPRIBADIAN ===\n`;
+    ctx += `=== PROFIL KEPRIBADIAN & TEMPAT LAHIR INDIVIDUAL ===\n`;
     ctx += formatSatu(disebut[0].a);
   } else {
-    // Rangkuman umum
-    const zodiakCount: Record<string, number> = {};
-    const shioCount: Record<string, number> = {};
-    for (const p of withData) {
-      if (p.tanggal_lahir) {
-        const z = hitungZodiak(p.tanggal_lahir).nama;
-        const s = hitungShio(p.tanggal_lahir).shio;
-        zodiakCount[z] = (zodiakCount[z] || 0) + 1;
-        shioCount[s] = (shioCount[s] || 0) + 1;
-      }
-    }
-    const topZodiak = Object.entries(zodiakCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const topShio = Object.entries(shioCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-    ctx += `=== PROFIL KEPRIBADIAN KOLEKTIF PEGAWAI DKPP ===\n`;
-    ctx += `Total pegawai dengan data tanggal lahir: ${withData.length}\n\n`;
-    ctx += `ZODIAK TERBANYAK:\n`;
-    topZodiak.forEach(([z, n]) => { ctx += `  ${z}: ${n} pegawai\n`; });
-    ctx += `\nSHIO TERBANYAK:\n`;
-    topShio.forEach(([s, n]) => { ctx += `  ${s}: ${n} pegawai\n`; });
-    ctx += `\nUntuk analisis individu: sebutkan nama spesifik, contoh: "kepribadian Sutisna"\n`;
-    ctx += `Untuk kecocokan dua pegawai: "cocok kerja sama Ridwan dan Wahyudi?"\n`;
+    // Ringkasan daerah kelahiran di DKPP
+    ctx += `=== SEBARAN ASAL KOTA/DAERAH LAHIR PEGAWAI DKPP (KEBHINEKAAN INTERNAL) ===\n`;
+    ctx += `DKPP Kota Cilegon memiliki pegawai dari berbagai latar belakang daerah:\n`;
+    ctx += `• ⚔️ **Banten (Serang, Cilegon, Pandeglang)**: Pilar utama penggerak lapangan dengan keteguhan dan daya juang tinggi.\n`;
+    ctx += `• 🍵 **Jawa Barat / Pasundan (Garut, Sukabumi, Cianjur, Bandung, Ciamis)**: Membawa keteduhan, diplomasi santun, dan humor yang mencairkan suasana.\n`;
+    ctx += `• 🌾 **Jawa Tengah & DIY (Banyumas, Kebumen, Jogja)**: Pilar ketelitian regulasi, ketekunan riset, dan kerapihan administrasi.\n`;
+    ctx += `• 🏙️ **Betawi / Jakarta & 🦅 Sumatera**: Pilar dinamisme, ketegasan visi, dan kecepatan eksekusi.\n\n`;
+    ctx += `Sebutkan nama pegawai (misal: *"Bagaimana kecocokan kerja sama Pak Sutisna dan Pak Paulus berdasarkan kota lahirnya?"*) untuk analisis humor mendalam!\n`;
   }
 
-  ctx += `\n⚠️ DISCLAIMER: Analisis ini dibuat untuk hiburan & refreshing keakraban DKPP. Tidak merepresentasikan penilaian psikologis, kinerja, atau kompetensi kepegawaian resmi.\n`;
+  ctx += `\n⚠️ DISCLAIMER: Analisis ini dibuat khusus untuk hiburan, keakraban, dan apresiasi keberagaman budaya di lingkungan DKPP Kota Cilegon. Tidak mewakili evaluasi kinerja resmi instansi.\n`;
   return ctx;
 }

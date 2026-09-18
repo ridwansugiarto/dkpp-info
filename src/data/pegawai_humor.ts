@@ -6,6 +6,7 @@ export interface PegawaiHumorItem {
   nomor: number | null;
   nip?: string | null;
   nama: string;
+  tempat_lahir?: string | null;
   tanggal_lahir?: string | null; // Format: YYYY-MM-DD (diektrak dari NIP 1-8)
   tanggal_mulai_kerja_cpns?: string | null; // Format: YYYY-MM (diekstrak dari NIP 9-14)
   jenis_kelamin: 'L' | 'P' | null; // L / P (diekstrak dari NIP digit 15: 1=L, 2=P)
@@ -90,6 +91,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 9,
     "nip": "197604152002121006",
     "nama": "Sutisna, SP",
+    "tempat_lahir": "Bojonegara",
     "tanggal_lahir": "1976-04-15",
     "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
@@ -105,6 +107,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 10,
     "nip": "197204081998021002",
     "nama": "Udin Saprudin, SE, M.M.",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1972-04-08",
     "tanggal_mulai_kerja_cpns": "1998-02",
     "jenis_kelamin": "L",
@@ -120,6 +123,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 12,
     "nip": "197610182002121002",
     "nama": "Ridwan Sugiarto, Spi",
+    "tempat_lahir": "Cilegon",
     "tanggal_lahir": "1976-10-18",
     "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
@@ -150,6 +154,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 18,
     "nip": "197708102007011011",
     "nama": "Wahyudi, SE",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1977-08-10",
     "tanggal_mulai_kerja_cpns": "2007-01",
     "jenis_kelamin": "L",
@@ -165,6 +170,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 22,
     "nip": "197603162009011003",
     "nama": "Paulus Dwi  Ari K D, ST",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1976-03-16",
     "tanggal_mulai_kerja_cpns": "2009-01",
     "jenis_kelamin": "L",
@@ -180,6 +186,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 24,
     "nip": "197910162010012008",
     "nama": "Winda Ratnasari, SP",
+    "tempat_lahir": "Tangerang",
     "tanggal_lahir": "1979-10-16",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -195,6 +202,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 25,
     "nip": "198111032010012005",
     "nama": "Sanlin Novitriana, SP",
+    "tempat_lahir": "Surabaya",
     "tanggal_lahir": "1981-11-03",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -210,6 +218,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 26,
     "nip": "198209262010012005",
     "nama": "Linda Setiawati, SP",
+    "tempat_lahir": "Teluk Betung",
     "tanggal_lahir": "1982-09-26",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -225,6 +234,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 27,
     "nip": "198602152010012006",
     "nama": "Febrika Indah Cahyani, SE, MM",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1986-02-15",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -240,6 +250,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 28,
     "nip": "198203222010012008",
     "nama": "Maryori, S.Pi",
+    "tempat_lahir": "Cilegon",
     "tanggal_lahir": "1982-03-22",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -255,6 +266,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 31,
     "nip": "197705252008011010",
     "nama": "Arifudin, SP",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1977-05-25",
     "tanggal_mulai_kerja_cpns": "2008-01",
     "jenis_kelamin": "L",
@@ -270,6 +282,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 32,
     "nip": "198611152009011001",
     "nama": "Mas Akhmad Rangga P, SE, MM",
+    "tempat_lahir": "Bandung",
     "tanggal_lahir": "1986-11-15",
     "tanggal_mulai_kerja_cpns": "2009-01",
     "jenis_kelamin": "L",
@@ -285,6 +298,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 35,
     "nip": "198908242015032006",
     "nama": "Ghesika Tiandra Yusty, SP",
+    "tempat_lahir": "Bandar Lampung",
     "tanggal_lahir": "1989-08-24",
     "tanggal_mulai_kerja_cpns": "2015-03",
     "jenis_kelamin": "P",
@@ -300,6 +314,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 37,
     "nip": "198907132022211001",
     "nama": "Sandhi Maulana Adha, SP",
+    "tempat_lahir": "Garut",
     "tanggal_lahir": "1989-07-13",
     "tanggal_mulai_kerja_cpns": "2022-21",
     "jenis_kelamin": "L",
@@ -315,6 +330,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 39,
     "nip": "198107152014062001",
     "nama": "Sri Rahmadani Piliang, SE",
+    "tempat_lahir": "Sumatera Utara",
     "tanggal_lahir": "1981-07-15",
     "tanggal_mulai_kerja_cpns": "2014-06",
     "jenis_kelamin": "P",
@@ -330,6 +346,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 40,
     "nip": "198705022017061001",
     "nama": "Subandi",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": "1987-05-02",
     "tanggal_mulai_kerja_cpns": "2017-06",
     "jenis_kelamin": "L",
@@ -360,6 +377,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 57,
     "nip": null,
     "nama": "Tandis Destalana, SE.MM",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
@@ -375,6 +393,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 58,
     "nip": null,
     "nama": "Sri Ratnaningsih, S.Pi",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -405,6 +424,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 60,
     "nip": null,
     "nama": "Edwin Maulana,SE",
+    "tempat_lahir": "Rangkas Bitung",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
@@ -420,6 +440,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 61,
     "nip": null,
     "nama": "Ita Titalia",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -435,6 +456,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 63,
     "nip": null,
     "nama": "Ayu Lestari",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -450,6 +472,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 65,
     "nip": null,
     "nama": "Nova Khaerdayanti, A.Md",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -465,6 +488,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 66,
     "nip": null,
     "nama": "Maisaroh, SP",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -480,6 +504,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 69,
     "nip": null,
     "nama": "Driantama Bayu Saputra",
+    "tempat_lahir": "Jakarta",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
@@ -510,6 +535,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 75,
     "nip": null,
     "nama": "Mariatul Hofat, SM",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -540,6 +566,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 80,
     "nip": null,
     "nama": "Hadiri",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "L",
@@ -585,6 +612,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 91,
     "nip": null,
     "nama": "Ninin Anjani",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -600,6 +628,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 92,
     "nip": null,
     "nama": "Mastufah",
+    "tempat_lahir": "Serang",
     "tanggal_lahir": null,
     "tanggal_mulai_kerja_cpns": null,
     "jenis_kelamin": "P",
@@ -615,6 +644,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 93,
     "nip": "197910162010012008",
     "nama": "Winda Ratnasari",
+    "tempat_lahir": "Tangerang",
     "tanggal_lahir": "1979-10-16",
     "tanggal_mulai_kerja_cpns": "2010-01",
     "jenis_kelamin": "P",
@@ -630,6 +660,7 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
     "nomor": 94,
     "nip": "197610182002121002",
     "nama": "Ridwan Sugiarto, S.Pi",
+    "tempat_lahir": "Cilegon",
     "tanggal_lahir": "1976-10-18",
     "tanggal_mulai_kerja_cpns": "2002-12",
     "jenis_kelamin": "L",
@@ -643,74 +674,6 @@ export const OFFICIAL_DKPP_HUMOR_DATA: PegawaiHumorItem[] = [
   }
 ];
 
-// Rumus Komposit Berstandar Indeks (Skala Persentase: 75% - 99.5%)
-export function getIndeksKecantikanNum(p: PegawaiHumorItem): number {
-  const base = (p.skor_ketampanan_kecantikan * 5.0) + (p.skor_daya_tarik_aura * 2.8) + (p.skor_rajin_kehadiran * 1.2) + (p.skor_kecerdasan * 0.8);
-  const tune = ((p.jumlah_terpesona * 0.03) + ((p.nomor || 1) % 7) * 0.04);
-  return Math.min(99.45, Math.max(76.20, base + tune));
-}
-
-export function formatIndeksKecantikan(p: PegawaiHumorItem): string {
-  return getIndeksKecantikanNum(p).toFixed(2).replace('.', ',') + '%';
-}
-
-export function getIndeksKetampananNum(p: PegawaiHumorItem): number {
-  const base = (p.skor_ketampanan_kecantikan * 5.0) + (p.skor_daya_tarik_aura * 2.8) + (p.skor_rajin_kehadiran * 1.2) + (p.skor_kecerdasan * 0.8);
-  const tune = (Math.min(50, p.jumlah_terpesona) * 0.03) + (((p.nomor || 1) % 5) * 0.03);
-  return Math.min(99.35, Math.max(76.20, base + tune));
-}
-
-export function formatIndeksKetampanan(p: PegawaiHumorItem): string {
-  return getIndeksKetampananNum(p).toFixed(2).replace('.', ',') + '%';
-}
-
-export function getIndeksCerdasNum(p: PegawaiHumorItem): number {
-  const base = (p.skor_kecerdasan * 6.0) + (p.skor_rajin_kehadiran * 2.5) + (p.skor_daya_tarik_aura * 1.3);
-  const tune = (((p.nomor || 1) % 9) * 0.03);
-  return Math.min(99.50, Math.max(76.00, base + tune));
-}
-
-export function formatIndeksCerdas(p: PegawaiHumorItem): string {
-  return getIndeksCerdasNum(p).toFixed(2).replace('.', ',') + '%';
-}
-
-export function getIndeksAuraNum(p: PegawaiHumorItem): number {
-  const base = (p.skor_daya_tarik_aura * 5.0) + (p.skor_ketampanan_kecantikan * 3.0) + (p.skor_rajin_kehadiran * 1.0) + (Math.min(50, p.jumlah_terpesona) * 0.15);
-  const tune = (((p.nomor || 1) % 7) * 0.04);
-  return Math.min(99.60, Math.max(76.00, base + tune));
-}
-
-export function formatIndeksAura(p: PegawaiHumorItem): string {
-  return getIndeksAuraNum(p).toFixed(2).replace('.', ',') + '%';
-}
-
-// Helper functions untuk merespons pertanyaan santai
-export function getTopGanteng(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
-  return dataset
-    .filter(p => p.jenis_kelamin === 'L')
-    .sort((a, b) => getIndeksKetampananNum(b) - getIndeksKetampananNum(a))
-    .slice(0, limit);
-}
-
-export function getTopCantik(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
-  return dataset
-    .filter(p => p.jenis_kelamin === 'P')
-    .sort((a, b) => getIndeksKecantikanNum(b) - getIndeksKecantikanNum(a))
-    .slice(0, limit);
-}
-
-export function getTopAura(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
-  return dataset
-    .sort((a, b) => getIndeksAuraNum(b) - getIndeksAuraNum(a))
-    .slice(0, limit);
-}
-
-export function getTopCerdas(dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA, limit = 6): PegawaiHumorItem[] {
-  return dataset
-    .sort((a, b) => getIndeksCerdasNum(b) - getIndeksCerdasNum(a))
-    .slice(0, limit);
-}
-
 export function isSeriousEmployee(nama: string): boolean {
   const q = nama.toLowerCase().trim();
   return EXCLUDED_SERIOUS_PEGAWAI.some(ex => ex.toLowerCase().includes(q) || q.includes(ex.toLowerCase()));
@@ -718,122 +681,50 @@ export function isSeriousEmployee(nama: string): boolean {
 
 export function findPegawaiHumorByName(namaQuery: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): PegawaiHumorItem | undefined {
   const q = namaQuery.toLowerCase().trim();
-  if (isSeriousEmployee(q)) return undefined; // Proteksi pegawai serius
+  if (isSeriousEmployee(q)) return undefined;
   return dataset.find(p => p.nama.toLowerCase().includes(q));
 }
 
-/**
- * Deteksi apakah pertanyaan user adalah pertanyaan bercanda / santai seputar pegawai
- */
 export function isPegawaiHumorQuery(userMessage: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): boolean {
   const q = userMessage.toLowerCase();
-  
-  // Helper: apakah token query kemungkinan bagian dari nama (fuzzy partial, min 3 char)
   const qWords = q.split(/\s+/).filter(w => w.length >= 3);
   const matchedEmployee = dataset.some(p => {
     const namaLower = p.nama.toLowerCase();
-    return qWords.some(word => {
-      if (namaLower.includes(word)) return true;
-      const namaTokens = namaLower.split(/[\s,./]+/).filter(t => t.length >= 4);
-      return namaTokens.some(tok => {
-        if (tok.includes(word) || word.includes(tok)) return true;
-        if (Math.abs(tok.length - word.length) <= 1) {
-          let diff = 0;
-          const shorter = tok.length <= word.length ? tok : word;
-          const longer  = tok.length <= word.length ? word : tok;
-          let si = 0, li = 0;
-          while (si < shorter.length && li < longer.length) {
-            if (shorter[si] === longer[li]) { si++; li++; }
-            else { diff++; li++; if (diff > 1) break; }
-          }
-          diff += (longer.length - li);
-          return diff <= 1;
-        }
-        return false;
-      });
-    });
+    return qWords.some(word => namaLower.includes(word));
   });
 
   const humorKeywords = [
-    'ganteng', 'paling ganteng', 'tampan', 'paling tampan',
-    'cantik', 'paling cantik', 'ayu', 'jelita',
+    'ganteng', 'paling ganteng', 'terganteng', 'tampan', 'paling tampan', 'tertampan', 'cakep', 'tercakep',
+    'cantik', 'paling cantik', 'tercantik', 'ayu', 'jelita', 'terjelita', 'manis', 'termanis', 'anggun', 'teranggun',
     'aura', 'daya tarik', 'kharisma', 'karisma',
-    'terpesona', 'terpikat', 'banyak cewek', 'banyak perempuan', 'banyak wanita',
-    'paling memikat', 'fans', 'idola',
-    'paling rajin', 'rajin', 'paling cerdas', 'paling pintar', 'paling jenius',
+    'terpesona', 'terpikat',
+    'paling rajin', 'rajin', 'terajin', 'paling cerdas', 'cerdas', 'tercerdas', 'paling pintar', 'pintar', 'terpintar', 'paling jenius',
     'mode bercanda', 'candaan', 'lucu-lucuan', 'santai',
-    // Kepribadian & kecocokan
-    'hubungan', 'kecocokan', 'cocok', 'relasi', 'pasangan', 'jodoh',
-    'kepribadian', 'zodiak', 'shio', 'karakter', 'sifat',
-    'numerologi', 'tanggal lahir', 'analisis'
+    'polling', 'vote', 'favorit', 'royal', 'ter-royal', 'traktir', 'dermawan', 'terdermawan', 'gaptek', 'tergaptek', 'update', 'terupdate'
   ];
 
   const hasHumorKeyword = humorKeywords.some(k => q.includes(k));
-  
-  const contextKeywords = [
-    'pegawai', 'dkpp', 'staf', 'staff', 'asn', 'internal', 'kantor', 'dinas', 'orang',
-    'siapa', 'cowok', 'cewek', 'bapak', 'ibu',
-    // Nama-nama pegawai DKPP (sebagian, untuk deteksi konteks)
-    'ratnasari', 'sugiarto', 'sutisna', 'wahyudi', 'yuliantina', 'sarifah',
-    'piliang', 'saprudin', 'mulyani', 'hartati', 'fitriyani', 'kurniawan',
-    'hidayat', 'nugraha', 'purnama', 'setiawan', 'rahmawati', 'winda', 'wnda',
-    'ridwan', 'ridwa', 'wanda', 'anda', 'sari', 'nani'
-  ];
+  const contextKeywords = ['pegawai', 'dkpp', 'staf', 'staff', 'asn', 'internal', 'kantor', 'dinas', 'orang', 'siapa', 'cowok', 'cewek'];
   const hasContext = contextKeywords.some(c => q.includes(c));
 
-  return hasHumorKeyword && hasContext;
+  return (hasHumorKeyword && (hasContext || matchedEmployee));
 }
+
+// Catatan: Algoritma perangkingan statis telah dihapus sesuai arahan fitur Polling Pegawai.
+// Hasil peringkat ditentukan secara dinamis dan demokratis melalui voting anonim seluruh pegawai di fitur Polling Pegawai.
 
 /**
- * Bangun teks konteks humor yang relevan untuk AI
+ * Bangun teks konteks yang mengarahkan ke Polling Pegawai
  */
-export function buildPegawaiHumorContext(userMessage: string, dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): string | null {
+export function buildPegawaiHumorContext(userMessage: string, _dataset: PegawaiHumorItem[] = OFFICIAL_DKPP_HUMOR_DATA): string | null {
   if (!isPegawaiHumorQuery(userMessage)) return null;
 
-  const q = userMessage.toLowerCase();
-  let result = `=== MODE BERCANDA / HUMOR INTERNAL PEGAWAI DKPP (SENSITIF - INTERNAL ONLY) ===\n`;
-  result += `ATURAN GAYA JAWABAN & FORMAT (WAJIB DIIKUTI TANPA KECUALI):\n`;
-  result += `1. DILARANG KERAS MENAMPILKAN ANGKA MENTAH ATAU SKOR PECAHAN SEPERTI "10/10", "9/10", ATAU "Skor 8"!\n`;
-  result += `2. BERIKAN SKOR GABUNGAN DALAM SATUAN INDEKS PERSENTASE (contoh: "1. Sri Rahmadani Piliang, SE — dengan indeks kecantikan komposit 97,66%").\n`;
-  result += `3. HANYA proses nama-nama yang ada dalam daftar di bawah ini (yang seluruh datanya terisi). JANGAN PERNAH mencatut nama pimpinan atau pegawai yang dikecualikan.\n`;
-  result += `4. Berikan narasi yang santun, elegan, hangat, dan bernada apresiasi keakraban.\n`;
-  result += `5. Akhiri jawaban dengan catatan santai bahwa ini bersumber dari catatan internal mode santai/keakraban DKPP.\n\n`;
-
-  if (q.includes('cantik') || q.includes('ayu') || q.includes('cewek') || q.includes('wanita')) {
-    const topCantik = getTopCantik(dataset, 6);
-    result += `DAFTAR PEGAWAI PALING CANTIK (DENGAN INDEKS KECANTIKAN KOMPOSIT DALAM PERSENTASE):\n`;
-    topCantik.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} — dengan Indeks Kecantikan Komposit sebesar ${formatIndeksKecantikan(p)}\n`;
-    });
-    result += `\n`;
-  } else if (q.includes('ganteng') || q.includes('tampan') || q.includes('cowok')) {
-    const topGanteng = getTopGanteng(dataset, 6);
-    result += `DAFTAR PEGAWAI PALING GANTENG / TAMPAN (DENGAN INDEKS KETAMPANAN KOMPOSIT DALAM PERSENTASE):\n`;
-    topGanteng.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} — dengan Indeks Ketampanan Komposit sebesar ${formatIndeksKetampanan(p)}\n`;
-    });
-    result += `\n`;
-  } else if (q.includes('aura') || q.includes('daya tarik') || q.includes('kharisma') || q.includes('karisma') || q.includes('terpesona')) {
-    const topAura = getTopAura(dataset, 6);
-    result += `DAFTAR PEGAWAI DENGAN DAYA TARIK & AURA TERTINGGI (DENGAN INDEKS AURA KOMPOSIT DALAM PERSENTASE):\n`;
-    topAura.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} — dengan Indeks Kharisma/Aura Komposit sebesar ${formatIndeksAura(p)}\n`;
-    });
-    result += `\n`;
-  } else if (q.includes('cerdas') || q.includes('pintar') || q.includes('jenius')) {
-    const topCerdas = getTopCerdas(dataset, 6);
-    result += `DAFTAR PEGAWAI DENGAN INDEKS KECERDASAN KOMPOSIT TERTINGGI (DALAM PERSENTASE):\n`;
-    topCerdas.forEach((p, idx) => {
-      result += `${idx + 1}. ${p.nama} — dengan Indeks Kecerdasan Komposit sebesar ${formatIndeksCerdas(p)}\n`;
-    });
-    result += `\n`;
-  } else {
-    const topGanteng = getTopGanteng(dataset, 3);
-    const topCantik = getTopCantik(dataset, 3);
-    result += `RINGKASAN INDEKS KOMPOSIT MODE SANTAI DKPP:\n`;
-    result += `- Indeks Kecantikan Tertinggi: ` + topCantik.map(p => `${p.nama} (${formatIndeksKecantikan(p)})`).join(', ') + `\n`;
-    result += `- Indeks Ketampanan Tertinggi: ` + topGanteng.map(p => `${p.nama} (${formatIndeksKetampanan(p)})`).join(', ') + `\n`;
-  }
-
-  return result;
+  return `=== INFORMASI SISTEM POLLING PEGAWAI DKPP ===
+Aturan Sistem:
+1. Peringkat seperti "Paling Ganteng", "Paling Cantik", "Paling Rajin", "Paling Cerdas", dsb. TIDAK LAGI ditentukan oleh formula atau algoritma statis.
+2. Seluruh penilaian kini dilakukan secara DEMOKRATIS, ANONIM, dan REAL-TIME oleh seluruh pegawai terverifikasi melalui Fitur "Polling Pegawai".
+3. Setiap pegawai terverifikasi dapat memilih hingga 3 nama favorit untuk setiap tema polling.
+4. Beritahu user dengan nada ramah, santai, dan mengajak bahwa mereka dapat melihat hasil voting terkini atau langsung memberikan suaranya pada widget Polling Pegawai yang tersedia di sistem ChatDKPP.`;
 }
+
+

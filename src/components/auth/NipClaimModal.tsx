@@ -136,7 +136,7 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
             Klaim NIP Pegawai DKPP
           </h2>
           <p className="text-xs text-gray-500 mt-1.5 leading-relaxed max-w-sm">
-            Akun Google <span className="font-semibold text-gray-700">{user.email || 'Anda'}</span> saat ini berstatus Tamu/Masyarakat. Masukkan NIP resmi Anda untuk membuka mode <strong>dokumen sensitif & internal DKPP</strong>.
+            Akun Google <span className="font-semibold text-gray-700">{user.email || 'Anda'}</span> saat ini berstatus <strong>User Umum (Non-Pegawai)</strong>. Masukkan NIP resmi Anda untuk membuka akses <strong>data internal, polling, & dokumen DKPP</strong>.
           </p>
         </div>
 

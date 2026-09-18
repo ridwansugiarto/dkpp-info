@@ -1,4 +1,4 @@
-export type UserRole = 'GUEST' | 'EMPLOYEE' | 'ADMIN';
+export type UserRole = 'GUEST' | 'CITIZEN' | 'EMPLOYEE' | 'ADMIN';
 
 export type DocumentFolder = 
   | 'sensitif'
@@ -88,6 +88,19 @@ export interface ChatMessage {
   session_id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
+  type?: 'text' | 'poll_card' | 'poll_catalog' | 'poll_carousel' | 'auth_prompt' | string;
+  poll_card?: {
+    poll: import('@/lib/polling/types').PollTheme;
+    available_themes?: import('@/lib/polling/types').PollTheme[];
+  };
+  poll_catalog?: {
+    themes: import('@/lib/polling/types').PollTheme[];
+  };
+  poll_carousel?: {
+    themes: import('@/lib/polling/types').PollTheme[];
+    initialThemeCode?: string;
+  };
+  auth_prompt?: 'LOGIN_REQUIRED' | 'NIP_REQUIRED';
   sources?: SourceCitation[];
   tool_calls?: ToolCall[];
   map_actions?: MapAction[];
