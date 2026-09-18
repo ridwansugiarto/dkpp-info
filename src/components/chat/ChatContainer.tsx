@@ -346,7 +346,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 sm:py-6 space-y-6">
+    <div className="flex-1 overflow-y-auto px-1.5 sm:px-4 py-2.5 sm:py-6 space-y-4 sm:space-y-6">
       {messages.length === 0 ? (
         /* Empty State (Sesuai Mockup ChatGPT dengan Logo ChatDKPP) */
         <div className="max-w-2xl mx-auto min-h-[75vh] flex flex-col items-center justify-center text-center animate-in fade-in duration-300 space-y-6 px-2">
@@ -399,8 +399,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         <div
           className={
             viewMode === 'CHAT'
-              ? 'max-w-3xl mx-auto space-y-6 w-full'
-              : 'max-w-3xl mx-auto space-y-5'
+              ? 'max-w-3xl mx-auto space-y-4 sm:space-y-6 w-full px-0'
+              : 'max-w-3xl mx-auto space-y-4 sm:space-y-5 w-full px-0'
           }
         >
           {messages.map((msg, idx) => {
@@ -409,12 +409,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             return (
               <div
                 key={msg.id || idx}
-                className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-0 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Assistant Sleek Avatar (Ikon Resmi Chat DKPP Transparan) */}
+                {/* Assistant Sleek Avatar (Ikon Resmi Chat DKPP Transparan) - Tampil di Desktop (sm:flex), disembunyikan di Mobile */}
                 {!isUser && (
                   <div
-                    className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5 select-none"
+                    className="hidden sm:flex w-8 h-8 items-center justify-center shrink-0 mt-0.5 select-none"
                     title="ChatDKPP Intelligence Assistant"
                   >
                     <img
@@ -428,10 +428,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 <div
                   className={
                     isUser
-                      ? 'max-w-[85%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl px-4 sm:px-5 py-2.5 sm:py-3 shadow-xs bg-[#A8DCAB] text-emerald-950 font-medium rounded-tr-xs'
+                      ? 'max-w-[92%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-2 sm:py-3 shadow-xs bg-[#A8DCAB] text-emerald-950 font-medium rounded-tr-xs ml-auto'
+                      : (msg.type === 'poll_carousel' || !!msg.poll_carousel)
+                      ? 'relative group flex-1 min-w-0 w-full max-w-full bg-transparent border-0 shadow-none p-0 text-gray-900'
                       : viewMode === 'CHAT'
-                      ? 'relative group flex-1 min-w-0 bg-transparent border-0 shadow-none px-0 py-0.5 text-gray-900 pr-8'
-                      : 'relative group max-w-[88%] sm:max-w-[85%] rounded-2xl px-4 py-3 shadow-sm bg-white dark:bg-[#1a1c22] border border-gray-200/80 dark:border-gray-800 rounded-tl-xs pr-8'
+                      ? 'relative group flex-1 min-w-0 w-full max-w-full bg-transparent border-0 shadow-none px-0 py-0.5 text-gray-900 pr-7 sm:pr-8'
+                      : 'relative group w-full sm:max-w-[85%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm bg-white dark:bg-[#1a1c22] border border-gray-200/80 dark:border-gray-800 rounded-tl-xs pr-7 sm:pr-8'
                   }
                 >
                   {/* Top-Right Copy Icon on Assistant Response */}
@@ -617,7 +619,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                       {/* 5. In-Chat Interactive Live Results Carousel */}
                       {(msg.type === 'poll_carousel' || msg.poll_carousel) && (
-                        <div className="mt-3.5">
+                        <div className="mt-2.5 w-full max-w-full overflow-hidden">
                           <LiveResultsCarousel
                             initialThemeCode={msg.poll_carousel?.initialThemeCode || 'cantik'}
                             onSelectThemeForVoting={(themeCode) => {

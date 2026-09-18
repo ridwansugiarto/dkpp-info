@@ -69,6 +69,59 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const isGuestUser = !userId || userId === 'guest' || (userId as string).startsWith('guest_');
+
+    const persistMessages = async (
+      userMsg: string,
+      aiContent: string,
+      toolCalls: any[] = [],
+      sources: any[] = [],
+      mapActions: any[] = []
+    ) => {
+      let userMsgId = 'msg-user-' + Date.now();
+      let assistantMsgId = 'msg-ai-' + Date.now();
+
+      if (sessionId && !isGuestUser) {
+        try {
+          const { data: insertedUserMsg } = await supabaseAdmin
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'user',
+              content: userMsg,
+            })
+            .select('id')
+            .single();
+
+          if (insertedUserMsg) userMsgId = insertedUserMsg.id;
+
+          const { data: insertedAiMsg } = await supabaseAdmin
+            .from('chat_messages')
+            .insert({
+              session_id: sessionId,
+              role: 'assistant',
+              content: aiContent,
+              sources,
+              tool_calls: toolCalls,
+              map_actions: mapActions,
+            })
+            .select('id')
+            .single();
+
+          if (insertedAiMsg) assistantMsgId = insertedAiMsg.id;
+
+          await supabaseAdmin
+            .from('chat_sessions')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', sessionId);
+        } catch (dbErr) {
+          console.error('Error saving messages to Supabase:', dbErr);
+        }
+      }
+
+      return { userMsgId, assistantMsgId };
+    };
+
     // 4. Deteksi Maksud Polling Pegawai (AI Intent Detection)
     const { detectPollingIntent } = await import('@/lib/polling/intent');
     const { OFFICIAL_POLL_THEMES } = await import('@/lib/polling/constants');
@@ -107,7 +160,26 @@ export async function POST(req: NextRequest) {
         }
 
         const carouselText = `🎠 **Live Carousel Hasil Polling Pegawai (15 Tema DKPP)**\n\nBerikut tampilan live perolehan suara 15 tema polling apresiasi keluarga besar DKPP Kota Cilegon. Kamu bisa menggeser tema, menjeda putar otomatis (*auto-slide*), atau langsung memberikan suara!`;
+
+        const { userMsgId, assistantMsgId } = await persistMessages(
+          message,
+          carouselText,
+          [
+            {
+              id: 'tool-poll-carousel-' + Date.now(),
+              name: 'poll_carousel',
+              status: 'completed',
+              args: {
+                initialThemeCode: initialCode,
+              },
+            },
+          ]
+        );
+
         return NextResponse.json({
+          sessionId,
+          userMessageId: userMsgId,
+          assistantMessageId: assistantMsgId,
           content: carouselText,
           type: 'poll_carousel',
           poll_carousel: {
@@ -115,7 +187,7 @@ export async function POST(req: NextRequest) {
             initialThemeCode: initialCode,
           },
           message: {
-            id: 'msg-poll-carousel-' + Date.now(),
+            id: assistantMsgId,
             session_id: sessionId || 'temp',
             role: 'assistant',
             content: carouselText,
@@ -152,9 +224,31 @@ export async function POST(req: NextRequest) {
         }
 
         const responseText = `🏆 **Katalog 15 Tema Polling Pegawai DKPP Kota Cilegon**\n\nPilih tema polling yang ingin kamu ikuti langsung di bawah ini! Kamu bisa memilih 1 hingga 3 nama rekan kerja per tema secara aman & 100% anonim.`;
+
+        const { userMsgId, assistantMsgId } = await persistMessages(
+          message,
+          responseText,
+          [
+            {
+              id: 'tool-poll-catalog-' + Date.now(),
+              name: 'poll_catalog',
+              status: 'completed',
+              args: {},
+            },
+          ]
+        );
+
         return NextResponse.json({
+          sessionId,
+          userMessageId: userMsgId,
+          assistantMessageId: assistantMsgId,
+          content: responseText,
+          type: 'poll_catalog',
+          poll_catalog: {
+            themes: OFFICIAL_POLL_THEMES,
+          },
           message: {
-            id: 'msg-poll-catalog-' + Date.now(),
+            id: assistantMsgId,
             session_id: sessionId || 'temp',
             role: 'assistant',
             content: responseText,
@@ -246,7 +340,27 @@ export async function POST(req: NextRequest) {
 
       // Case 3: Pegawai Terverifikasi / Super Admin (Persis Sesuai Mockup Screen 1)
       const botGreeting = `Oke! Aku siap bantu. Berikut ini polling "${activePoll.title}".\n\nKamu bisa pilih maksimal ${activePoll.max_choices || 3} orang, ya!\n\nMulai ketik nama pegawai, dan aku akan menampilkan daftar yang paling mendekati.`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        botGreeting,
+        [
+          {
+            id: 'tool-poll-card-' + Date.now(),
+            name: 'poll_card',
+            status: 'completed',
+            args: {
+              pollCode: activePoll.code,
+              pollId: activePoll.id,
+            },
+          },
+        ]
+      );
+
       return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
         content: botGreeting,
         type: 'poll_card',
         poll_card: {
@@ -254,7 +368,7 @@ export async function POST(req: NextRequest) {
           available_themes: OFFICIAL_POLL_THEMES,
         },
         message: {
-          id: 'msg-poll-' + Date.now(),
+          id: assistantMsgId,
           session_id: sessionId || 'temp',
           role: 'assistant',
           content: botGreeting,
@@ -284,50 +398,14 @@ export async function POST(req: NextRequest) {
       userMemoryContext: memoryContext,
     });
 
-    // 5. Persist to DB only for authenticated (non-guest) users
-    // Guest messages live only in React state and are cleared when the session ends.
-    const isGuestUser = !userId || userId === 'guest' || (userId as string).startsWith('guest_');
-    let userMsgId = 'msg-user-' + Date.now();
-    let assistantMsgId = 'msg-ai-' + Date.now();
-
-    if (sessionId && !isGuestUser) {
-      try {
-        const { data: insertedUserMsg } = await supabaseAdmin
-          .from('chat_messages')
-          .insert({
-            session_id: sessionId,
-            role: 'user',
-            content: message,
-          })
-          .select('id')
-          .single();
-
-        if (insertedUserMsg) userMsgId = insertedUserMsg.id;
-
-        const { data: insertedAiMsg } = await supabaseAdmin
-          .from('chat_messages')
-          .insert({
-            session_id: sessionId,
-            role: 'assistant',
-            content: aiResult.content,
-            sources: aiResult.sources,
-            tool_calls: aiResult.tool_calls,
-            map_actions: aiResult.map_actions,
-          })
-          .select('id')
-          .single();
-
-        if (insertedAiMsg) assistantMsgId = insertedAiMsg.id;
-
-        // Update session's updated_at
-        await supabaseAdmin
-          .from('chat_sessions')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', sessionId);
-      } catch (dbErr) {
-        console.error('Error saving messages to Supabase:', dbErr);
-      }
-    }
+    // 6. Persist to DB only for authenticated (non-guest) users
+    const { userMsgId, assistantMsgId } = await persistMessages(
+      message,
+      aiResult.content,
+      aiResult.tool_calls,
+      aiResult.sources,
+      aiResult.map_actions
+    );
 
     // 6. Log Audit Trail
     await logAudit({

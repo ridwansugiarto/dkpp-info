@@ -545,7 +545,7 @@ export const ChatDKPPApp: React.FC = () => {
       const data = await res.json();
 
       const msgContent = data.content || data.message?.content || '';
-      if (msgContent || data.poll_card || data.poll_catalog || data.auth_prompt || data.message) {
+      if (msgContent || data.poll_card || data.poll_catalog || data.poll_carousel || data.auth_prompt || data.message) {
         const aiMsg: ChatMessage = {
           id: data.assistantMessageId || data.message?.id || `ai-${Date.now()}`,
           session_id: currentSessId || 'default',
@@ -554,6 +554,7 @@ export const ChatDKPPApp: React.FC = () => {
           type: data.type || data.message?.type || 'text',
           poll_card: data.poll_card || data.message?.poll_card,
           poll_catalog: data.poll_catalog || data.message?.poll_catalog,
+          poll_carousel: data.poll_carousel || data.message?.poll_carousel,
           auth_prompt: data.auth_prompt || data.message?.auth_prompt,
           sources: data.sources || data.message?.sources || [],
           tool_calls: data.tool_calls || data.message?.tool_calls || [],
@@ -832,8 +833,8 @@ export const ChatDKPPApp: React.FC = () => {
                 <div
                   className={`shrink-0 ${
                     viewMode === 'CHAT'
-                      ? 'px-4 sm:px-6 pb-3 pt-1 bg-white w-full'
-                      : 'p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm'
+                      ? 'px-2 sm:px-6 pb-2.5 sm:pb-3 pt-1 bg-white w-full'
+                      : 'p-2 sm:p-3 border-t border-gray-100 bg-white/90 backdrop-blur-sm'
                   }`}
                 >
                   <div className={viewMode === 'CHAT' ? 'max-w-3xl mx-auto' : ''}>

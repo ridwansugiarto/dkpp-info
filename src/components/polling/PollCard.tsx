@@ -135,7 +135,7 @@ export const PollCard: React.FC<PollCardProps> = ({
 
   // 3. Form Polling Sesuai Mockup Screen 1, 2, 3
   return (
-    <div className={`w-full max-w-md bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5 ${className}`}>
+    <div className={`w-full max-w-full sm:max-w-md bg-white border border-gray-200/90 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-3.5 ${className}`}>
       {/* Header Form (Trophy + Polling: Judul + Subtitle) */}
       <div className="flex items-start justify-between gap-3 cursor-pointer select-none">
         <div className="flex items-center gap-3">
