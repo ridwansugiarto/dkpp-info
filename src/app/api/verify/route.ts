@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         verified: true,
         role: 'ADMIN',
-        full_name: 'Ridwan Sugiarto (Administrator)',
-        department: 'Dinas Ketahanan Pangan dan Pertanian Kota Cilegon',
-        position: 'Administrator Sistem & Analis Ketahanan Pangan',
+        full_name: 'Ridwan Sugiarto, S.Pi',
+        department: 'Ketahanan Pangan',
+        position: 'Analis Ketahanan Pangan Ahli Muda',
         can_access_sensitive: true,
       });
     }

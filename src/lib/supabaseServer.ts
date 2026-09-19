@@ -27,13 +27,13 @@ export async function resolveUserAuth(userEmail?: string, userId?: string, userN
     return {
       id: userId || 'admin-user',
       email: userEmail,
-      full_name: 'Ridwan Sugiarto, S.Pi (Super Admin)',
+      full_name: 'Ridwan Sugiarto, S.Pi',
       role: 'ADMIN',
       is_verified_employee: true,
       can_access_sensitive: true,
       nip: ADMIN_NIP,
-      department: 'DKPP Kota Cilegon',
-      position: 'Kepala Dinas DKPP (Super Admin)',
+      department: 'Ketahanan Pangan',
+      position: 'Analis Ketahanan Pangan Ahli Muda',
     };
   }
 

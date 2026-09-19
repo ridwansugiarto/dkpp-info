@@ -104,7 +104,25 @@ export async function POST(request: Request) {
       }
     } catch {}
 
-    // 4. Catat ke memory store untuk real-time fallback tanpa latency
+    // 4. Cek apakah user sudah pernah memberikan suaranya pada tema ini
+    try {
+      const { data: existingPart } = await supabaseAdmin
+        .from('poll_participations')
+        .select('poll_id, choices_count')
+        .eq('poll_id', dbPollId)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle();
+
+      if (existingPart) {
+        return NextResponse.json({
+          error: `ALREADY_VOTED: Anda sudah memberikan suara sebanyak ${existingPart.choices_count || 3}x pada tema polling ini. Hak suara Anda telah digunakan secara lengkap & aman.`,
+          has_voted: true,
+          choices_count: existingPart.choices_count || 3,
+        }, { status: 400 });
+      }
+    } catch {}
+
+    // 5. Catat ke memory store untuk real-time fallback tanpa latency
     recordMemoryVote(cleanCode, effectiveUserId, uniqueIds);
 
     // 5. Coba Simpan ke database Supabase

@@ -27,7 +27,7 @@ export const PollCard: React.FC<PollCardProps> = ({
   const [showLiveResults, setShowLiveResults] = useState(false);
 
   // Realtime results hook
-  const { results, totalVotes, hasVoted, refresh } = usePollResults(poll.id, poll.code);
+  const { results, totalVotes, hasVoted, choicesCount, refresh } = usePollResults(poll.id, poll.code);
 
   const maxChoices = poll.max_choices || 3;
   const isSelectedFull = selected.length >= maxChoices;
@@ -86,6 +86,11 @@ export const PollCard: React.FC<PollCardProps> = ({
 
       if (res.ok && data.success) {
         setVoteSubmitted(true);
+        // Simpan ke cache lokal agar notifikasi 3x instan tersaji
+        try {
+          localStorage.setItem(`dkpp_voted_${poll.code}`, JSON.stringify({ count: selected.length, votedAt: Date.now() }));
+          localStorage.setItem(`dkpp_voted_${poll.id}`, JSON.stringify({ count: selected.length, votedAt: Date.now() }));
+        } catch {}
         refresh();
       } else {
         if (data.error?.includes('ALREADY_VOTED')) {
@@ -106,10 +111,27 @@ export const PollCard: React.FC<PollCardProps> = ({
     }
   };
 
-  // 1. Tampilkan Live Results jika user sudah vote dan menekan Lihat Hasil
+  // 1. Tampilkan Live Results + Notifikasi jika user sudah memberikan suara sebanyak 3x di tema ini
   if (isVotedState && (showLiveResults || hasVoted)) {
     return (
-      <div className={`w-full max-w-md ${className}`}>
+      <div className={`w-full max-w-full sm:max-w-md space-y-3 select-text ${className}`}>
+        {/* Notifikasi Resmi Bahwa User Sudah Memilih 3x di Tema Ini */}
+        <div className="bg-emerald-50/95 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-1.5 animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 text-base">
+              🗳️
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-xs sm:text-sm text-emerald-950 dark:text-emerald-100 leading-snug">
+                Anda Sudah Memberikan Suara Sebanyak {choicesCount || maxChoices}x
+              </h4>
+              <p className="text-[11px] sm:text-xs text-emerald-800/90 dark:text-emerald-300/90 mt-1 leading-relaxed">
+                Hak suara Anda untuk tema <strong>{poll.title}</strong> telah digunakan sepenuhnya ({choicesCount || maxChoices} dari {maxChoices} pilihan). Pilihan Anda tersimpan secara <strong>100% anonim</strong> dan <strong>terjamin kerahasiaannya</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <LiveResults
           poll={poll}
           results={results}
@@ -123,7 +145,7 @@ export const PollCard: React.FC<PollCardProps> = ({
   // 2. Tampilkan Konfirmasi Sukses sesaat setelah vote (Screen 5)
   if (voteSubmitted) {
     return (
-      <div className={`w-full max-w-md ${className}`}>
+      <div className={`w-full max-w-full sm:max-w-md ${className}`}>
         <VoteSuccess
           pollTitle={poll.title}
           choicesCount={selected.length}
@@ -135,24 +157,32 @@ export const PollCard: React.FC<PollCardProps> = ({
 
   // 3. Form Polling Sesuai Mockup Screen 1, 2, 3
   return (
-    <div className={`w-full max-w-full sm:max-w-md bg-white border border-gray-200/90 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-3.5 ${className}`}>
+    <div className={`w-full max-w-full sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-3.5 ${className}`}>
       {/* Header Form (Trophy + Polling: Judul + Subtitle) */}
       <div className="flex items-start justify-between gap-3 cursor-pointer select-none">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="text-2xl shrink-0">
             {poll.icon || '🏆'}
           </div>
-          <div>
-            <h3 className="font-bold text-[#1e293b] text-sm sm:text-base leading-snug">
+          <div className="min-w-0">
+            <h3 className="font-bold text-[#1e293b] dark:text-white text-sm sm:text-base leading-snug truncate">
               Polling: {poll.title}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
               Pilih {maxChoices} nama favorit kamu!
             </p>
           </div>
         </div>
 
         <FiChevronRight className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
+      </div>
+
+      {/* Keterangan: Polling bersifat Anonim & Terjamin Kerahasiaannya */}
+      <div className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200 shadow-2xs">
+        <span className="text-base shrink-0">🔒</span>
+        <div className="min-w-0 text-[11px] sm:text-xs leading-relaxed text-emerald-800 dark:text-emerald-300">
+          <strong className="font-bold text-emerald-950 dark:text-emerald-100">100% Anonim &amp; Terjamin Kerahasiaannya:</strong> Polling apresiasi internal ini bersifat tertutup. Pilihan nama rekan kerja Anda terenkripsi dan tidak akan pernah dipublikasikan kepada siapapun demi kenyamanan bersama.
+        </div>
       </div>
 
       {/* Autocomplete Search Input */}
@@ -191,7 +221,7 @@ export const PollCard: React.FC<PollCardProps> = ({
           className={`w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
             selected.length > 0 && !isSubmitting
               ? 'bg-[#007A55] hover:bg-[#006848] active:scale-[0.99] text-white shadow-sm'
-              : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0] cursor-not-allowed'
+              : 'bg-[#F1F5F9] dark:bg-gray-800 text-[#94A3B8] border border-[#E2E8F0] dark:border-gray-700 cursor-not-allowed'
           }`}
         >
           {isSubmitting ? (

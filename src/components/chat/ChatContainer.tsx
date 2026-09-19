@@ -619,7 +619,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                       {/* 5. In-Chat Interactive Live Results Carousel */}
                       {(msg.type === 'poll_carousel' || msg.poll_carousel) && (
-                        <div className="mt-2.5 w-full max-w-full overflow-hidden">
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
                           <LiveResultsCarousel
                             initialThemeCode={msg.poll_carousel?.initialThemeCode || 'cantik'}
                             onSelectThemeForVoting={(themeCode) => {

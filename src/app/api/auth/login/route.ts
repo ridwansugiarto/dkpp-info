@@ -33,8 +33,8 @@ export async function POST(request: Request) {
           is_verified_employee: true,
           can_access_sensitive: true,
           nip: '197610182002121002',
-          department: 'Dinas Ketahanan Pangan dan Pertanian',
-          position: 'Kepala Dinas DKPP (Super Admin)',
+          department: 'Ketahanan Pangan',
+          position: 'Analis Ketahanan Pangan Ahli Muda',
         },
       });
     }

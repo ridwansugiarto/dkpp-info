@@ -9,6 +9,7 @@ export function usePollResults(pollId?: string, pollCode?: string) {
   const [poll, setPoll] = useState<PollTheme | null>(null);
   const [totalVotes, setTotalVotes] = useState<number>(0);
   const [hasVoted, setHasVoted] = useState<boolean>(false);
+  const [choicesCount, setChoicesCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
@@ -22,14 +23,40 @@ export function usePollResults(pollId?: string, pollCode?: string) {
 
     try {
       const identifier = pollId || pollCode;
-      const res = await fetch(`/api/polling/results/${identifier}`);
+      let userQuery = '';
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('dkpp_user_session') || sessionStorage.getItem('dkpp_user_session');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            const uId = parsed.id || '';
+            const uEmail = parsed.email || '';
+            if (uId || uEmail) {
+              userQuery = `?userId=${encodeURIComponent(uId)}&userEmail=${encodeURIComponent(uEmail)}`;
+            }
+          }
+          // Cek local cache apakah user sudah vote di tema ini
+          const localVoteKey = `dkpp_voted_${pollCode || pollId}`;
+          const localVoted = localStorage.getItem(localVoteKey);
+          if (localVoted) {
+            const parsedVote = JSON.parse(localVoted);
+            setHasVoted(true);
+            setChoicesCount(parsedVote.count || 3);
+          }
+        } catch {}
+      }
+
+      const res = await fetch(`/api/polling/results/${identifier}${userQuery}`);
       const data = await res.json();
 
       if (res.ok) {
         setResults(data.results || []);
         setPoll(data.poll || null);
         setTotalVotes(data.total_votes || 0);
-        setHasVoted(data.has_voted || false);
+        if (data.has_voted) {
+          setHasVoted(true);
+          setChoicesCount(data.choices_count || 3);
+        }
         setError(null);
       } else {
         setError(data.error || 'Gagal memuat hasil polling.');
@@ -112,6 +139,7 @@ export function usePollResults(pollId?: string, pollCode?: string) {
     poll,
     totalVotes,
     hasVoted,
+    choicesCount,
     loading,
     error,
     refresh: () => fetchResults(false)

@@ -143,9 +143,14 @@ export async function GET(
       r.rank = idx + 1;
     });
 
-    // 5. Cek status user
+    // 5. Cek status partisipasi user (dukung Cookie auth & query params session)
     let has_voted = false;
+    let choices_count = 0;
     try {
+      const url = new URL(request.url);
+      const queryUserId = url.searchParams.get('userId');
+
+      let resolvedUserId: string | null = null;
       const cookieStore = await cookies();
       const authClient = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -158,14 +163,23 @@ export async function GET(
       );
       const { data: { user } } = await authClient.auth.getUser();
       if (user) {
+        resolvedUserId = user.id;
+      } else if (queryUserId) {
+        resolvedUserId = queryUserId;
+      }
+
+      if (resolvedUserId) {
         const { data: part } = await supabaseAdmin
           .from('poll_participations')
-          .select('poll_id')
-          .eq('poll_id', targetPoll.id)
-          .eq('user_id', user.id)
+          .select('poll_id, choices_count')
+          .in('poll_id', candidatePollIds)
+          .eq('user_id', resolvedUserId)
           .maybeSingle();
 
-        has_voted = !!part;
+        if (part) {
+          has_voted = true;
+          choices_count = part.choices_count || 3;
+        }
       }
     } catch {}
 
@@ -174,6 +188,7 @@ export async function GET(
       results: resultsList,
       total_votes: totalVotes,
       has_voted,
+      choices_count,
     });
   } catch (err: any) {
     console.error('API Results error:', err);

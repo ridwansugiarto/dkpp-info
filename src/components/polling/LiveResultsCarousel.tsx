@@ -20,6 +20,89 @@ interface LiveResultsCarouselProps {
   onAskAi?: (prompt: string) => void;
 }
 
+// Sub-komponen drag-to-scroll vertikal untuk body carousel di mobile & desktop
+const DraggableScrollContainer: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+  hasMoreItems?: boolean;
+}> = ({ children, className = '', hasMoreItems = false }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showBottomHint, setShowBottomHint] = useState(hasMoreItems);
+  const startYRef = useRef(0);
+  const scrollTopRef = useRef(0);
+  const isPointerDownRef = useRef(false);
+
+  const checkScrollPosition = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 20;
+    setShowBottomHint(!isAtBottom && el.scrollHeight > el.clientHeight);
+  }, []);
+
+  useEffect(() => {
+    checkScrollPosition();
+  }, [hasMoreItems, checkScrollPosition]);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType !== 'touch') return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    isPointerDownRef.current = true;
+    setIsDragging(true);
+    startYRef.current = e.clientY;
+    scrollTopRef.current = el.scrollTop;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDownRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const deltaY = e.clientY - startYRef.current;
+    el.scrollTop = scrollTopRef.current - deltaY;
+    checkScrollPosition();
+  };
+
+  const handlePointerUp = () => {
+    isPointerDownRef.current = false;
+    setIsDragging(false);
+  };
+
+  return (
+    <div className="relative w-full">
+      <div
+        ref={containerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onScroll={checkScrollPosition}
+        className={`overflow-y-auto overscroll-y-contain touch-pan-y ${
+          isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+        } ${className}`}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'thin',
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Visual Scroll Hint Badge jika data melebihi tinggi container */}
+      {showBottomHint && (
+        <div className="pointer-events-none sticky bottom-0 left-0 right-0 pt-3 pb-1 flex items-center justify-center bg-gradient-to-t from-white dark:from-gray-900 via-white/85 dark:via-gray-900/85 to-transparent transition-opacity duration-300">
+          <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50/95 dark:bg-emerald-950/90 px-2.5 py-0.5 rounded-full border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs animate-pulse flex items-center gap-1">
+            <span>↕</span>
+            <span>Geser / scroll ke bawah untuk peringkat lainnya</span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Sub-komponen per slide agar data terisolasi & efisien
 const CarouselSlideTheme: React.FC<{
   theme: typeof OFFICIAL_POLL_THEMES[0];
@@ -104,9 +187,12 @@ const CarouselSlideTheme: React.FC<{
           )}
         </div>
       ) : (
-        /* Results Table / List (Maksimal 10 Besar & Scrollable Vertikal) */
+        /* Results Table / List (Maksimal 10 Besar & Scrollable / Draggable Vertikal) */
         <div className="space-y-3">
-          <div className="space-y-2 max-h-[300px] sm:max-h-[340px] overflow-y-auto overscroll-y-contain pr-1 touch-pan-y">
+          <DraggableScrollContainer
+            hasMoreItems={rest.length > 0}
+            className="space-y-2 max-h-[270px] sm:max-h-[320px] pr-1"
+          >
             {/* Top 3 Podium Cards */}
             {topThree.map((item) => (
               <div
@@ -158,7 +244,7 @@ const CarouselSlideTheme: React.FC<{
                 ))}
               </div>
             )}
-          </div>
+          </DraggableScrollContainer>
 
           {/* Interactive Chat Response & Discussion Chips */}
           <div className="pt-2.5 border-t border-gray-100 dark:border-gray-800/80 space-y-2">
@@ -319,186 +405,207 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
   }, [currentIndex]);
 
   const content = (
-    <div 
-      className={`bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden flex flex-col w-full max-w-full ${
-        isModal ? 'max-w-2xl max-h-[90vh]' : ''
-      }`}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onTouchStart={() => setIsPaused(true)}
-      onTouchEnd={() => setIsPaused(false)}
-    >
-      {/* 1. Header Bar */}
-      <div className="px-3.5 sm:px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 min-w-0 pr-2">
-          <div className="p-1.5 rounded-lg bg-white/15 backdrop-blur-xs shrink-0">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xs sm:text-sm md:text-base font-bold leading-tight truncate">
-              Live Hasil Polling Pegawai DKPP
-            </h3>
-            <p className="text-[10px] sm:text-[11px] text-emerald-100/90 truncate">
-              15 Tema Apresiasi Internal
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Auto-play toggle */}
-          <button
-            type="button"
-            onClick={() => setIsAutoPlay(!isAutoPlay)}
-            className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-              isAutoPlay 
-                ? 'bg-white text-emerald-800 shadow-xs font-bold' 
-                : 'bg-white/15 text-emerald-100 hover:bg-white/25'
-            }`}
-            title={isAutoPlay ? 'Jeda Putar Otomatis' : 'Mulai Putar Otomatis'}
-          >
-            {isAutoPlay ? <FiPause className="w-3 h-3" /> : <FiPlay className="w-3 h-3" />}
-            <span className="text-[10px] sm:text-[11px] hidden xs:inline">
-              {isAutoPlay ? 'Auto' : 'Auto'}
-            </span>
-          </button>
-
-          {/* Slide Indicator Badge */}
-          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/20 text-white text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap">
-            {currentIndex + 1} / {themes.length}
-          </span>
-
-          {/* Close button for modal */}
-          {isModal && onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer ml-0.5"
-              title="Tutup"
-            >
-              <FiX className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Theme Pills Quick Switcher (Horizontal Scrollable) */}
-      <div 
-        ref={pillsContainerRef}
-        className="px-3 py-2 bg-gray-50/90 dark:bg-gray-800/70 border-b border-gray-100 dark:border-gray-800 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0 touch-pan-x"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+    <div className="relative w-full flex items-center justify-center py-2 px-1 xs:px-2 select-none">
+      {/* Tombol Neon Chevron Kiri (<) Sesuai Mockup Capture 1 & 2 */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          prevSlide();
+        }}
+        aria-label="Tema Sebelumnya"
+        className="absolute left-0.5 sm:left-1 z-30 w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.55),inset_0_0_8px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
+        title="Tema Sebelumnya"
       >
-        {themes.map((t, idx) => {
-          const isActive = idx === currentIndex;
-          return (
-            <button
-              key={t.code}
-              type="button"
-              onClick={() => scrollToSlide(idx)}
-              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-xs scale-102 font-bold'
-                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-emerald-50 dark:hover:bg-gray-600'
-              }`}
-            >
-              <span>{t.icon}</span>
-              <span>{t.short_label}</span>
-            </button>
-          );
-        })}
-      </div>
+        <FiChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+      </button>
 
-      {/* 3. Main Slide Track (Scrollable Horisontal dengan Snap-Mandatory di Mobile & Desktop) */}
-      <div className="relative w-full overflow-hidden bg-white dark:bg-gray-900">
-        {/* Swipe instruction hint bar for mobile */}
-        <div className="px-3 py-1 bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-emerald-100/50 dark:border-emerald-900/30 flex items-center justify-between text-[10px] text-emerald-800/80 dark:text-emerald-300/80 sm:hidden">
-          <span className="inline-flex items-center gap-1 font-medium">
-            <MoveHorizontal className="w-3 h-3 text-emerald-600" />
-            Geser kiri/kanan untuk tema lain
-          </span>
-          <span className="font-mono text-[9px] font-bold">
-            Tema {currentIndex + 1} dari {themes.length}
-          </span>
-        </div>
-
-        {/* Scroll Track Container */}
-        <div
-          ref={trackRef}
-          onScroll={handleTrackScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar touch-pan-x overscroll-x-contain w-full min-h-[300px]"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }}
-        >
-          {themes.map((theme, idx) => (
-            <div
-              key={theme.code}
-              className="min-w-full w-full shrink-0 snap-center snap-always p-3.5 sm:p-5 box-border"
-            >
-              <CarouselSlideTheme 
-                theme={theme}
-                isActive={idx === currentIndex}
-                shouldLoad={Math.abs(idx - currentIndex) <= 2}
-                onVoteClick={(code) => {
-                  if (onSelectThemeForVoting) {
-                    onSelectThemeForVoting(code);
-                  }
-                  if (isModal && onClose) {
-                    onClose();
-                  }
-                }}
-                onAskAi={(prompt) => {
-                  if (onAskAi) {
-                    onAskAi(prompt);
-                  }
-                  if (isModal && onClose) {
-                    onClose();
-                  }
-                }}
-              />
+      {/* Card Bodi Carousel (Diperkecil agar sisi kanan-kiri pas untuk panah neon) */}
+      <div 
+        className={`w-full max-w-[calc(100%-66px)] xs:max-w-[calc(100%-74px)] sm:max-w-[560px] md:max-w-[620px] bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden flex flex-col mx-auto ${
+          isModal ? 'max-w-2xl max-h-[90vh]' : ''
+        }`}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
+      >
+        {/* 1. Header Bar */}
+        <div className="px-3.5 sm:px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            <div className="p-1.5 rounded-lg bg-white/15 backdrop-blur-xs shrink-0">
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm md:text-base font-bold leading-tight truncate">
+                Live Hasil Polling Pegawai DKPP
+              </h3>
+              <p className="text-[10px] sm:text-[11px] text-emerald-100/90 truncate">
+                15 Tema Apresiasi Internal
+              </p>
+            </div>
+          </div>
 
-      {/* 4. Footer Controls */}
-      <div className="p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0 gap-2">
-        <button
-          type="button"
-          onClick={prevSlide}
-          className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-        >
-          <FiChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Sebelumnya</span>
-        </button>
-
-        {/* Dots Pagination */}
-        <div className="flex items-center gap-1 max-w-[160px] sm:max-w-[220px] overflow-x-auto no-scrollbar py-1 px-1">
-          {themes.map((_, dotIdx) => (
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Auto-play toggle */}
             <button
-              key={dotIdx}
               type="button"
-              onClick={() => scrollToSlide(dotIdx)}
-              className={`h-1.5 rounded-full transition-all cursor-pointer shrink-0 ${
-                dotIdx === currentIndex
-                  ? 'w-5 sm:w-6 bg-emerald-600 dark:bg-emerald-400'
-                  : 'w-1.5 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400'
+              onClick={() => setIsAutoPlay(!isAutoPlay)}
+              className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                isAutoPlay 
+                  ? 'bg-white text-emerald-800 shadow-xs font-bold' 
+                  : 'bg-white/15 text-emerald-100 hover:bg-white/25'
               }`}
-              title={`Tema ${dotIdx + 1}: ${themes[dotIdx].title}`}
-            />
-          ))}
+              title={isAutoPlay ? 'Jeda Putar Otomatis' : 'Mulai Putar Otomatis'}
+            >
+              {isAutoPlay ? <FiPause className="w-3 h-3" /> : <FiPlay className="w-3 h-3" />}
+              <span className="text-[10px] sm:text-[11px] hidden xs:inline">
+                {isAutoPlay ? 'Auto' : 'Auto'}
+              </span>
+            </button>
+
+            {/* Slide Indicator Badge */}
+            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/20 text-white text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap">
+              {currentIndex + 1} / {themes.length}
+            </span>
+
+            {/* Close button for modal */}
+            {isModal && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer ml-0.5"
+                title="Tutup"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={nextSlide}
-          className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+        {/* 2. Theme Pills Quick Switcher (Horizontal Scrollable) */}
+        <div 
+          ref={pillsContainerRef}
+          className="px-3 py-2 bg-gray-50/90 dark:bg-gray-800/70 border-b border-gray-100 dark:border-gray-800 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0 touch-pan-x"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <span className="hidden sm:inline">Berikutnya</span>
-          <FiChevronRight className="w-4 h-4" />
-        </button>
+          {themes.map((t, idx) => {
+            const isActive = idx === currentIndex;
+            return (
+              <button
+                key={t.code}
+                type="button"
+                onClick={() => scrollToSlide(idx)}
+                className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-xs scale-102 font-bold'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-emerald-50 dark:hover:bg-gray-600'
+                }`}
+              >
+                <span>{t.icon}</span>
+                <span>{t.short_label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 3. Main Slide Track (Scrollable Horisontal dengan snap) */}
+        <div className="relative w-full overflow-hidden bg-white dark:bg-gray-900">
+          {/* Swipe instruction hint bar for mobile */}
+          <div className="px-3 py-1 bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-emerald-100/50 dark:border-emerald-900/30 flex items-center justify-between text-[10px] text-emerald-800/80 dark:text-emerald-300/80 sm:hidden">
+            <span className="inline-flex items-center gap-1 font-medium">
+              <MoveHorizontal className="w-3 h-3 text-emerald-600" />
+              Geser kiri/kanan untuk tema lain
+            </span>
+            <span className="font-mono text-[9px] font-bold">
+              Tema {currentIndex + 1} dari {themes.length}
+            </span>
+          </div>
+
+          {/* Scroll Track Container - menggunakan touch-pan-y agar gesture drag vertikal leluasa */}
+          <div
+            ref={trackRef}
+            onScroll={handleTrackScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar touch-pan-y sm:touch-auto overscroll-x-contain w-full min-h-[280px]"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          >
+            {themes.map((theme, idx) => (
+              <div
+                key={theme.code}
+                className="min-w-full w-full shrink-0 snap-center snap-always p-3.5 sm:p-5 box-border"
+              >
+                <CarouselSlideTheme 
+                  theme={theme}
+                  isActive={idx === currentIndex}
+                  shouldLoad={Math.abs(idx - currentIndex) <= 2}
+                  onVoteClick={(code) => {
+                    if (onSelectThemeForVoting) {
+                      onSelectThemeForVoting(code);
+                    }
+                    if (isModal && onClose) {
+                      onClose();
+                    }
+                  }}
+                  onAskAi={(prompt) => {
+                    if (onAskAi) {
+                      onAskAi(prompt);
+                    }
+                    if (isModal && onClose) {
+                      onClose();
+                    }
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Footer Controls (Compact, clean with dots indicator) */}
+        <div className="px-3 py-2 sm:py-2.5 bg-gray-50/90 dark:bg-gray-800/70 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0 gap-2">
+          <span className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400">
+            Tema <strong className="text-emerald-600 dark:text-emerald-400">{currentIndex + 1}</strong> dari {themes.length}
+          </span>
+
+          {/* Dots Pagination */}
+          <div className="flex items-center gap-1 max-w-[140px] sm:max-w-[200px] overflow-x-auto no-scrollbar py-0.5 px-1">
+            {themes.map((_, dotIdx) => (
+              <button
+                key={dotIdx}
+                type="button"
+                onClick={() => scrollToSlide(dotIdx)}
+                className={`h-1.5 rounded-full transition-all cursor-pointer shrink-0 ${
+                  dotIdx === currentIndex
+                    ? 'w-4 sm:w-5 bg-emerald-600 dark:bg-emerald-400'
+                    : 'w-1.5 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400'
+                }`}
+                title={`Tema ${dotIdx + 1}: ${themes[dotIdx].title}`}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-gray-400">
+            <span className="hidden xs:inline">Panah neon kiri/kanan</span>
+          </div>
+        </div>
       </div>
+
+      {/* Tombol Neon Chevron Kanan (>) Sesuai Mockup Capture 1 & 2 */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          nextSlide();
+        }}
+        aria-label="Tema Berikutnya"
+        className="absolute right-0.5 sm:right-1 z-30 w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.55),inset_0_0_8px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
+        title="Tema Berikutnya"
+      >
+        <FiChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+      </button>
     </div>
   );
 
@@ -514,4 +621,5 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
 
   return content;
 };
+
 

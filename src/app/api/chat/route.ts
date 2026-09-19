@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     const { OFFICIAL_POLL_THEMES } = await import('@/lib/polling/constants');
     const pollIntent = detectPollingIntent(message);
 
-    if (pollIntent.intent === 'EMPLOYEE_POLL' && pollIntent.category) {
+    if (pollIntent.intent === 'EMPLOYEE_POLL' && pollIntent.category && (pollIntent.confidence ?? 0) >= 0.8) {
       if (pollIntent.category === 'carousel') {
         if (authProfile.role === 'GUEST') {
           const guestNotice = `### 🔒 Akses Dibatasi — Live Hasil Polling DKPP\n\n` +
@@ -339,7 +339,30 @@ export async function POST(req: NextRequest) {
       }
 
       // Case 3: Pegawai Terverifikasi / Super Admin (Persis Sesuai Mockup Screen 1)
-      const botGreeting = `Oke! Aku siap bantu. Berikut ini polling "${activePoll.title}".\n\nKamu bisa pilih maksimal ${activePoll.max_choices || 3} orang, ya!\n\nMulai ketik nama pegawai, dan aku akan menampilkan daftar yang paling mendekati.`;
+      let userHasVoted = false;
+      let userChoicesCount = 3;
+      if (authProfile?.id) {
+        try {
+          const { data: existingPart } = await supabaseAdmin
+            .from('poll_participations')
+            .select('poll_id, choices_count')
+            .eq('poll_id', activePoll.id)
+            .eq('user_id', authProfile.id)
+            .maybeSingle();
+
+          if (existingPart) {
+            userHasVoted = true;
+            userChoicesCount = existingPart.choices_count || 3;
+          }
+        } catch {}
+      }
+
+      let botGreeting = '';
+      if (userHasVoted) {
+        botGreeting = `ℹ️ **Pemberitahuan:** Anda sudah memberikan suara sebanyak **${userChoicesCount}x** pada tema **"${activePoll.title}"**.\n\nHak suara Anda untuk tema ini telah digunakan secara lengkap (${userChoicesCount} dari ${activePoll.max_choices || 3} pilihan). Seluruh pilihan Anda tersimpan secara **100% aman, anonim, dan terjamin kerahasiaannya**.\n\nBerikut perolehan suara live sementara atau Anda dapat memilih tema polling lainnya! 🗳️✨`;
+      } else {
+        botGreeting = `Oke! Aku siap bantu. Berikut ini formulir polling "${activePoll.title}".\n\nKamu bisa memilih maksimal ${activePoll.max_choices || 3} orang rekan kerja favoritmu.\n\n🔒 *Catatan: Polling ini bersifat **100% anonim dan terjamin kerahasiaannya** demi kenyamanan bersama.*\n\nMulai ketik nama pegawai favoritmu pada formulir di bawah ini:`;
+      }
 
       const { userMsgId, assistantMsgId } = await persistMessages(
         message,
