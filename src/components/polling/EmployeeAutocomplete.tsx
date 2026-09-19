@@ -166,11 +166,11 @@ export const EmployeeAutocomplete: React.FC<EmployeeAutocompleteProps> = ({
                         emp.full_name.substring(0, 2).toUpperCase()
                       )}
                     </div>
-                    <div className="min-w-0 truncate">
-                      <p className="text-xs sm:text-sm font-semibold text-[#1e293b] truncate">
+                    <div className="min-w-0 pr-1 flex-1">
+                      <p className="text-[11px] xs:text-xs sm:text-sm font-semibold text-[#1e293b] leading-snug break-words">
                         {emp.full_name}
                       </p>
-                      <p className="text-[11px] text-gray-500 truncate">
+                      <p className="text-[9.5px] xs:text-[10.5px] sm:text-[11px] text-gray-500 leading-tight break-words mt-0.5">
                         ({emp.position || emp.unit || 'DKPP Cilegon'})
                       </p>
                     </div>

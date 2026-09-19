@@ -138,23 +138,23 @@ const CarouselSlideTheme: React.FC<{
     <div className="space-y-3.5 select-text">
       {/* Theme Title & Meta */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-950 dark:to-teal-900 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-center text-xl sm:text-2xl shadow-xs shrink-0">
+        <div className="flex items-center gap-2 xs:gap-2.5 min-w-0">
+          <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-950 dark:to-teal-900 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-center text-lg xs:text-xl sm:text-2xl shadow-xs shrink-0">
             {theme.icon || '🏆'}
           </div>
           <div className="min-w-0">
-            <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-snug truncate">
+            <h4 className="text-xs xs:text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-snug break-words">
               {theme.title}
             </h4>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+            <p className="text-[10px] xs:text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 leading-tight line-clamp-2 sm:line-clamp-none break-words mt-0.5">
               {theme.description}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        <div className="flex items-center gap-1.5 xs:gap-2 self-start sm:self-center shrink-0">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 xs:px-2.5 xs:py-1 rounded-full text-[10px] xs:text-[11px] sm:text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 xs:w-2 xs:h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="whitespace-nowrap">{totalVotes} Suara Masuk</span>
           </div>
         </div>
@@ -197,27 +197,27 @@ const CarouselSlideTheme: React.FC<{
             {topThree.map((item) => (
               <div
                 key={item.employee_id}
-                className="flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl bg-gray-50/90 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60 hover:border-emerald-200 transition-all"
+                className="flex items-center justify-between gap-2 p-2 xs:p-2.5 sm:p-3 rounded-xl bg-gray-50/90 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60 hover:border-emerald-200 transition-all"
               >
-                <div className="flex items-center gap-2.5 min-w-0 pr-1">
-                  <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0 ${getRankBadgeStyle(item.rank)}`}>
+                <div className="flex items-center gap-2 xs:gap-2.5 min-w-0 pr-1 flex-1">
+                  <div className={`w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] xs:text-[11px] sm:text-xs font-extrabold shrink-0 ${getRankBadgeStyle(item.rank)}`}>
                     {item.rank}
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-[10.5px] xs:text-xs sm:text-sm text-gray-900 dark:text-white leading-snug break-words">
                       {item.full_name}
                     </div>
-                    <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                      {item.position} • {item.unit}
+                    <div className="text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 leading-tight break-words line-clamp-2 sm:line-clamp-none mt-0.5">
+                      {item.position}{item.unit ? ` • ${item.unit}` : ''}
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <div className="font-extrabold text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">
+                <div className="text-right shrink-0 pl-1.5">
+                  <div className="font-extrabold text-[11px] xs:text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 leading-tight">
                     {item.percentage}%
                   </div>
-                  <div className="text-[10px] text-gray-400 font-medium">
+                  <div className="text-[8.5px] xs:text-[9.5px] text-gray-400 font-medium whitespace-nowrap">
                     {item.total_votes} suara
                   </div>
                 </div>
@@ -227,17 +227,17 @@ const CarouselSlideTheme: React.FC<{
             {/* Rest of rank (Peringkat 4 s/d 10) */}
             {rest.length > 0 && (
               <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-1.5">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Peringkat Lainnya (Top 10)</div>
+                <div className="text-[9px] xs:text-[10px] uppercase font-bold tracking-wider text-gray-400">Peringkat Lainnya (Top 10)</div>
                 {rest.map((item) => (
                   <div
                     key={item.employee_id}
-                    className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100/80 dark:border-gray-700/40 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+                    className="flex items-center justify-between py-1.5 px-2 xs:px-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100/80 dark:border-gray-700/40 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors gap-2"
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="font-mono text-gray-400 font-bold w-4 text-[11px]">{item.rank}.</span>
-                      <span className="font-medium truncate text-xs">{item.full_name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0 pr-1 flex-1">
+                      <span className="font-mono text-gray-400 font-bold w-3.5 xs:w-4 text-[10px] xs:text-[11px] shrink-0">{item.rank}.</span>
+                      <span className="font-medium text-[10px] xs:text-[11px] sm:text-xs leading-snug break-words">{item.full_name}</span>
                     </div>
-                    <div className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2">
+                    <div className="font-mono text-[9.5px] xs:text-[10.5px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 whitespace-nowrap">
                       {item.total_votes} suara ({item.percentage}%)
                     </div>
                   </div>
@@ -414,15 +414,15 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
           prevSlide();
         }}
         aria-label="Tema Sebelumnya"
-        className="absolute left-0.5 sm:left-1 z-30 w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.55),inset_0_0_8px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
+        className="absolute left-0.5 sm:left-1 z-30 w-7 h-7 xs:w-8 xs:h-8 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.5),inset_0_0_6px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
         title="Tema Sebelumnya"
       >
-        <FiChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+        <FiChevronLeft className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
       </button>
 
       {/* Card Bodi Carousel (Diperkecil agar sisi kanan-kiri pas untuk panah neon) */}
       <div 
-        className={`w-full max-w-[calc(100%-66px)] xs:max-w-[calc(100%-74px)] sm:max-w-[560px] md:max-w-[620px] bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden flex flex-col mx-auto ${
+        className={`w-full max-w-[calc(100%-52px)] xs:max-w-[calc(100%-66px)] sm:max-w-[560px] md:max-w-[620px] bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden flex flex-col mx-auto ${
           isModal ? 'max-w-2xl max-h-[90vh]' : ''
         }`}
         onMouseEnter={() => setIsPaused(true)}
@@ -431,41 +431,41 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
         onTouchEnd={() => setIsPaused(false)}
       >
         {/* 1. Header Bar */}
-        <div className="px-3.5 sm:px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 min-w-0 pr-2">
-            <div className="p-1.5 rounded-lg bg-white/15 backdrop-blur-xs shrink-0">
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
+        <div className="px-2.5 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-1.5 xs:gap-2 min-w-0 pr-1.5">
+            <div className="p-1 xs:p-1.5 rounded-lg bg-white/15 backdrop-blur-xs shrink-0">
+              <Sparkles className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-xs sm:text-sm md:text-base font-bold leading-tight truncate">
+              <h3 className="text-[11px] xs:text-xs sm:text-sm md:text-base font-bold leading-tight break-words">
                 Live Hasil Polling Pegawai DKPP
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-emerald-100/90 truncate">
+              <p className="text-[9px] xs:text-[10px] sm:text-[11px] text-emerald-100/90 leading-tight break-words">
                 15 Tema Apresiasi Internal
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 shrink-0">
             {/* Auto-play toggle */}
             <button
               type="button"
               onClick={() => setIsAutoPlay(!isAutoPlay)}
-              className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+              className={`px-1.5 py-0.5 xs:px-2 xs:py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                 isAutoPlay 
                   ? 'bg-white text-emerald-800 shadow-xs font-bold' 
                   : 'bg-white/15 text-emerald-100 hover:bg-white/25'
               }`}
               title={isAutoPlay ? 'Jeda Putar Otomatis' : 'Mulai Putar Otomatis'}
             >
-              {isAutoPlay ? <FiPause className="w-3 h-3" /> : <FiPlay className="w-3 h-3" />}
-              <span className="text-[10px] sm:text-[11px] hidden xs:inline">
+              {isAutoPlay ? <FiPause className="w-2.5 h-2.5 xs:w-3 xs:h-3" /> : <FiPlay className="w-2.5 h-2.5 xs:w-3 xs:h-3" />}
+              <span className="text-[9px] sm:text-[11px] hidden xs:inline">
                 {isAutoPlay ? 'Auto' : 'Auto'}
               </span>
             </button>
 
             {/* Slide Indicator Badge */}
-            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/20 text-white text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap">
+            <span className="px-1.5 py-0.5 xs:px-2 sm:px-2.5 sm:py-1 rounded-full bg-black/20 text-white text-[9px] xs:text-[10px] sm:text-[11px] font-mono font-bold whitespace-nowrap">
               {currentIndex + 1} / {themes.length}
             </span>
 
@@ -474,10 +474,10 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer ml-0.5"
+                className="p-1 xs:p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer ml-0.5"
                 title="Tutup"
               >
-                <FiX className="w-4 h-4" />
+                <FiX className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
               </button>
             )}
           </div>
@@ -601,10 +601,10 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
           nextSlide();
         }}
         aria-label="Tema Berikutnya"
-        className="absolute right-0.5 sm:right-1 z-30 w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.55),inset_0_0_8px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
+        className="absolute right-0.5 sm:right-1 z-30 w-7 h-7 xs:w-8 xs:h-8 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-white/95 dark:bg-gray-900/90 border-2 border-emerald-400 dark:border-emerald-400 text-emerald-500 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.5),inset_0_0_6px_rgba(16,185,129,0.2)] hover:shadow-[0_0_24px_rgba(16,185,129,0.9),inset_0_0_10px_rgba(16,185,129,0.35)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-md"
         title="Tema Berikutnya"
       >
-        <FiChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+        <FiChevronRight className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
       </button>
     </div>
   );

@@ -42,11 +42,11 @@ export const SelectedEmployeeList: React.FC<SelectedEmployeeListProps> = ({
               </div>
 
               {/* Name & Position */}
-              <div className="min-w-0 truncate">
-                <p className="font-bold text-[#1e293b] text-xs sm:text-sm truncate">
+              <div className="min-w-0 pr-1 flex-1">
+                <p className="font-bold text-[#1e293b] text-[11px] xs:text-xs sm:text-sm leading-snug break-words">
                   {emp.full_name}
                 </p>
-                <p className="text-[11px] text-gray-500 truncate">
+                <p className="text-[9.5px] xs:text-[10.5px] sm:text-[11px] text-gray-500 leading-tight break-words mt-0.5">
                   ({emp.position || emp.unit || 'DKPP Kota Cilegon'})
                 </p>
               </div>

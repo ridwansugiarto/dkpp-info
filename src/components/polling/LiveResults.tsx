@@ -48,11 +48,11 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
           <div className="text-2xl shrink-0">
             {poll.icon || '🏆'}
           </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-[#1e293b] leading-tight">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-base font-bold text-[#1e293b] leading-tight break-words">
               Hasil Polling
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium">
+            <p className="text-[10.5px] xs:text-xs text-gray-500 mt-0.5 font-medium break-words">
               {poll.title}
             </p>
           </div>
@@ -105,11 +105,11 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
                       </div>
 
                       {/* Name & Position */}
-                      <div className="min-w-0 truncate">
-                        <p className="font-bold text-[#1e293b] text-xs sm:text-sm truncate">
+                      <div className="min-w-0 pr-1 flex-1">
+                        <p className="font-bold text-[#1e293b] text-[11px] xs:text-xs sm:text-sm leading-snug break-words">
                           {item.full_name}
                         </p>
-                        <p className="text-[11px] text-gray-500 truncate">
+                        <p className="text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 leading-tight break-words line-clamp-2 sm:line-clamp-none mt-0.5">
                           {item.position || item.unit || 'DKPP Kota Cilegon'}
                         </p>
                       </div>
@@ -141,15 +141,15 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
                       key={item.employee_id}
                       className="flex items-center justify-between gap-2.5 text-xs text-gray-700 py-1 px-1"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="w-4 text-center font-bold text-gray-400 shrink-0 text-xs">
+                      <div className="flex items-center gap-1.5 xs:gap-2 min-w-0 flex-1 pr-1">
+                        <span className="w-3.5 xs:w-4 text-center font-bold text-gray-400 shrink-0 text-[10px] xs:text-xs">
                           {item.rank}
                         </span>
-                        <span className="font-medium text-gray-800 truncate max-w-[120px] sm:max-w-[160px]">
+                        <span className="font-medium text-gray-800 text-[10px] xs:text-[11px] sm:text-xs leading-snug break-words flex-1">
                           {item.full_name}
                         </span>
                         {/* Progress Bar (Screen 6) */}
-                        <div className="flex-1 max-w-[100px] sm:max-w-[140px] bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
+                        <div className="hidden xs:block flex-1 max-w-[70px] sm:max-w-[140px] bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
                           <div
                             className="bg-[#38BDF8] h-full rounded-full transition-all duration-500"
                             style={{ width: `${Math.max(item.percentage, 5)}%` }}
