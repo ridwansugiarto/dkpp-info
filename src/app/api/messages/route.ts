@@ -21,6 +21,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const hasForecast = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'forecast_table') ||
+        (typeof m.content === 'string' && m.content.includes('Peramalan Harga Pangan (ML Forecasting)'));
+    });
+
+    let cachedForecastData: any = null;
+    if (hasForecast) {
+      const { getLiveForecastTableData } = await import('@/lib/forecast/forecastService');
+      cachedForecastData = await getLiveForecastTableData();
+    }
+
     // Hydrate interactive polling / carousel widgets from tool_calls or content
     const messages = (rawMessages || []).map((msg) => {
       const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -83,6 +95,21 @@ export async function GET(req: NextRequest) {
             poll: foundTheme,
             available_themes: OFFICIAL_POLL_THEMES,
           },
+        };
+      }
+
+      // 4. Check for forecast_table
+      const forecastTool = toolCalls.find((t: any) => t?.name === 'forecast_table');
+      const isForecastContent = typeof msg.content === 'string' && (
+        msg.content.includes('Peramalan Harga Pangan (ML Forecasting)') ||
+        msg.content.includes('tabel **Peramalan Harga Pangan')
+      );
+
+      if (forecastTool || isForecastContent) {
+        return {
+          ...msg,
+          type: 'forecast_table',
+          forecast_table: cachedForecastData,
         };
       }
 

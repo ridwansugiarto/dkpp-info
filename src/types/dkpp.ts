@@ -88,7 +88,7 @@ export interface ChatMessage {
   session_id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
-  type?: 'text' | 'poll_card' | 'poll_catalog' | 'poll_carousel' | 'auth_prompt' | string;
+  type?: 'text' | 'poll_card' | 'poll_catalog' | 'poll_carousel' | 'forecast_table' | 'auth_prompt' | string;
   poll_card?: {
     poll: import('@/lib/polling/types').PollTheme;
     available_themes?: import('@/lib/polling/types').PollTheme[];
@@ -100,6 +100,7 @@ export interface ChatMessage {
     themes: import('@/lib/polling/types').PollTheme[];
     initialThemeCode?: string;
   };
+  forecast_table?: import('@/lib/forecast/forecastService').ForecastTableData;
   auth_prompt?: 'LOGIN_REQUIRED' | 'NIP_REQUIRED';
   sources?: SourceCitation[];
   tool_calls?: ToolCall[];

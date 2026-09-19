@@ -54,6 +54,7 @@ export interface KetapangData {
   hargaSagonHarian: Record<string, unknown>[];
   hargaKomoditasSkpg: Record<string, unknown>[];
   hargaPanganMl: Record<string, unknown>[];
+  forecastResult: Record<string, unknown>[];
   ikpData: Record<string, unknown>[];
   pouData: Record<string, unknown>[];
   pphData: Record<string, unknown>[];
@@ -80,6 +81,7 @@ export async function fetchKetapangData(): Promise<KetapangData> {
     ktFetch('harga_sagon_harian',         '*', 'order=tanggal.desc', 30),
     ktFetch('harga_komoditas_skpg',       '*', 'order=tanggal.desc', 30),
     ktFetch('harga_pangan_ml',            '*', 'order=tanggal.desc', 30),
+    ktFetch('forecast_result',            '*', 'order=id.asc',       30),
     ktFetch('ikp_data',                   '*', 'order=tahun.desc',   20),
     ktFetch('pou_data',                   '*', 'order=tahun.desc',   20),
     ktFetch('pph_data',                   '*', 'order=tahun.desc',   20),
@@ -104,21 +106,22 @@ export async function fetchKetapangData(): Promise<KetapangData> {
     hargaSagonHarian:    get(0),
     hargaKomoditasSkpg: get(1),
     hargaPanganMl:      get(2),
-    ikpData:            get(3),
-    pouData:            get(4),
-    pphData:            get(5),
-    produksiBeras:      get(6),
-    produksiPadiMl:     get(7),
-    inflasiMl:          get(8),
-    cvBeras:            get(9),
-    cvBerasBulanan:     get(10),
-    benchmarkData:      get(11),
-    ketersediaanEnergi: get(12),
-    ketersediaanPangan: get(13),
-    ketersediaanProtein:get(14),
-    konsumsiEnergi:     get(15),
-    konsumsiProtein:    get(16),
-    intervensiKelurahan:get(17),
+    forecastResult:     get(3),
+    ikpData:            get(4),
+    pouData:            get(5),
+    pphData:            get(6),
+    produksiBeras:      get(7),
+    produksiPadiMl:     get(8),
+    inflasiMl:          get(9),
+    cvBeras:            get(10),
+    cvBerasBulanan:     get(11),
+    benchmarkData:      get(12),
+    ketersediaanEnergi: get(13),
+    ketersediaanPangan: get(14),
+    ketersediaanProtein:get(15),
+    konsumsiEnergi:     get(16),
+    konsumsiProtein:    get(17),
+    intervensiKelurahan:get(18),
     masterWilayah:      [],   // dihapus dari fetch, tidak dipakai di context builder
   };
 }
@@ -128,6 +131,24 @@ export async function fetchKetapangData(): Promise<KetapangData> {
 // ─────────────────────────────────────────────────────────────────────────────
 export function buildKetapangContext(d: KetapangData): string {
   const lines: string[] = ['\n=== DATA LIVE DASHBOARD KETAPANG (fjycaxccbasksjooxrqg.supabase.co) ==='];
+
+  // --- PERAMALAN HARGA PANGAN ML FORECAST (forecast_result) ---
+  if (d.forecastResult && d.forecastResult.length > 0) {
+    lines.push('\n[PERAMALAN HARGA PANGAN ML FORECAST LIVE (forecast_result)]');
+    lines.push('  Format: Komoditas | Harga Aktual (T-1) | Forecast +1B (T) | Forecast +3B (T+2) | Tren % | Status EWS');
+    for (const r of d.forecastResult) {
+      const k = String(r.komoditas || '').replace(/^harga_/, '').replace(/_/g, ' ');
+      const cur = Number(r.harga_aktual || 0).toLocaleString('id-ID');
+      const f1 = Number(r.forecast_1m || 0).toLocaleString('id-ID');
+      const f3 = Number(r.forecast_3m || 0).toLocaleString('id-ID');
+      const pct = Number(r.perubahan_pct || 0);
+      const pctStr = pct > 0 ? `+${pct.toFixed(1)}%` : `${pct.toFixed(1)}%`;
+      const trend = r.status_forecast || (pct > 3 ? 'Naik' : pct < -3 ? 'Turun' : 'Stabil');
+      const cvStatus = r.status_cv ? `CV: ${r.status_cv}` : '';
+      const skpgStatus = r.status_skpg ? `SKPG: ${r.status_skpg}` : '';
+      lines.push(`  • ${k.toUpperCase()}: Aktual Rp ${cur} -> F+1B Rp ${f1} (${pctStr} / ${trend}) -> F+3B Rp ${f3} | ${cvStatus} ${skpgStatus}`);
+    }
+  }
 
   // --- IKP ---
   if (d.ikpData.length) {

@@ -33,6 +33,7 @@ import type { ChartConfig } from '@/components/ChatChart';
 import { PollCard } from '@/components/polling/PollCard';
 import { ThemeCatalog } from '@/components/polling/ThemeCatalog';
 import { LiveResultsCarousel } from '@/components/polling/LiveResultsCarousel';
+import { ForecastChatTable } from './ForecastChatTable';
 import { ChatInput } from './ChatInput';
 
 // Dynamic import ChatChart for interactive Recharts
@@ -626,6 +627,18 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                               onSendMessage?.(`siapa pegawai ${themeCode}`);
                             }}
                             onAskAi={(prompt) => {
+                              onSendMessage?.(prompt);
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* 6. In-Chat Food Price ML Forecast Table (Sesuai Capture) */}
+                      {(msg.type === 'forecast_table' || msg.forecast_table) && msg.forecast_table && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <ForecastChatTable
+                            data={msg.forecast_table}
+                            onAskCommodity={(prompt) => {
                               onSendMessage?.(prompt);
                             }}
                           />

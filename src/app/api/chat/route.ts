@@ -407,7 +407,75 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 5. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
+    // 5. Deteksi Maksud Peramalan Harga Pangan (ML Forecasting)
+    const normMsg = message.toLowerCase();
+    const isForecastTableRequest = 
+      normMsg.includes('forecast') ||
+      normMsg.includes('peramalan harga') ||
+      normMsg.includes('prediksi harga') ||
+      normMsg.includes('proyeksi harga') ||
+      normMsg.includes('tabel peramalan') ||
+      normMsg.includes('tabel forecast') ||
+      normMsg.includes('harga pangan ke depan') ||
+      normMsg.includes('ml forecasting') ||
+      normMsg.includes('ramalan harga') ||
+      (normMsg.includes('tren harga') && (normMsg.includes('pangan') || normMsg.includes('komoditas') || normMsg.includes('pasar')));
+
+    if (isForecastTableRequest && !normMsg.includes('faktor pendorong') && !normMsg.includes('mengapa')) {
+      const { getLiveForecastTableData } = await import('@/lib/forecast/forecastService');
+      const forecastData = await getLiveForecastTableData();
+
+      const upItems = forecastData.items.filter((i) => i.trend === 'up');
+      const downItems = forecastData.items.filter((i) => i.trend === 'down');
+      const stableItems = forecastData.items.filter((i) => i.trend === 'stable');
+
+      const summaryText = `Berikut tabel **Peramalan Harga Pangan (ML Forecasting)** untuk proyeksi 1 & 3 bulan ke depan di Kota Cilegon yang terintegrasi langsung dengan database real-time Dinas Ketahanan Pangan dan Pertanian.\n\n` +
+        `### 📊 Ringkasan Tren Pergerakan (+1 Bulan):\n` +
+        `* 🔴 **Tren Naik (+1B):** ${upItems.map((i) => `**${i.name}** (+${i.changePct}%)`).join(', ') || 'Tidak ada'}\n` +
+        `* 🟢 **Tren Turun (+1B):** ${downItems.map((i) => `**${i.name}** (${i.changePct}%)`).join(', ') || 'Tidak ada'}\n` +
+        `* 🟡 **Tren Stabil (+1B):** ${stableItems.map((i) => `**${i.name}** (${i.changePct > 0 ? '+' : ''}${i.changePct}%)`).join(', ') || 'Tidak ada'}\n\n` +
+        `💡 *Klik pada baris komoditas pada tabel di bawah untuk melihat ringkasan cepat atau meminta rekomendasi EWS & faktor pendorong dari AI.*`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-forecast-table-' + Date.now(),
+            name: 'forecast_table',
+            status: 'completed',
+            args: {
+              totalItems: forecastData.items.length,
+              baselineMonth: forecastData.baselineMonth,
+              t1Month: forecastData.t1Month,
+              t3Month: forecastData.t3Month,
+            },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'forecast_table',
+        forecast_table: forecastData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'forecast_table',
+          forecast_table: forecastData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 6. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
     const currentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
       ...conversationHistory,
       { role: 'user', content: message },
