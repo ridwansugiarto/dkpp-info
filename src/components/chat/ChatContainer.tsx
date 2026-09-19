@@ -34,6 +34,7 @@ import { PollCard } from '@/components/polling/PollCard';
 import { ThemeCatalog } from '@/components/polling/ThemeCatalog';
 import { LiveResultsCarousel } from '@/components/polling/LiveResultsCarousel';
 import { ForecastChatTable } from './ForecastChatTable';
+import { HargaPanganChatPanel } from './HargaPanganChatPanel';
 import { ChatInput } from './ChatInput';
 
 // Dynamic import ChatChart for interactive Recharts
@@ -633,11 +634,23 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         </div>
                       )}
 
-                      {/* 6. In-Chat Food Price ML Forecast Table (Sesuai Capture) */}
+                      {/* 6. In-Chat Food Price ML Forecast Table */}
                       {(msg.type === 'forecast_table' || msg.forecast_table) && msg.forecast_table && (
                         <div className="mt-2.5 w-full max-w-full overflow-visible">
                           <ForecastChatTable
                             data={msg.forecast_table}
+                            onAskCommodity={(prompt) => {
+                              onSendMessage?.(prompt);
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* 7. In-Chat Panel Harga Pangan Strategis (SAGON Live & YoY) Sesuai Mockup */}
+                      {(msg.type === 'harga_sagon_panel' || msg.harga_sagon_panel) && msg.harga_sagon_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <HargaPanganChatPanel
+                            data={msg.harga_sagon_panel}
                             onAskCommodity={(prompt) => {
                               onSendMessage?.(prompt);
                             }}

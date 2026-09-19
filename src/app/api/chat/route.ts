@@ -407,9 +407,81 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 5. Deteksi Maksud Peramalan Harga Pangan (ML Forecasting)
+    // 5. Deteksi Maksud Panel Harga Pangan Strategis (SAGON Live & YoY)
     const normMsg = message.toLowerCase();
-    const isForecastTableRequest = 
+    const isSagonHargaRequest =
+      normMsg.includes('harga pangan strategis') ||
+      normMsg.includes('panel harga') ||
+      normMsg.includes('sagon live') ||
+      normMsg.includes('harga sagon') ||
+      normMsg.includes('harga hari ini') ||
+      normMsg.includes('harga pangan hari ini') ||
+      normMsg.includes('harga pasar') ||
+      normMsg.includes('harga komoditas hari ini') ||
+      normMsg.includes('harga pangan terkini') ||
+      normMsg.includes('harga sembako hari ini') ||
+      normMsg.includes('tabel harga pangan') ||
+      normMsg.includes('tabel harga komoditas');
+
+    if (
+      isSagonHargaRequest &&
+      !normMsg.includes('forecast') &&
+      !normMsg.includes('peramalan') &&
+      !normMsg.includes('proyeksi') &&
+      !normMsg.includes('prediksi')
+    ) {
+      const { getLiveSagonPanelData } = await import('@/lib/harga/sagonService');
+      const sagonData = await getLiveSagonPanelData();
+
+      const waspadaItems = sagonData.items.filter((i) => i.status === 'WASPADA');
+      const amanItems = sagonData.items.filter((i) => i.status === 'AMAN');
+
+      const summaryText =
+        `Berikut data **Panel Harga Pangan Strategis (SAGON LIVE)** rata-rata seluruh pasar Kota Cilegon per tanggal **${sagonData.formattedDate}** yang terhubung langsung dengan database real-time Dinas Ketahanan Pangan dan Pertanian Kota Cilegon.\n\n` +
+        `### 📊 Status & Ringkasan Pergerakan YoY:\n` +
+        `* ⚠️ **Kategori Waspada (Kenaikan > 5% YoY):** ${waspadaItems.map((i) => `**${i.name}** (Rp ${Math.round(i.curr).toLocaleString('id-ID')}, ${i.changeText})`).join(', ') || 'Semua stabil'}\n` +
+        `* 🟢 **Kategori Aman / Terkendali:** ${amanItems.map((i) => `**${i.name}** (Rp ${Math.round(i.curr).toLocaleString('id-ID')}, ${i.changeText})`).join(', ') || 'Tidak ada'}\n\n` +
+        `💡 *Gunakan tombol navigasi tanggal 📅 di atas tabel untuk melihat arsip harga hari sebelumnya, atau unduh laporan dalam format spreadsheet.*`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-sagon-panel-' + Date.now(),
+            name: 'harga_sagon_panel',
+            status: 'completed',
+            args: {
+              date: sagonData.date,
+              totalItems: sagonData.items.length,
+            },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'harga_sagon_panel',
+        harga_sagon_panel: sagonData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'harga_sagon_panel',
+          harga_sagon_panel: sagonData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 6. Deteksi Maksud Peramalan Harga Pangan (ML Forecasting)
+    const isForecastTableRequest =
       normMsg.includes('forecast') ||
       normMsg.includes('peramalan harga') ||
       normMsg.includes('prediksi harga') ||
@@ -475,7 +547,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
+    // 7. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
     const currentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
       ...conversationHistory,
       { role: 'user', content: message },

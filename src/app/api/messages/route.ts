@@ -33,6 +33,18 @@ export async function GET(req: NextRequest) {
       cachedForecastData = await getLiveForecastTableData();
     }
 
+    const hasSagonPanel = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'harga_sagon_panel') ||
+        (typeof m.content === 'string' && m.content.includes('Panel Harga Pangan Strategis (SAGON LIVE)'));
+    });
+
+    let cachedSagonData: any = null;
+    if (hasSagonPanel) {
+      const { getLiveSagonPanelData } = await import('@/lib/harga/sagonService');
+      cachedSagonData = await getLiveSagonPanelData();
+    }
+
     // Hydrate interactive polling / carousel widgets from tool_calls or content
     const messages = (rawMessages || []).map((msg) => {
       const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -110,6 +122,21 @@ export async function GET(req: NextRequest) {
           ...msg,
           type: 'forecast_table',
           forecast_table: cachedForecastData,
+        };
+      }
+
+      // 5. Check for harga_sagon_panel (Panel Harga Pangan Strategis)
+      const sagonTool = toolCalls.find((t: any) => t?.name === 'harga_sagon_panel');
+      const isSagonContent = typeof msg.content === 'string' && (
+        msg.content.includes('Panel Harga Pangan Strategis (SAGON LIVE)') ||
+        msg.content.includes('PANEL HARGA PANGAN STRATEGIS')
+      );
+
+      if (sagonTool || isSagonContent) {
+        return {
+          ...msg,
+          type: 'harga_sagon_panel',
+          harga_sagon_panel: cachedSagonData,
         };
       }
 
