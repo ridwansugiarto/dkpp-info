@@ -34,22 +34,22 @@ export const ThemeCatalog: React.FC<ThemeCatalogProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`bg-white border border-gray-200/90 rounded-2xl p-3 sm:p-5 shadow-xs space-y-3 sm:space-y-4 ${className}`}>
+    <div className={`bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 ${className}`}>
       {/* Header (Screen 7) */}
-      <div className="flex items-center gap-2.5 sm:gap-3">
-        <div className="text-xl sm:text-2xl shrink-0">🏆</div>
+      <div className="flex items-center gap-3">
+        <div className="text-2xl shrink-0">🏆</div>
         <div>
-          <h3 className="font-bold text-[#1e293b] text-sm sm:text-base leading-tight">
+          <h3 className="font-bold text-[#1e293b] text-base leading-tight">
             Daftar Tema Polling Pegawai
           </h3>
-          <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500 mt-0.5">
             Pilih tema yang kamu suka, dan beri 3 pilihanmu!
           </p>
         </div>
       </div>
 
       {/* 2-Column Pastel Cards (Screen 7) */}
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5">
         {themes.map((theme) => {
           const style = THEME_STYLES[theme.code] || {
             bg: 'bg-emerald-50',
@@ -62,12 +62,12 @@ export const ThemeCatalog: React.FC<ThemeCatalogProps> = ({
               key={theme.code}
               type="button"
               onClick={() => onSelectTheme?.(theme.code)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2 py-1.5 xs:px-2.5 xs:py-2 sm:p-2.5 min-h-[42px] xs:min-h-[46px] rounded-xl border ${style.bg} ${style.border} hover:scale-[1.02] active:scale-[0.99] transition-all text-left shadow-xs cursor-pointer min-w-0`}
+              className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-xl border ${style.bg} ${style.border} hover:scale-[1.02] active:scale-[0.99] transition-all text-left shadow-xs cursor-pointer`}
             >
-              <span className="text-base xs:text-lg sm:text-xl shrink-0 select-none">
+              <span className="text-lg shrink-0 select-none">
                 {theme.icon || '🏆'}
               </span>
-              <span className={`font-bold text-[10px] xs:text-[11px] sm:text-xs md:text-[13px] leading-tight break-words min-w-0 flex-1 ${style.text}`}>
+              <span className={`font-semibold text-xs sm:text-[13px] truncate ${style.text}`}>
                 {theme.short_label || theme.title}
               </span>
             </button>

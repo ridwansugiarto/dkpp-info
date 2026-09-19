@@ -164,11 +164,11 @@ export const PollCard: React.FC<PollCardProps> = ({
           <div className="text-2xl shrink-0">
             {poll.icon || '🏆'}
           </div>
-          <div className="min-w-0 pr-1 flex-1">
-            <h3 className="font-bold text-[#1e293b] dark:text-white text-xs xs:text-sm sm:text-base leading-snug break-words">
+          <div className="min-w-0">
+            <h3 className="font-bold text-[#1e293b] dark:text-white text-sm sm:text-base leading-snug truncate">
               Polling: {poll.title}
             </h3>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
               Pilih {maxChoices} nama favorit kamu!
             </p>
           </div>
