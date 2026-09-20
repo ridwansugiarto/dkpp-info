@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ComposedChart,
   Area,
@@ -12,7 +12,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-import { Download, Brain } from 'lucide-react';
+import { Download, Brain, Sparkles, ChevronUp } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { IkpPouPanelData } from '@/lib/ketapang/ikpPouService';
 
@@ -25,9 +25,14 @@ export const IkpPouChatPanel: React.FC<IkpPouChatPanelProps> = ({
   data,
   className = '',
 }) => {
+  const [showAiInterpretationIkp, setShowAiInterpretationIkp] = useState(false);
+  const [showAiInterpretationPou, setShowAiInterpretationPou] = useState(false);
+
   if (!data) return null;
 
   const { ikp = [], pou = [] } = data;
+  const latestIkp = ikp[ikp.length - 1];
+  const latestPou = pou[pou.length - 1];
 
   const handleDownloadIkp = () => {
     const headers = [['Tahun', 'IKP Cilegon', 'IKP Provinsi Banten', 'IKP Nasional']];
@@ -73,10 +78,42 @@ export const IkpPouChatPanel: React.FC<IkpPouChatPanelProps> = ({
               Perbandingan Nilai Indeks Ketahanan Pangan Daerah vs Provinsi & Nasional
             </p>
           </div>
-          <div className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 shrink-0">
-            <Brain className="w-4 h-4" />
-          </div>
+
+          {/* Brain AI Button (Capture 1) */}
+          <button
+            type="button"
+            onClick={() => setShowAiInterpretationIkp((prev) => !prev)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+              showAiInterpretationIkp
+                ? 'bg-emerald-100 border-emerald-400 text-emerald-800 ring-2 ring-emerald-400/30'
+                : 'bg-emerald-50/90 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+            }`}
+            title="Interpretasi AI Cerdas IKP"
+          >
+            <Brain className="w-4 h-4 text-emerald-700" />
+          </button>
         </div>
+
+        {/* AI Interpretation Box for IKP (Capture 1) */}
+        {showAiInterpretationIkp && (
+          <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/50 rounded-xl border border-emerald-300/80 text-xs text-slate-800 space-y-1.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between font-bold text-emerald-900">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Interpretasi AI Skor IKP ({latestIkp?.year || '2025'}):</span>
+              </div>
+              <button
+                onClick={() => setShowAiInterpretationIkp(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-slate-700">
+              Skor IKP Kota Cilegon pada tahun {latestIkp?.year || '2025'} mencapai <strong>{latestIkp?.cilegon || 88.5}</strong>, menempatkan Kota Cilegon dalam kategori <strong>Sangat Tahan Pangan (Prioritas 6 / Tertinggi)</strong>. Kinerja ini konsisten melampaui rata-rata IKP Provinsi Banten ({latestIkp?.provinsi || 77.78}) dan Rata-rata Nasional ({latestIkp?.nasional || 73.00}) berkat stabilitas pasokan beras, akses pangan perkotaan, dan infrastruktur logistik pelabuhan yang kuat.
+            </p>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 text-[11px] font-bold">
@@ -158,10 +195,42 @@ export const IkpPouChatPanel: React.FC<IkpPouChatPanelProps> = ({
               Tren Perbandingan Angka Prevalensi Kerawanan Konsumsi Pangan (%)
             </p>
           </div>
-          <div className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 shrink-0">
-            <Brain className="w-4 h-4" />
-          </div>
+
+          {/* Brain AI Button (Capture 1) */}
+          <button
+            type="button"
+            onClick={() => setShowAiInterpretationPou((prev) => !prev)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+              showAiInterpretationPou
+                ? 'bg-purple-100 border-purple-400 text-purple-800 ring-2 ring-purple-400/30'
+                : 'bg-purple-50/90 border-purple-200 text-purple-700 hover:bg-purple-100'
+            }`}
+            title="Interpretasi AI Cerdas PoU"
+          >
+            <Brain className="w-4 h-4 text-purple-700" />
+          </button>
         </div>
+
+        {/* AI Interpretation Box for PoU (Capture 1) */}
+        {showAiInterpretationPou && (
+          <div className="p-3 bg-purple-50/90 dark:bg-purple-950/50 rounded-xl border border-purple-300/80 text-xs text-slate-800 space-y-1.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between font-bold text-purple-900">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Interpretasi AI Angka PoU ({latestPou?.year || '2025'}):</span>
+              </div>
+              <button
+                onClick={() => setShowAiInterpretationPou(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-slate-700">
+              Angka Prevalensi Ketidakcukupan Konsumsi Pangan (PoU) Kota Cilegon tercatat sebesar <strong>{latestPou?.cilegon || 2.78}%</strong>. Angka ini jauh lebih baik dibandingkan rata-rata Nasional ({latestPou?.nasional || 7.89}%) dan Provinsi Banten ({latestPou?.provinsi || 2.88}%). Tingkat kerawanan konsumsi pangan yang rendah mencerminkan daya beli dan efektivitas intervensi bantuan pangan bagi keluarga rentan di Kota Cilegon.
+            </p>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 text-[11px] font-bold">

@@ -720,7 +720,62 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 10. Deteksi Maksud Peta Tematik GIS (FSVA & SKPG) (Capture 5)
+    // 10. Deteksi Maksud Produksi GKG 5 Tahun (Gabah Kering Giling)
+    const isGkgRequest =
+      normMsg.includes('gkg') ||
+      normMsg.includes('gabah kering giling') ||
+      normMsg.includes('produksi padi') ||
+      normMsg.includes('produksi beras') ||
+      normMsg.includes('panen padi') ||
+      normMsg.includes('produktivitas padi');
+
+    if (isGkgRequest) {
+      const { getLiveGkgData } = await import('@/lib/ketapang/gkgService');
+      const gkgData = await getLiveGkgData();
+
+      const summaryText =
+        `Berikut data dan visualisasi **Produksi Gabah Kering Giling (GKG) & Konversi Beras** Kota Cilegon 5 tahun terakhir yang terhubung live dengan database Dinas Ketahanan Pangan dan Pertanian:\n\n` +
+        `### 🌾 Ringkasan Produksi Terkini (${gkgData.latestYear}):\n` +
+        `* 🚜 **Total Produksi GKG:** **${gkgData.totalGkgLatest.toLocaleString('id-ID')} Ton** (+${gkgData.growthPct}% YoY)\n` +
+        `* 🍚 **Estimasi Beras Lokal:** **${gkgData.totalBerasLatest.toLocaleString('id-ID')} Ton** (Rendemen 63.23%)\n` +
+        `* 📍 **Sentra Pertanian:** Wilayah Kecamatan Cibeber & Jombang\n\n` +
+        `💡 *Klik ikon otak di kanan atas panel untuk melihat analisis interpretasi AI atau tombol **Unduh XLSX** untuk spreadsheet.*`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-gkg-panel-' + Date.now(),
+            name: 'gkg_panel',
+            status: 'completed',
+            args: { latestYear: gkgData.latestYear, totalGkg: gkgData.totalGkgLatest },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'gkg_panel',
+        gkg_panel: gkgData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'gkg_panel',
+          gkg_panel: gkgData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 11. Deteksi Maksud Peta Tematik GIS (FSVA & SKPG)
     const isMapThematicRequest =
       normMsg.includes('peta tematik') ||
       normMsg.includes('peta fsva') ||

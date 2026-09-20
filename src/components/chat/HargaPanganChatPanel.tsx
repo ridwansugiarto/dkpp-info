@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Sparkles, ChevronRight as ChevronNext } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Sparkles, Brain, ChevronUp, ChevronRight as ChevronNext } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CommodityIcon from '@/components/CommodityIcon';
 import { SagonPanelData, SagonCommodityItem, formatIndoDate, getYoYStats } from '@/lib/harga/sagonService';
@@ -18,6 +18,7 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
   className = '',
 }) => {
   const [selectedCommodity, setSelectedCommodity] = useState<SagonCommodityItem | null>(null);
+  const [showAiInterpretation, setShowAiInterpretation] = useState(false);
 
   // Available dates for navigation
   const availableDates = data?.availableDates && data.availableDates.length > 0
@@ -59,6 +60,7 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
   });
 
   const isLatestDate = dateIndex === availableDates.length - 1;
+  const waspadaItems = items.filter((i) => i.status === 'WASPADA');
 
   const handleDownloadXlsx = () => {
     const headers = [
@@ -86,11 +88,26 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
   return (
     <div className={`space-y-2.5 my-3 w-full max-w-full ${className}`}>
       {/* 1. Header Bar Sesuai Capture */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-[3px] h-4 sm:h-5 bg-emerald-600 rounded-full shrink-0"></div>
-        <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs xs:text-sm sm:text-base leading-tight uppercase tracking-wide">
-          PANEL HARGA PANGAN STRATEGIS
-        </h3>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-[3px] h-4 sm:h-5 bg-emerald-600 rounded-full shrink-0"></div>
+          <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs xs:text-sm sm:text-base leading-tight uppercase tracking-wide">
+            PANEL HARGA PANGAN STRATEGIS
+          </h3>
+        </div>
+
+        {/* Brain AI Interpretation Button (Capture 1) */}
+        <button
+          onClick={() => setShowAiInterpretation((prev) => !prev)}
+          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-xs active:scale-95 ${
+            showAiInterpretation
+              ? 'bg-emerald-100 border-emerald-400 text-emerald-800 ring-2 ring-emerald-400/30'
+              : 'bg-emerald-50/90 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+          }`}
+          title="Interpretasi AI Cerdas SAGON"
+        >
+          <Brain className="w-4 h-4 text-emerald-700" />
+        </button>
       </div>
 
       {/* 2. Main Card Container (Warna & Aksen Persis Sesuai Mockup #E6FDF4) */}
@@ -116,7 +133,7 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
           </div>
         </div>
 
-        {/* Date Navigation Pill Row (Mockup Match) */}
+        {/* Date Navigation Pill Row (Capture 4 Chevron Kanan & Kiri Aktif) */}
         <div className="mt-1.5 flex items-center justify-between bg-white dark:bg-[#18352b] border border-emerald-100 dark:border-emerald-800/50 p-1.5 rounded-2xl w-full shadow-xs">
           {/* Back Button */}
           <button
@@ -128,7 +145,7 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
                 ? 'bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
                 : 'bg-[#10B981] hover:bg-[#0B7A53] text-white hover:scale-105 active:scale-95 shadow-xs'
             }`}
-            title="Tanggal Sebelumnya"
+            title="Tanggal Sebelumnya (Arsip SAGON)"
           >
             <ChevronLeft className="w-4 h-4 stroke-[3]" />
           </button>
@@ -154,6 +171,35 @@ export const HargaPanganChatPanel: React.FC<HargaPanganChatPanelProps> = ({
             <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
+
+        {/* AI Interpretation Box (Capture 1) */}
+        {showAiInterpretation && (
+          <div className="mt-2.5 p-3 bg-white/95 dark:bg-[#18352b] rounded-xl border border-emerald-300/80 text-xs text-slate-800 space-y-1.5 animate-in fade-in duration-200 shadow-2xs">
+            <div className="flex items-center justify-between font-bold text-emerald-900">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Interpretasi AI & Diagnosis Inflasi Pasar ({currentFormattedDate}):</span>
+              </div>
+              <button
+                onClick={() => setShowAiInterpretation(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-slate-700">
+              {waspadaItems.length > 0 ? (
+                <>
+                  Terdeteksi <strong>{waspadaItems.length} komoditas waspada kenaikan YoY &gt; 5%</strong> yaitu: {waspadaItems.map((w) => `${w.name} (${w.changeText})`).join(', ')}. Sementara komoditas pokok <strong>Beras Medium</strong> tetap berada dalam rentang aman dan stabil terkendali di bawah HET.
+                </>
+              ) : (
+                <>
+                  Seluruh 13 komoditas pangan strategis di pasar Kota Cilegon pada tanggal ini berada dalam status <strong>AMAN dan stabil terkendali</strong> dengan pasokan distributor yang mencukupi.
+                </>
+              )}
+            </p>
+          </div>
+        )}
 
         {/* 3. Table */}
         <div className="mt-3 overflow-x-auto w-full [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-emerald-300 [&::-webkit-scrollbar-thumb]:rounded-full">

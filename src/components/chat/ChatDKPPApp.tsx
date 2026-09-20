@@ -545,7 +545,7 @@ export const ChatDKPPApp: React.FC = () => {
       const data = await res.json();
 
       const msgContent = data.content || data.message?.content || '';
-      if (msgContent || data.poll_card || data.poll_catalog || data.poll_carousel || data.forecast_table || data.harga_sagon_panel || data.ikp_pou_panel || data.indikator_ketapang_panel || data.ews_panel || data.auth_prompt || data.message) {
+      if (msgContent || data.poll_card || data.poll_catalog || data.poll_carousel || data.forecast_table || data.harga_sagon_panel || data.ikp_pou_panel || data.indikator_ketapang_panel || data.ews_panel || data.gkg_panel || data.auth_prompt || data.message) {
         const aiMsg: ChatMessage = {
           id: data.assistantMessageId || data.message?.id || `ai-${Date.now()}`,
           session_id: currentSessId || 'default',
@@ -560,6 +560,7 @@ export const ChatDKPPApp: React.FC = () => {
           ikp_pou_panel: data.ikp_pou_panel || data.message?.ikp_pou_panel,
           indikator_ketapang_panel: data.indikator_ketapang_panel || data.message?.indikator_ketapang_panel,
           ews_panel: data.ews_panel || data.message?.ews_panel,
+          gkg_panel: data.gkg_panel || data.message?.gkg_panel,
           auth_prompt: data.auth_prompt || data.message?.auth_prompt,
           sources: data.sources || data.message?.sources || [],
           tool_calls: data.tool_calls || data.message?.tool_calls || [],

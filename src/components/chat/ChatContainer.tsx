@@ -38,6 +38,7 @@ import { HargaPanganChatPanel } from './HargaPanganChatPanel';
 import { IkpPouChatPanel } from './IkpPouChatPanel';
 import { IndikatorKetapangChatPanel } from './IndikatorKetapangChatPanel';
 import { EwsChatPanel } from './EwsChatPanel';
+import { GkgChatPanel } from './GkgChatPanel';
 import { MapTematikChatCard } from './MapTematikChatCard';
 import { ChatInput } from './ChatInput';
 
@@ -416,14 +417,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 {
                   icon: '🔮',
                   title: 'Peramalan Harga ML',
-                  desc: 'Prediksi tren harga 3 bulan ke depan via Prophet',
+                  desc: 'Prediksi tren harga 3 bulan ke depan via Model ML',
                   prompt: 'Tampilkan tabel peramalan harga pangan komoditas strategis Kota Cilegon',
                 },
                 {
-                  icon: '🗺️',
-                  title: 'Peta Tematik GIS',
-                  desc: 'Geospasial FSVA 2025, SKPG, dan Borda kelurahan',
-                  prompt: 'Tampilkan peta tematik geospasial FSVA dan SKPG Kota Cilegon',
+                  icon: '🌾',
+                  title: 'Produksi GKG 5 Tahun',
+                  desc: 'Tren Produksi Gabah Kering Giling & Konversi Beras',
+                  prompt: 'Tampilkan data dan grafik tren produksi Gabah Kering Giling (GKG) Kota Cilegon 5 tahun terakhir',
                 },
               ].map((item, idx) => (
                 <button
@@ -732,7 +733,14 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         </div>
                       )}
 
-                      {/* 11. In-Chat Peta Tematik Spatial GIS Card (Capture 5) */}
+                      {/* 11. In-Chat Produksi GKG 5 Tahun Panel */}
+                      {(msg.type === 'gkg_panel' || msg.gkg_panel) && msg.gkg_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <GkgChatPanel data={msg.gkg_panel} />
+                        </div>
+                      )}
+
+                      {/* 12. In-Chat Peta Tematik Spatial GIS Card */}
                       {(msg.type === 'map_card' || (msg.map_actions && msg.map_actions.length > 0)) && (
                         <div className="mt-2.5 w-full max-w-full overflow-visible">
                           <MapTematikChatCard

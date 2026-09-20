@@ -81,6 +81,18 @@ export async function GET(req: NextRequest) {
       cachedEwsData = await getLiveEwsData();
     }
 
+    const hasGkg = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'gkg_panel') ||
+        (typeof m.content === 'string' && (m.content.includes('Produksi Gabah Kering Giling') || m.content.includes('gkg_panel')));
+    });
+
+    let cachedGkgData: any = null;
+    if (hasGkg) {
+      const { getLiveGkgData } = await import('@/lib/ketapang/gkgService');
+      cachedGkgData = await getLiveGkgData();
+    }
+
     // Hydrate interactive polling / carousel widgets from tool_calls or content
     const messages = (rawMessages || []).map((msg) => {
       const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -218,6 +230,21 @@ export async function GET(req: NextRequest) {
           ...msg,
           type: 'ews_panel',
           ews_panel: cachedEwsData,
+        };
+      }
+
+      // 9. Check for gkg_panel
+      const gkgTool = toolCalls.find((t: any) => t?.name === 'gkg_panel');
+      const isGkgContent = typeof msg.content === 'string' && (
+        msg.content.includes('Produksi Gabah Kering Giling') ||
+        msg.content.includes('gkg_panel')
+      );
+
+      if (gkgTool || isGkgContent) {
+        return {
+          ...msg,
+          type: 'gkg_panel',
+          gkg_panel: cachedGkgData,
         };
       }
 

@@ -156,7 +156,7 @@ export async function getLiveSagonPanelData(): Promise<SagonPanelData> {
   }
 
   try {
-    const res = await fetch(`${KT_URL}/rest/v1/harga_sagon_harian?select=*&order=tanggal.desc&limit=10`, {
+    const res = await fetch(`${KT_URL}/rest/v1/harga_sagon_harian?select=*&order=tanggal.desc&limit=30`, {
       headers: {
         apikey: KT_KEY,
         Authorization: `Bearer ${KT_KEY}`,

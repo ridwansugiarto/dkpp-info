@@ -105,6 +105,7 @@ export interface ChatMessage {
   ikp_pou_panel?: import('@/lib/ketapang/ikpPouService').IkpPouPanelData;
   indikator_ketapang_panel?: import('@/lib/ketapang/indikatorService').IndikatorKetapangPanelData;
   ews_panel?: import('@/lib/ketapang/ewsService').EwsPanelData;
+  gkg_panel?: import('@/lib/ketapang/gkgService').GkgPanelData;
   auth_prompt?: 'LOGIN_REQUIRED' | 'NIP_REQUIRED';
   sources?: SourceCitation[];
   tool_calls?: ToolCall[];

@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { Download, Lightbulb, X } from 'lucide-react';
+import { Download, Brain, Sparkles, ChevronUp, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { IndikatorKetapangPanelData } from '@/lib/ketapang/indikatorService';
 
@@ -25,7 +25,7 @@ export const IndikatorKetapangChatPanel: React.FC<IndikatorKetapangChatPanelProp
   className = '',
 }) => {
   const [activeTab, setActiveTab] = useState<string>(data?.activeTabId || 'ketersediaan_energi');
-  const [showNotes, setShowNotes] = useState<boolean>(false);
+  const [showAiInterpretation, setShowAiInterpretation] = useState<boolean>(false);
 
   if (!data || !data.indicators || data.indicators.length === 0) return null;
 
@@ -44,7 +44,7 @@ export const IndikatorKetapangChatPanel: React.FC<IndikatorKetapangChatPanelProp
   return (
     <div className={`space-y-3.5 my-3 w-full max-w-full ${className}`}>
       {/* 1. Header Bar Sesuai Capture 3 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="w-[3px] h-4 sm:h-5 bg-emerald-600 rounded-full shrink-0"></div>
           <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs xs:text-sm sm:text-base leading-tight uppercase tracking-wide">
@@ -52,26 +52,40 @@ export const IndikatorKetapangChatPanel: React.FC<IndikatorKetapangChatPanelProp
           </h3>
         </div>
 
+        {/* Brain AI Interpretation Button (Capture 1) */}
         <button
           type="button"
-          onClick={() => setShowNotes(!showNotes)}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 text-[10.5px] font-bold transition-all self-start sm:self-auto cursor-pointer"
+          onClick={() => setShowAiInterpretation((prev) => !prev)}
+          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+            showAiInterpretation
+              ? 'bg-emerald-100 border-emerald-400 text-emerald-800 ring-2 ring-emerald-400/30'
+              : 'bg-emerald-50/90 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+          }`}
+          title="Interpretasi AI Indikator Ketahanan Pangan"
         >
-          <Lightbulb className="w-3.5 h-3.5 fill-amber-300 text-amber-600" />
-          <span>Catatan Analisis</span>
+          <Brain className="w-4 h-4 text-emerald-700" />
         </button>
       </div>
 
-      {/* Analysis Notes Alert if Toggled */}
-      {showNotes && (
-        <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-xs text-amber-900 dark:text-amber-200 leading-relaxed animate-in fade-in duration-200 space-y-1">
-          <div className="flex items-center justify-between font-bold">
-            <span>💡 Interpretasi Indikator Ketapang:</span>
-            <button type="button" onClick={() => setShowNotes(false)} className="text-amber-600 hover:text-amber-800">
-              <X className="w-4 h-4" />
+      {/* AI Interpretation Box (Capture 1) */}
+      {showAiInterpretation && (
+        <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/50 rounded-2xl border border-emerald-300/80 text-xs text-slate-800 space-y-1.5 animate-in fade-in duration-200 shadow-2xs">
+          <div className="flex items-center justify-between font-bold text-emerald-900">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Interpretasi AI & Evaluasi Capaian ({currentInd.title}):</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAiInterpretation(false)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p>{currentInd.catatan || 'Capaian indikator ketahanan pangan Kota Cilegon menunjukkan tren stabilitas dan ketahanan yang kokoh.'}</p>
+          <p className="text-[11.5px] leading-relaxed text-slate-700">
+            {currentInd.catatan || `Capaian ${currentInd.title} Kota Cilegon menunjukkan pemenuhan target standar nasional dengan tren stabilitas yang baik dalam 5 tahun terakhir.`}
+          </p>
         </div>
       )}
 
@@ -99,7 +113,7 @@ export const IndikatorKetapangChatPanel: React.FC<IndikatorKetapangChatPanelProp
       {/* 3. Main Chart Card Container */}
       <div className="bg-white dark:bg-[#152721] rounded-2xl sm:rounded-3xl border border-emerald-100 dark:border-emerald-800/60 p-4 sm:p-5 shadow-xs flex flex-col space-y-3 select-none">
         
-        {/* Title & Notes Button inside card */}
+        {/* Title inside card */}
         <div className="flex items-start justify-between gap-2">
           <div>
             <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-tight">
@@ -109,15 +123,6 @@ export const IndikatorKetapangChatPanel: React.FC<IndikatorKetapangChatPanelProp
               {currentInd.subtitle}
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowNotes(!showNotes)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200 shrink-0"
-          >
-            <Lightbulb className="w-3 h-3 text-amber-500 fill-amber-200" />
-            <span>Catatan</span>
-          </button>
         </div>
 
         {/* Recharts Area & Target Line */}

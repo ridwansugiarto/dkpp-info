@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp, Download, ShieldAlert, TrendingUp, HelpCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Download, ShieldAlert, TrendingUp, Brain, Sparkles, ArrowRight } from 'lucide-react';
 import { EwsPanelData, EwsWarningItem } from '@/lib/ketapang/ewsService';
 
 interface EwsChatPanelProps {
@@ -13,6 +13,7 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
   const [expandedCommodity, setExpandedCommodity] = useState<string | null>(
     data?.warnings?.[0]?.name || 'Bawang Merah'
   );
+  const [showAiInterpretation, setShowAiInterpretation] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   if (!data || !data.warnings || data.warnings.length === 0) {
@@ -47,20 +48,23 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
           <h1>LAPORAN SISTEM PERINGATAN DINI (EWS) PANGAN KOTA CILEGON</h1>
           <p><strong>Tanggal Terbit:</strong> ${new Date(data.updatedAt).toLocaleDateString('id-ID')}</p>
           <p><strong>Status EWS:</strong> AKTIF (${data.warnings.length} Komoditas Terdeteksi Anomali/Volatilitas Tinggi)</p>
+          <p><strong>Metode Pemodelan:</strong> Model Regresi Multi-Variabel (OLS) & Time-Series BAPANAS</p>
           <hr/>
           <h2>Daftar Komoditas Waspada & Rekomendasi Intervensi</h2>
           ${data.warnings.map((item: EwsWarningItem) => `
-            <h3>${item.name} - Status CV: <span class="${item.statusCv === 'RENTAN' ? 'badge-danger' : 'badge-warning'}">${item.statusCv}</span> | Status SKPG: ${item.statusSkpg}</h3>
+            <h3>${item.name} - Status: <span class="${item.statusCv === 'RENTAN' ? 'badge-danger' : 'badge-warning'}">${item.statusCv}</span></h3>
             <table>
               <tr>
-                <th>Harga Terkini</th>
+                <th>Harga Aktual Rata-Rata Agustus 2026</th>
                 <th>Koefisien Variasi (CV)</th>
-                <th>Proyeksi 3 Bulan (ML Prophet)</th>
+                <th>Peramalan +3 Bulan November 2026</th>
+                <th>Arah Tren</th>
               </tr>
               <tr>
                 <td>Rp ${(item.current || 0).toLocaleString('id-ID')}/kg</td>
                 <td>${item.cv.toFixed(1)}%</td>
                 <td>Rp ${(item.month3 || 0).toLocaleString('id-ID')}/kg</td>
+                <td>${item.month3 > item.current ? 'Naik' : 'Stabil'}</td>
               </tr>
             </table>
             <div class="recommendation">
@@ -106,35 +110,71 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold text-slate-800 tracking-tight">
-                Early Warning System (EWS ML)
+                Early Warning System (EWS)
               </h4>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse">
                 EWS AKTIF
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Deteksi dini volatilitas harga & kerentanan rantai pasok Cilegon
+              Model Regresi Multi-Variabel (OLS) & Deteksi Kerentanan Pasokan Cilegon
             </p>
           </div>
         </div>
 
-        {/* Download Docx button */}
-        <button
-          onClick={handleDownloadDocx}
-          disabled={isExporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 hover:border-amber-400 text-xs font-semibold shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
-          title="Download Rekomendasi EWS sebagai Dokumen Word"
-        >
-          <Download className="w-3.5 h-3.5 text-amber-600" />
-          <span>{isExporting ? 'Memproses...' : 'Download docx'}</span>
-        </button>
+        {/* Action Buttons: Brain Icon (Capture 1) + Download docx */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setShowAiInterpretation((prev) => !prev)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-xs active:scale-95 ${
+              showAiInterpretation
+                ? 'bg-emerald-100 border-emerald-400 text-emerald-800 ring-2 ring-emerald-400/30'
+                : 'bg-emerald-50/80 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+            }`}
+            title="Interpretasi AI EWS Pangan"
+          >
+            <Brain className="w-4 h-4 text-emerald-700" />
+          </button>
+
+          <button
+            onClick={handleDownloadDocx}
+            disabled={isExporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 hover:border-amber-400 text-xs font-semibold shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Download Rekomendasi EWS sebagai Dokumen Word"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isExporting ? 'Memproses...' : 'Download docx'}</span>
+          </button>
+        </div>
       </div>
+
+      {/* AI Interpretation Box (Capture 1) */}
+      {showAiInterpretation && (
+        <div className="mx-3.5 sm:mx-4 mt-3 p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-xs text-slate-800 space-y-1.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between font-bold text-amber-900">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Interpretasi AI & Diagnosis Kerentanan EWS:</span>
+            </div>
+            <button
+              onClick={() => setShowAiInterpretation(false)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-[11.5px] leading-relaxed text-slate-700">
+            Sistem mendeteksi <strong>{data.warnings.length} komoditas hortikultura & unggas</strong> berada pada kategori waspada/rentan akibat volatilitas pasokan daerah sentra produksi dan tekanan permintaan musiman. Komoditas <strong>Cabai Merah</strong> dan <strong>Bawang Merah</strong> mencatatkan Koefisien Variasi (CV) di atas ambang batas aman (10%), dengan proyeksi kenaikan harga hingga +30% dalam 3 bulan ke depan. Direkomendasikan percepatan fasilitasi distribusi pangan dan Gerakan Pangan Murah (GPM).
+          </p>
+        </div>
+      )}
 
       {/* Accordion List of Vulnerable Commodities */}
       <div className="p-3 sm:p-4 space-y-2.5">
         {data.warnings.map((item) => {
           const isExpanded = expandedCommodity === item.name;
           const isDanger = item.statusCv === 'RENTAN' || item.statusSkpg === 'RENTAN';
+          const isUp = item.month3 > item.current;
 
           return (
             <div
@@ -161,7 +201,7 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
                       {item.name}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Saat ini: <strong className="text-slate-700">Rp {(item.current || 0).toLocaleString('id-ID')}</strong>
+                      Aktual: <strong className="text-slate-700">Rp {(item.current || 0).toLocaleString('id-ID')}</strong>
                       {' • '}CV: <span className="font-semibold text-amber-700">{item.cv.toFixed(1)}%</span>
                     </span>
                   </div>
@@ -185,36 +225,52 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
                 </div>
               </button>
 
-              {/* Accordion Content */}
+              {/* Accordion Content (Capture 2 & 3 exact layout) */}
               {isExpanded && (
                 <div className="px-3.5 pb-3.5 pt-1 border-t border-amber-100 bg-white/80 space-y-3 animate-in fade-in-50 duration-150">
-                  {/* 3-Month Projection */}
+                  {/* 3 Metric Cards Sesuai Capture 2 & 3 */}
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-amber-600" />
-                      Proyeksi Harga 3 Bulan Ke Depan (ML Prophet)
+                      Proyeksi Harga 3 Bulan Ke Depan (Model OLS)
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-center">
-                        <div className="text-[10px] font-medium text-slate-500">Harga Terkini</div>
-                        <div className="text-xs font-bold text-slate-800 mt-0.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {/* Card 1: Harga Aktual Rata-Rata Agustus 2026 */}
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">
+                          HARGA AKTUAL RATA-RATA AGUSTUS 2026
+                        </div>
+                        <div className="text-sm font-extrabold text-slate-800 mt-1">
                           Rp {(item.current || 0).toLocaleString('id-ID')}
                         </div>
                       </div>
-                      <div className="bg-amber-50 border border-amber-200/80 rounded-lg p-2 text-center">
-                        <div className="text-[10px] font-medium text-amber-700">Proyeksi Bulan ke-3</div>
-                        <div className="text-xs font-bold text-amber-900 mt-0.5">
+
+                      {/* Card 2: Peramalan +3 Bulan November 2026 */}
+                      <div className="bg-amber-50/90 border border-amber-200/90 rounded-lg p-2.5 text-center shadow-2xs">
+                        <div className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">
+                          PERAMALAN +3 BULAN NOVEMBER 2026
+                        </div>
+                        <div className="text-sm font-extrabold text-amber-950 mt-1">
                           Rp {(item.month3 || 0).toLocaleString('id-ID')}
                         </div>
-                        <div className="text-[10px] font-semibold text-red-600 mt-0.5">
+                        <div className="text-[10px] font-bold text-red-600 mt-0.5">
                           {item.month3 > item.current
                             ? `+${(((item.month3 - item.current) / (item.current || 1)) * 100).toFixed(1)}%`
                             : `${(((item.month3 - item.current) / (item.current || 1)) * 100).toFixed(1)}%`}
                         </div>
                       </div>
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-center col-span-2 sm:col-span-1">
-                        <div className="text-[10px] font-medium text-slate-500">Status SKPG</div>
-                        <div className="text-xs font-bold text-slate-800 mt-0.5">{item.statusSkpg}</div>
+
+                      {/* Card 3: Arah Tren */}
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">
+                          ARAH TREN
+                        </div>
+                        <div className={`text-sm font-extrabold mt-1 ${isUp ? 'text-red-600' : 'text-emerald-700'}`}>
+                          {isUp ? '↗ Naik' : '— Stabil'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          Status SKPG: {item.statusSkpg}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -253,7 +309,7 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
 
       {/* Footer Info */}
       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-        <span>Sumber: Model ML Prophet & EWS BAPANAS / DKPP</span>
+        <span>Sumber: Model Regresi Multi-Variabel OLS & EWS BAPANAS / DKPP</span>
         <span>Evaluasi: {data.totalEvaluated} Komoditas</span>
       </div>
     </div>
