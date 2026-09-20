@@ -775,24 +775,38 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 11. Deteksi Maksud Peta Tematik GIS (FSVA & SKPG)
-    const isMapThematicRequest =
-      normMsg.includes('peta tematik') ||
-      normMsg.includes('peta fsva') ||
-      normMsg.includes('peta skpg') ||
-      normMsg.includes('peta borda') ||
-      normMsg.includes('gis cilegon') ||
-      normMsg.includes('peta kerentanan');
+    // 11. Deteksi Maksud Peta Tematik GIS (FSVA & SKPG) — Khusus pertanyaan langsung tentang FSVA & SKPG
+    const isPerikanan = 
+      normMsg.includes('perikanan') ||
+      normMsg.includes('tangkap') ||
+      normMsg.includes('budidaya') ||
+      normMsg.includes('nelayan') ||
+      normMsg.includes('ikan') ||
+      normMsg.includes('pangkalan') ||
+      normMsg.includes('tpi') ||
+      normMsg.includes('tambak');
 
-    if (isMapThematicRequest) {
+    const isDirectMapThematicRequest =
+      !isPerikanan && (
+        normMsg.includes('peta tematik') ||
+        normMsg.includes('peta fsva') ||
+        normMsg.includes('peta skpg') ||
+        normMsg.includes('peta borda') ||
+        normMsg.includes('gis cilegon') ||
+        normMsg.includes('peta kerentanan') ||
+        normMsg === 'fsva' ||
+        normMsg === 'skpg'
+      );
+
+    if (isDirectMapThematicRequest) {
       const mapMode = normMsg.includes('skpg') ? 'skpg' : normMsg.includes('borda') ? 'borda' : 'fsva';
       const summaryText =
-        `Berikut panel kontrol interaktif **Peta Tematik Spasial GIS Kota Cilegon** untuk memetakan kerentanan pangan tingkat kelurahan:\n\n` +
-        `* **FSVA 2025:** 6 Indikator peta komposit kerentanan pangan\n` +
-        `* **SKPG 2026:** Sistem Kewaspadaan Pangan & Gizi berkala\n` +
-        `* **Metode Borda:** Peringkat prioritas intervensi kelurahan\n` +
-        `* **Titik Intervensi:** Lokasi Pasar Murah & Lumbung Pangan\n\n` +
-        `💡 *Pilih layer di bawah atau klik tombol **Buka Panel GIS** untuk melihat poligon wilayah spasial.*`;
+        `Berikut panel kontrol interaktif **Peta Tematik Spasial GIS Kota Cilegon** yang terintegrasi langsung dengan database terkini (*dashboard-ketapang.vercel.app*):\n\n` +
+        `* **FSVA 2025 (Peta Komposit Kerentanan Pangan):** Memetakan 6 indikator ketahanan & kerentanan pangan di 43 kelurahan se-Kota Cilegon (Prioritas 1 hingga 6).\n` +
+        `* **SKPG 2026 (Sistem Kewaspadaan Pangan & Gizi):** Pemantauan bulanan real-time pada 3 pilar: *Ketersediaan, Akses, dan Pemanfaatan Pangan*.\n` +
+        `* **Metode Borda 2026:** Pemeringkatan multi-kriteria prioritas intervensi inter-sektoral per kelurahan.\n` +
+        `* **Titik Intervensi & Lumbung Pangan:** Lokasi sebaran Pasar Murah, KWT, Lumbung Pangan, dan Toko Tani Indonesia (TTI).\n\n` +
+        `🗺️ *Silakan pilih layer tematik di bawah ini atau klik tombol **Buka Panel GIS** untuk melihat poligon wilayah spasial interaktif.*`;
 
       const mapAction = {
         type: 'CHOROPLETH',

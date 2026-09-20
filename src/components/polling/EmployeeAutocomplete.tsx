@@ -171,7 +171,9 @@ export const EmployeeAutocomplete: React.FC<EmployeeAutocompleteProps> = ({
                         {emp.full_name}
                       </p>
                       <p className="text-[11px] text-gray-500 truncate">
-                        ({emp.position || emp.unit || 'DKPP Cilegon'})
+                        ({(emp.nip === '197610182002121002' || emp.full_name?.toLowerCase().includes('ridwan'))
+                          ? 'Analis Ketahanan Pangan Ahli Muda'
+                          : (emp.position || emp.unit || 'DKPP Cilegon')})
                       </p>
                     </div>
                   </div>

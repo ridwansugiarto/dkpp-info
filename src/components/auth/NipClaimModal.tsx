@@ -28,6 +28,8 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isAlreadyClaimed, setIsAlreadyClaimed] = useState(false);
+
   if (!isOpen) return null;
 
   const handleVerifyNip = async () => {
@@ -35,17 +37,23 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
     if (!cleanNip) {
       setErrorMsg('Silakan ketik 18 digit NIP resmi Anda.');
       setVerifiedData(null);
+      setIsAlreadyClaimed(false);
       return;
     }
 
     setIsValidating(true);
     setErrorMsg(null);
+    setIsAlreadyClaimed(false);
 
     try {
       const res = await fetch('/api/auth/verify-nip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nip: cleanNip }),
+        body: JSON.stringify({
+          nip: cleanNip,
+          userEmail: user.email,
+          userId: user.id,
+        }),
       });
       const data = await res.json();
       if (data.valid) {
@@ -55,9 +63,16 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
           bidang: data.bidang,
         });
         setErrorMsg(null);
+        setIsAlreadyClaimed(false);
       } else {
         setVerifiedData(null);
-        setErrorMsg(data.error || 'NIP tidak terdaftar dalam database resmi Pegawai DKPP Kota Cilegon.');
+        if (data.alreadyClaimed || res.status === 409) {
+          setIsAlreadyClaimed(true);
+          setErrorMsg(data.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi admin untuk proses klaim NIP.');
+        } else {
+          setIsAlreadyClaimed(false);
+          setErrorMsg(data.error || 'NIP tidak terdaftar dalam database resmi Pegawai DKPP Kota Cilegon.');
+        }
       }
     } catch {
       setErrorMsg('Gagal memverifikasi NIP. Pastikan jaringan internet aktif.');
@@ -84,7 +99,29 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
     };
 
     try {
-      // Simpan ke metadata Supabase auth jika user login via Supabase
+      // 1. Catat klaim ke API backend governance
+      const claimRes = await fetch('/api/auth/claim-nip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nip: cleanNip,
+          userEmail: user.email,
+          userId: user.id,
+          fullName: updatedProfile.full_name,
+        }),
+      });
+
+      const claimData = await claimRes.json();
+      if (!claimRes.ok && !claimData.success) {
+        if (claimData.alreadyClaimed || claimRes.status === 409) {
+          setIsAlreadyClaimed(true);
+          setErrorMsg(claimData.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi admin untuk proses klaim NIP.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // 2. Simpan ke metadata Supabase auth jika user login via Supabase
       try {
         await supabase.auth.updateUser({
           data: {
@@ -176,11 +213,30 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Error & Governance Alert Message */}
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-700 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
-              <span>{errorMsg}</span>
+            <div className={`p-3.5 rounded-xl border flex flex-col gap-2 text-xs animate-in fade-in ${
+              isAlreadyClaimed
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}>
+              <div className="flex items-start gap-2">
+                <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${isAlreadyClaimed ? 'text-amber-700' : 'text-red-600'}`} />
+                <span className="leading-relaxed font-medium">{errorMsg}</span>
+              </div>
+              {isAlreadyClaimed && (
+                <div className="pt-1.5 border-t border-amber-200/80 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-amber-800 font-semibold">Pusat Bantuan Klaim:</span>
+                  <a
+                    href="mailto:ridwansugiarto.mail@gmail.com?subject=Klaim%20NIP%20Pegawai%20DKPP%20Cilegon"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <span>Hubungi Admin (Email)</span>
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

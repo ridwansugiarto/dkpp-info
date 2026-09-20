@@ -36,7 +36,14 @@ export async function GET(request: Request) {
           filtered = filtered.filter((emp: any) => getEmployeeGender(emp.nip, emp.full_name) === requiredGender);
         }
         if (filtered.length > 0) {
-          return NextResponse.json({ employees: filtered });
+          const sanitized = filtered.map((emp: any) => {
+            const isRidwan = emp.nip === '197610182002121002' || (emp.full_name && emp.full_name.toLowerCase().includes('ridwan'));
+            return {
+              ...emp,
+              position: isRidwan ? 'Analis Ketahanan Pangan Ahli Muda' : (emp.position || emp.unit || 'DKPP Cilegon'),
+            };
+          });
+          return NextResponse.json({ employees: sanitized });
         }
       }
     } catch {
@@ -61,11 +68,16 @@ export async function GET(request: Request) {
         if (filtered.length > 0) {
           const tiered = filtered.map((emp) => {
             const fn = emp.full_name.toLowerCase();
+            const isRidwan = emp.nip === '197610182002121002' || fn.includes('ridwan');
             let match_tier = 4;
             if (fn.startsWith(cleanQ)) match_tier = 1;
             else if (new RegExp(`(^|\\s)${cleanQ}`).test(fn)) match_tier = 2;
             else if (fn.includes(cleanQ)) match_tier = 3;
-            return { ...emp, match_tier };
+            return {
+              ...emp,
+              position: isRidwan ? 'Analis Ketahanan Pangan Ahli Muda' : (emp.position || emp.unit || 'DKPP Cilegon'),
+              match_tier,
+            };
           }).sort((a, b) => a.match_tier - b.match_tier || a.full_name.localeCompare(b.full_name));
 
           return NextResponse.json({ employees: tiered.slice(0, 20) });
@@ -88,6 +100,7 @@ export async function GET(request: Request) {
       .filter(p => p.nama.toLowerCase().includes(cleanQ) || (p.jabatan && p.jabatan.toLowerCase().includes(cleanQ)))
       .map(p => {
         const fn = p.nama.toLowerCase();
+        const isRidwan = p.nip === '197610182002121002' || fn.includes('ridwan');
         let match_tier = 4;
         if (fn.startsWith(cleanQ)) match_tier = 1;
         else if (new RegExp(`(^|\\s)${cleanQ}`).test(fn)) match_tier = 2;
@@ -97,7 +110,7 @@ export async function GET(request: Request) {
           id: p.id,
           nip: p.nip,
           full_name: p.nama,
-          position: p.jabatan,
+          position: isRidwan ? 'Analis Ketahanan Pangan Ahli Muda' : (p.jabatan || p.bidang || 'DKPP Cilegon'),
           unit: p.bidang,
           photo_url: null,
           is_active: true,

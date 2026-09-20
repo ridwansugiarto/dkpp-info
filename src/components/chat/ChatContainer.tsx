@@ -583,7 +583,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
                           {/* Quick Category Switcher Pills in Chat */}
                           <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
                               <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                                 Pilih Tema Polling Lainnya:
                               </span>
@@ -596,7 +596,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                                     onSendMessage?.('lihat carousel live polling');
                                   }
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-xs transition-all cursor-pointer active:scale-95 shrink-0 whitespace-normal text-center leading-tight"
                               >
                                 <span>🎠 Live Carousel (15 Tema)</span>
                               </button>
@@ -624,13 +624,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                                       onSendMessage?.(`siapa pegawai ${cat.label.replace(/^[^\s]+\s*/, '')}`);
                                     }
                                   }}
-                                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                                  className={`px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all cursor-pointer whitespace-normal break-words leading-tight max-w-full inline-flex items-center text-left ${
                                     msg.poll_card?.poll?.code === cat.code
                                       ? 'bg-emerald-600 text-white shadow-xs font-bold'
                                       : 'bg-gray-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200/80 dark:border-gray-700'
                                   }`}
                                 >
-                                  {cat.label}
+                                  <span>{cat.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -740,8 +740,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         </div>
                       )}
 
-                      {/* 12. In-Chat Peta Tematik Spatial GIS Card */}
-                      {(msg.type === 'map_card' || (msg.map_actions && msg.map_actions.length > 0)) && (
+                      {/* 12. In-Chat Peta Tematik Spatial GIS Card (Hanya muncul jika eksplisit diminta user) */}
+                      {msg.type === 'map_card' && (
                         <div className="mt-2.5 w-full max-w-full overflow-visible">
                           <MapTematikChatCard
                             onOpenFullMap={() => onOpenMap && onOpenMap(msg.map_actions?.[0], msg.content)}

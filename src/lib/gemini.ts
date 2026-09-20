@@ -799,6 +799,23 @@ function buildMapActions(
   }
 
   const qLower = userQuery.toLowerCase();
+
+  // Permintaan khusus Capture 1: Pertanyaan terkait data perikanan tangkap & budidaya jangan tampilkan segmen peta spasial
+  const isPerikananQuery = 
+    qLower.includes('perikanan') ||
+    qLower.includes('tangkap') ||
+    qLower.includes('budidaya') ||
+    qLower.includes('nelayan') ||
+    qLower.includes('pangkalan') ||
+    qLower.includes('tpi') ||
+    qLower.includes('kolam') ||
+    qLower.includes('tambak') ||
+    qLower.includes('ikan');
+
+  if (isPerikananQuery && !qLower.includes('peta') && !qLower.includes('gis')) {
+    return { mapActions: [], matchedPins: [] };
+  }
+
   const textLower = rawText.toLowerCase();
   const matchedPins: Array<{ lat: number; lng: number; name: string; category: string; kelurahan: string; kecamatan: string }> = [];
   const mapActions: MapAction[] = [];
