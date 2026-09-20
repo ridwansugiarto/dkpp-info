@@ -68,7 +68,7 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
         setVerifiedData(null);
         if (data.alreadyClaimed || res.status === 409) {
           setIsAlreadyClaimed(true);
-          setErrorMsg(data.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi admin untuk proses klaim NIP.');
+          setErrorMsg(data.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi Administrator ChatDKPP untuk proses klaim NIP.');
         } else {
           setIsAlreadyClaimed(false);
           setErrorMsg(data.error || 'NIP tidak terdaftar dalam database resmi Pegawai DKPP Kota Cilegon.');
@@ -115,7 +115,7 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
       if (!claimRes.ok && !claimData.success) {
         if (claimData.alreadyClaimed || claimRes.status === 409) {
           setIsAlreadyClaimed(true);
-          setErrorMsg(claimData.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi admin untuk proses klaim NIP.');
+          setErrorMsg(claimData.error || 'NIP ini telah terverifikasi oleh akun lain. Silakan hubungi Administrator ChatDKPP untuk proses klaim NIP.');
           setIsSaving(false);
           return;
         }
@@ -226,15 +226,10 @@ export const NipClaimModal: React.FC<NipClaimModalProps> = ({
               </div>
               {isAlreadyClaimed && (
                 <div className="pt-1.5 border-t border-amber-200/80 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-amber-800 font-semibold">Pusat Bantuan Klaim:</span>
-                  <a
-                    href="mailto:ridwansugiarto.mail@gmail.com?subject=Klaim%20NIP%20Pegawai%20DKPP%20Cilegon"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <span>Hubungi Admin (Email)</span>
-                  </a>
+                  <span className="text-[11px] text-amber-800 font-semibold">Tatakelola NIP:</span>
+                  <span className="text-[11px] text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium">
+                    Hubungi Administrator ChatDKPP
+                  </span>
                 </div>
               )}
             </div>

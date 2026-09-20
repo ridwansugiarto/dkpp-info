@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           return NextResponse.json({
             success: false,
             alreadyClaimed: true,
-            error: `NIP ${cleanNip} telah terverifikasi oleh akun lain. Silakan hubungi Administrator (${ADMIN_EMAIL}) untuk proses klaim NIP.`
+            error: `NIP ${cleanNip} telah terverifikasi oleh akun lain. Silakan hubungi Administrator ChatDKPP untuk proses klaim NIP.`
           }, { status: 409 });
         }
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
           return NextResponse.json({
             success: false,
             alreadyClaimed: true,
-            error: `NIP ${cleanNip} telah terverifikasi oleh akun lain. Silakan hubungi Administrator (${ADMIN_EMAIL}) untuk proses klaim NIP.`
+            error: `NIP ${cleanNip} telah terverifikasi oleh akun lain. Silakan hubungi Administrator ChatDKPP untuk proses klaim NIP.`
           }, { status: 409 });
         }
       } catch (err) {
