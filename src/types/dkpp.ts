@@ -88,7 +88,7 @@ export interface ChatMessage {
   session_id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
-  type?: 'text' | 'poll_card' | 'poll_catalog' | 'poll_carousel' | 'forecast_table' | 'harga_sagon_panel' | 'auth_prompt' | string;
+  type?: 'text' | 'poll_card' | 'poll_catalog' | 'poll_carousel' | 'forecast_table' | 'harga_sagon_panel' | 'ikp_pou_panel' | 'indikator_ketapang_panel' | 'ews_panel' | 'auth_prompt' | string;
   poll_card?: {
     poll: import('@/lib/polling/types').PollTheme;
     available_themes?: import('@/lib/polling/types').PollTheme[];
@@ -102,6 +102,9 @@ export interface ChatMessage {
   };
   forecast_table?: import('@/lib/forecast/forecastService').ForecastTableData;
   harga_sagon_panel?: import('@/lib/harga/sagonService').SagonPanelData;
+  ikp_pou_panel?: import('@/lib/ketapang/ikpPouService').IkpPouPanelData;
+  indikator_ketapang_panel?: import('@/lib/ketapang/indikatorService').IndikatorKetapangPanelData;
+  ews_panel?: import('@/lib/ketapang/ewsService').EwsPanelData;
   auth_prompt?: 'LOGIN_REQUIRED' | 'NIP_REQUIRED';
   sources?: SourceCitation[];
   tool_calls?: ToolCall[];

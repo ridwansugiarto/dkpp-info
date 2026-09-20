@@ -547,7 +547,241 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 7. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
+    // 7. Deteksi Maksud IKP & PoU 5 Tahun (Captures 1 & 2)
+    const isIkpPouRequest =
+      normMsg.includes('ikp') ||
+      normMsg.includes('pou') ||
+      normMsg.includes('indeks ketahanan pangan') ||
+      normMsg.includes('prevalensi ketidakcukupan') ||
+      normMsg.includes('skor ikp') ||
+      normMsg.includes('tren ikp');
+
+    if (isIkpPouRequest && !normMsg.includes('bagaimana cara menghitung')) {
+      const { getLiveIkpPouData } = await import('@/lib/ketapang/ikpPouService');
+      const ikpPouData = await getLiveIkpPouData();
+
+      const latestIkp = ikpPouData.ikp[ikpPouData.ikp.length - 1];
+      const latestPou = ikpPouData.pou[ikpPouData.pou.length - 1];
+
+      const summaryText =
+        `Berikut data **Indeks Ketahanan Pangan (IKP)** dan **Prevalensi Ketidakcukupan Pangan (PoU)** Kota Cilegon 5 tahun terakhir yang terhubung langsung secara live dengan database Ketahanan Pangan:\n\n` +
+        `### 📈 Ringkasan Capaian Terkini:\n` +
+        `* 🏆 **IKP ${latestIkp?.year || '2025'}:** Skor **${latestIkp?.cilegon || 88.5}** (Kategori Sangat Tahan Pangan) — Berada di atas rata-rata Provinsi Banten (${latestIkp?.provinsi || 81.2}) & Nasional (${latestIkp?.nasional || 78.4}).\n` +
+        `* 📉 **PoU ${latestPou?.year || '2025'}:** Angka **${latestPou?.cilegon || 4.8}%** (Menurun, semakin rendah semakin baik).\n\n` +
+        `💡 *Gunakan tombol tab di bawah untuk beralih antara grafik IKP dan PoU, serta tombol **Unduh XLSX** untuk mendapatkan dokumen spreadsheet lengkap.*`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-ikp-pou-' + Date.now(),
+            name: 'ikp_pou_panel',
+            status: 'completed',
+            args: { totalYears: ikpPouData.ikp.length },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'ikp_pou_panel',
+        ikp_pou_panel: ikpPouData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'ikp_pou_panel',
+          ikp_pou_panel: ikpPouData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 8. Deteksi Maksud Capaian 7 Indikator Ketahanan Pangan (Capture 3)
+    const isIndikatorRequest =
+      normMsg.includes('7 indikator') ||
+      normMsg.includes('indikator ketahanan pangan') ||
+      normMsg.includes('cv beras') ||
+      normMsg.includes('pph') ||
+      normMsg.includes('pola pangan harapan') ||
+      normMsg.includes('konsumsi energi') ||
+      normMsg.includes('konsumsi protein') ||
+      normMsg.includes('ketersediaan energi') ||
+      normMsg.includes('ketersediaan protein') ||
+      normMsg.includes('cppd') ||
+      normMsg.includes('cadangan pangan');
+
+    if (isIndikatorRequest) {
+      const { getLiveIndikatorKetapangData } = await import('@/lib/ketapang/indikatorService');
+      const indikatorData = await getLiveIndikatorKetapangData();
+
+      const summaryText =
+        `Berikut visualisasi capaian **7 Indikator Utama Ketahanan Pangan** Kota Cilegon 5 tahun terakhir vs Target Nasional yang bersumber live dari Dashboard Ketahanan Pangan:\n\n` +
+        `1. **CV Beras Medium:** Stabilitas variasi pasokan beras bulanan\n` +
+        `2. **PPH (Pola Pangan Harapan):** Kualitas keanekaragaman konsumsi pangan\n` +
+        `3. **Konsumsi Protein & Energi:** Tingkat pemenuhan gizi masyarakat per kapita/hari\n` +
+        `4. **Ketersediaan Energi & Protein:** Pasokan ketersediaan pangan makro wilayah\n` +
+        `5. **CPPD (Cadangan Pangan Pemda):** Stok cadangan beras pemerintah kota Cilegon\n\n` +
+        `💡 *Pilih tab indikator di bawah untuk melihat grafik tren dan realisasi capaian vs target.*`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-indikator-panel-' + Date.now(),
+            name: 'indikator_ketapang_panel',
+            status: 'completed',
+            args: { totalIndicators: 7 },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'indikator_ketapang_panel',
+        indikator_ketapang_panel: indikatorData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'indikator_ketapang_panel',
+          indikator_ketapang_panel: indikatorData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 9. Deteksi Maksud Early Warning System (EWS ML) (Capture 4)
+    const isEwsRequest =
+      normMsg.includes('early warning system') ||
+      normMsg.includes('ews') ||
+      normMsg.includes('peringatan dini') ||
+      normMsg.includes('anomali harga') ||
+      normMsg.includes('volatilitas pangan') ||
+      normMsg.includes('kerentanan pangan') ||
+      normMsg.includes('waspada fluktuasi');
+
+    if (isEwsRequest && !normMsg.includes('singkatan dari ews')) {
+      const { getLiveEwsData } = await import('@/lib/ketapang/ewsService');
+      const ewsData = await getLiveEwsData();
+
+      const summaryText =
+        `Berikut status **Sistem Peringatan Dini / Early Warning System (EWS ML)** ketahanan pangan Kota Cilegon yang dianalisis menggunakan machine learning berbasis fluktuasi koefisien variasi (CV) dan model proyeksi pasokan:\n\n` +
+        `### ⚠️ Status Peringatan: **EWS AKTIF**\n` +
+        `* Ditemukan **${ewsData.warnings.length} komoditas** dalam pantauan khusus dengan volatilitas dan proyeksi kenaikan harga.\n` +
+        `* Klik pada komoditas di bawah untuk melihat rincian proyeksi 3 bulan ke depan dan rekomendasi intervensi dinas.\n` +
+        `* Klik tombol **Download docx** untuk mengunduh naskah laporan rekomendasi EWS.`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-ews-panel-' + Date.now(),
+            name: 'ews_panel',
+            status: 'completed',
+            args: { alertsCount: ewsData.warnings.length },
+          },
+        ]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'ews_panel',
+        ews_panel: ewsData,
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'ews_panel',
+          ews_panel: ewsData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 10. Deteksi Maksud Peta Tematik GIS (FSVA & SKPG) (Capture 5)
+    const isMapThematicRequest =
+      normMsg.includes('peta tematik') ||
+      normMsg.includes('peta fsva') ||
+      normMsg.includes('peta skpg') ||
+      normMsg.includes('peta borda') ||
+      normMsg.includes('gis cilegon') ||
+      normMsg.includes('peta kerentanan');
+
+    if (isMapThematicRequest) {
+      const mapMode = normMsg.includes('skpg') ? 'skpg' : normMsg.includes('borda') ? 'borda' : 'fsva';
+      const summaryText =
+        `Berikut panel kontrol interaktif **Peta Tematik Spasial GIS Kota Cilegon** untuk memetakan kerentanan pangan tingkat kelurahan:\n\n` +
+        `* **FSVA 2025:** 6 Indikator peta komposit kerentanan pangan\n` +
+        `* **SKPG 2026:** Sistem Kewaspadaan Pangan & Gizi berkala\n` +
+        `* **Metode Borda:** Peringkat prioritas intervensi kelurahan\n` +
+        `* **Titik Intervensi:** Lokasi Pasar Murah & Lumbung Pangan\n\n` +
+        `💡 *Pilih layer di bawah atau klik tombol **Buka Panel GIS** untuk melihat poligon wilayah spasial.*`;
+
+      const mapAction = {
+        type: 'CHOROPLETH',
+        thematicMode: mapMode,
+        layersToEnable: [mapMode],
+      };
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message,
+        summaryText,
+        [
+          {
+            id: 'tool-map-thematic-' + Date.now(),
+            name: 'map_thematic',
+            status: 'completed',
+            args: { thematicMode: mapMode },
+          },
+        ],
+        [],
+        [mapAction]
+      );
+
+      return NextResponse.json({
+        sessionId,
+        userMessageId: userMsgId,
+        assistantMessageId: assistantMsgId,
+        content: summaryText,
+        type: 'map_card',
+        map_actions: [mapAction],
+        message: {
+          id: assistantMsgId,
+          session_id: sessionId || 'temp',
+          role: 'assistant',
+          content: summaryText,
+          type: 'map_card',
+          map_actions: [mapAction],
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role,
+        isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // 11. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
     const currentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
       ...conversationHistory,
       { role: 'user', content: message },

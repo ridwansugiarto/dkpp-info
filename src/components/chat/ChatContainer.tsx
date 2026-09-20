@@ -35,6 +35,10 @@ import { ThemeCatalog } from '@/components/polling/ThemeCatalog';
 import { LiveResultsCarousel } from '@/components/polling/LiveResultsCarousel';
 import { ForecastChatTable } from './ForecastChatTable';
 import { HargaPanganChatPanel } from './HargaPanganChatPanel';
+import { IkpPouChatPanel } from './IkpPouChatPanel';
+import { IndikatorKetapangChatPanel } from './IndikatorKetapangChatPanel';
+import { EwsChatPanel } from './EwsChatPanel';
+import { MapTematikChatCard } from './MapTematikChatCard';
 import { ChatInput } from './ChatInput';
 
 // Dynamic import ChatChart for interactive Recharts
@@ -378,22 +382,66 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             />
           </div>
 
-          {/* Minimalist Action Pills below input */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => onSuggestionClick('Apa saja data dan analisis ketahanan pangan yang bisa saya tanyakan?')}
-              className="px-4 py-2 rounded-full border border-gray-300/90 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-2xs transition-all cursor-pointer"
-            >
-              What can you do?
-            </button>
-            <button
-              type="button"
-              onClick={() => onSuggestionClick('Tampilkan ringkasan status ketahanan pangan dan stabilitas pasokan beras Kota Cilegon.')}
-              className="px-4 py-2 rounded-full border border-gray-300/90 hover:border-gray-400 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-2xs transition-all cursor-pointer"
-            >
-              Status Ketahanan Pangan
-            </button>
+          {/* Feature Showcase Shortcuts Grid below input */}
+          <div className="w-full pt-2">
+            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5">
+              Jelajahi Fitur & Analisis Live DKPP:
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-left">
+              {[
+                {
+                  icon: '📈',
+                  title: 'IKP & PoU 5 Tahun',
+                  desc: 'Tren Indeks Ketahanan Pangan vs Banten & Nasional',
+                  prompt: 'Tampilkan grafik tren IKP dan Prevalensi Ketidakcukupan Pangan (PoU) 5 tahun terakhir Kota Cilegon',
+                },
+                {
+                  icon: '📊',
+                  title: '7 Indikator Pangan',
+                  desc: 'Capaian CV Beras, PPH, Energi & Protein vs Target',
+                  prompt: 'Tampilkan capaian 7 indikator ketahanan pangan Kota Cilegon 5 tahun terakhir vs target nasional',
+                },
+                {
+                  icon: '⚠️',
+                  title: 'Early Warning System',
+                  desc: 'Deteksi anomali harga & kerentanan komoditas ML',
+                  prompt: 'Tampilkan peringatan dini kerentanan pangan dan status Early Warning System (EWS) Kota Cilegon',
+                },
+                {
+                  icon: '💰',
+                  title: 'Harga Pangan Live',
+                  desc: 'Update harian SAGON dari Pasar Kranggot & Blok F',
+                  prompt: 'Tampilkan panel harga pangan strategis hari ini dari Pasar Kranggot dan Pasar Blok F Cilegon',
+                },
+                {
+                  icon: '🔮',
+                  title: 'Peramalan Harga ML',
+                  desc: 'Prediksi tren harga 3 bulan ke depan via Prophet',
+                  prompt: 'Tampilkan tabel peramalan harga pangan komoditas strategis Kota Cilegon',
+                },
+                {
+                  icon: '🗺️',
+                  title: 'Peta Tematik GIS',
+                  desc: 'Geospasial FSVA 2025, SKPG, dan Borda kelurahan',
+                  prompt: 'Tampilkan peta tematik geospasial FSVA dan SKPG Kota Cilegon',
+                },
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSuggestionClick(item.prompt)}
+                  className="p-3 rounded-xl border border-gray-200/90 hover:border-emerald-400 bg-white hover:bg-emerald-50/40 text-left transition-all duration-150 group shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900 group-hover:text-emerald-800">
+                    <span className="text-sm">{item.icon}</span>
+                    <span>{item.title}</span>
+                  </div>
+                  <p className="text-[10.5px] text-gray-500 group-hover:text-emerald-950 mt-1 line-clamp-2 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
@@ -654,6 +702,42 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             onAskCommodity={(prompt) => {
                               onSendMessage?.(prompt);
                             }}
+                          />
+                        </div>
+                      )}
+
+                      {/* 8. In-Chat IKP & PoU 5 Tahun Panel (Captures 1 & 2) */}
+                      {(msg.type === 'ikp_pou_panel' || msg.ikp_pou_panel) && msg.ikp_pou_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <IkpPouChatPanel data={msg.ikp_pou_panel} />
+                        </div>
+                      )}
+
+                      {/* 9. In-Chat Capaian 7 Indikator Ketahanan Pangan Panel (Capture 3) */}
+                      {(msg.type === 'indikator_ketapang_panel' || msg.indikator_ketapang_panel) && msg.indikator_ketapang_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <IndikatorKetapangChatPanel data={msg.indikator_ketapang_panel} />
+                        </div>
+                      )}
+
+                      {/* 10. In-Chat Early Warning System (EWS ML) Panel (Capture 4) */}
+                      {(msg.type === 'ews_panel' || msg.ews_panel) && msg.ews_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <EwsChatPanel
+                            data={msg.ews_panel}
+                            onOpenActionPlan={(item) => {
+                              onSendMessage?.(`Rekomendasi tindak lanjut intervensi pasar untuk komoditas ${item.name}`);
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* 11. In-Chat Peta Tematik Spatial GIS Card (Capture 5) */}
+                      {(msg.type === 'map_card' || (msg.map_actions && msg.map_actions.length > 0)) && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <MapTematikChatCard
+                            onOpenFullMap={() => onOpenMap && onOpenMap(msg.map_actions?.[0], msg.content)}
+                            onTriggerMapAction={(action) => onOpenMap && onOpenMap(action, msg.content)}
                           />
                         </div>
                       )}

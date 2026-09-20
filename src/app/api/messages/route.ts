@@ -45,6 +45,42 @@ export async function GET(req: NextRequest) {
       cachedSagonData = await getLiveSagonPanelData();
     }
 
+    const hasIkpPou = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'ikp_pou_panel') ||
+        (typeof m.content === 'string' && (m.content.includes('Indeks Ketahanan Pangan (IKP)') || m.content.includes('ikp_pou_panel')));
+    });
+
+    let cachedIkpPouData: any = null;
+    if (hasIkpPou) {
+      const { getLiveIkpPouData } = await import('@/lib/ketapang/ikpPouService');
+      cachedIkpPouData = await getLiveIkpPouData();
+    }
+
+    const hasIndikator = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'indikator_ketapang_panel') ||
+        (typeof m.content === 'string' && (m.content.includes('7 Indikator Utama Ketahanan Pangan') || m.content.includes('indikator_ketapang_panel')));
+    });
+
+    let cachedIndikatorData: any = null;
+    if (hasIndikator) {
+      const { getLiveIndikatorKetapangData } = await import('@/lib/ketapang/indikatorService');
+      cachedIndikatorData = await getLiveIndikatorKetapangData();
+    }
+
+    const hasEws = (rawMessages || []).some((m) => {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+      return toolCalls.some((t: any) => t?.name === 'ews_panel') ||
+        (typeof m.content === 'string' && (m.content.includes('Early Warning System (EWS ML)') || m.content.includes('EWS AKTIF') || m.content.includes('ews_panel')));
+    });
+
+    let cachedEwsData: any = null;
+    if (hasEws) {
+      const { getLiveEwsData } = await import('@/lib/ketapang/ewsService');
+      cachedEwsData = await getLiveEwsData();
+    }
+
     // Hydrate interactive polling / carousel widgets from tool_calls or content
     const messages = (rawMessages || []).map((msg) => {
       const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -137,6 +173,51 @@ export async function GET(req: NextRequest) {
           ...msg,
           type: 'harga_sagon_panel',
           harga_sagon_panel: cachedSagonData,
+        };
+      }
+
+      // 6. Check for ikp_pou_panel
+      const ikpTool = toolCalls.find((t: any) => t?.name === 'ikp_pou_panel');
+      const isIkpContent = typeof msg.content === 'string' && (
+        msg.content.includes('Indeks Ketahanan Pangan (IKP)') ||
+        msg.content.includes('Prevalensi Ketidakcukupan Pangan (PoU)')
+      );
+
+      if (ikpTool || isIkpContent) {
+        return {
+          ...msg,
+          type: 'ikp_pou_panel',
+          ikp_pou_panel: cachedIkpPouData,
+        };
+      }
+
+      // 7. Check for indikator_ketapang_panel
+      const indikatorTool = toolCalls.find((t: any) => t?.name === 'indikator_ketapang_panel');
+      const isIndikatorContent = typeof msg.content === 'string' && (
+        msg.content.includes('7 Indikator Utama Ketahanan Pangan') ||
+        msg.content.includes('CV Beras Medium')
+      );
+
+      if (indikatorTool || isIndikatorContent) {
+        return {
+          ...msg,
+          type: 'indikator_ketapang_panel',
+          indikator_ketapang_panel: cachedIndikatorData,
+        };
+      }
+
+      // 8. Check for ews_panel
+      const ewsTool = toolCalls.find((t: any) => t?.name === 'ews_panel');
+      const isEwsContent = typeof msg.content === 'string' && (
+        msg.content.includes('Early Warning System (EWS ML)') ||
+        msg.content.includes('EWS AKTIF')
+      );
+
+      if (ewsTool || isEwsContent) {
+        return {
+          ...msg,
+          type: 'ews_panel',
+          ews_panel: cachedEwsData,
         };
       }
 
