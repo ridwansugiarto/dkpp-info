@@ -309,7 +309,7 @@ export const EwsChatPanel: React.FC<EwsChatPanelProps> = ({ data, onOpenActionPl
 
       {/* Footer Info */}
       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-        <span>Sumber: Model Regresi Multi-Variabel OLS & EWS BAPANAS / DKPP</span>
+        <span>Sumber: Model Regresi Multi-Variabel OLS & EWS BAPANAS / Sistem Informasi Pangan Kota Cilegon</span>
         <span>Evaluasi: {data.totalEvaluated} Komoditas</span>
       </div>
     </div>

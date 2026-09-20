@@ -437,7 +437,7 @@ export async function POST(req: NextRequest) {
       const amanItems = sagonData.items.filter((i) => i.status === 'AMAN');
 
       const summaryText =
-        `Berikut data **Panel Harga Pangan Strategis (SAGON LIVE)** rata-rata seluruh pasar Kota Cilegon per tanggal **${sagonData.formattedDate}** yang terhubung langsung dengan database real-time Dinas Ketahanan Pangan dan Pertanian Kota Cilegon.\n\n` +
+        `Berikut data **Panel Harga Pangan Strategis (SAGON LIVE)** rata-rata 3 pasar tradisional se-Kota Cilegon (Pasar Baru Kranggot, Pasar Blok F, dan Pasar Baru Merak) per tanggal **${sagonData.formattedDate}** yang terhubung langsung dengan database real-time Sistem Informasi Pangan Kota Cilegon.\n\n` +
         `### 📊 Status & Ringkasan Pergerakan YoY:\n` +
         `* ⚠️ **Kategori Waspada (Kenaikan > 5% YoY):** ${waspadaItems.map((i) => `**${i.name}** (Rp ${Math.round(i.curr).toLocaleString('id-ID')}, ${i.changeText})`).join(', ') || 'Semua stabil'}\n` +
         `* 🟢 **Kategori Aman / Terkendali:** ${amanItems.map((i) => `**${i.name}** (Rp ${Math.round(i.curr).toLocaleString('id-ID')}, ${i.changeText})`).join(', ') || 'Tidak ada'}\n\n` +
@@ -501,7 +501,7 @@ export async function POST(req: NextRequest) {
       const downItems = forecastData.items.filter((i) => i.trend === 'down');
       const stableItems = forecastData.items.filter((i) => i.trend === 'stable');
 
-      const summaryText = `Berikut tabel **Peramalan Harga Pangan (ML Forecasting)** untuk proyeksi 1 & 3 bulan ke depan di Kota Cilegon yang terintegrasi langsung dengan database real-time Dinas Ketahanan Pangan dan Pertanian.\n\n` +
+      const summaryText = `Berikut tabel **Peramalan Harga Pangan (ML Forecasting)** untuk proyeksi 1 & 3 bulan ke depan di Kota Cilegon yang terintegrasi langsung dengan database real-time Sistem Informasi Pangan Kota Cilegon.\n\n` +
         `### 📊 Ringkasan Tren Pergerakan (+1 Bulan):\n` +
         `* 🔴 **Tren Naik (+1B):** ${upItems.map((i) => `**${i.name}** (+${i.changePct}%)`).join(', ') || 'Tidak ada'}\n` +
         `* 🟢 **Tren Turun (+1B):** ${downItems.map((i) => `**${i.name}** (${i.changePct}%)`).join(', ') || 'Tidak ada'}\n` +
@@ -564,7 +564,7 @@ export async function POST(req: NextRequest) {
       const latestPou = ikpPouData.pou[ikpPouData.pou.length - 1];
 
       const summaryText =
-        `Berikut data **Indeks Ketahanan Pangan (IKP)** dan **Prevalensi Ketidakcukupan Pangan (PoU)** Kota Cilegon 5 tahun terakhir yang terhubung langsung secara live dengan database Ketahanan Pangan:\n\n` +
+        `Berikut data **Indeks Ketahanan Pangan (IKP)** dan **Prevalensi Ketidakcukupan Pangan (PoU)** Kota Cilegon 5 tahun terakhir yang terhubung langsung secara live dengan database real-time Sistem Informasi Pangan Kota Cilegon:\n\n` +
         `### 📈 Ringkasan Capaian Terkini:\n` +
         `* 🏆 **IKP ${latestIkp?.year || '2025'}:** Skor **${latestIkp?.cilegon || 88.5}** (Kategori Sangat Tahan Pangan) — Berada di atas rata-rata Provinsi Banten (${latestIkp?.provinsi || 81.2}) & Nasional (${latestIkp?.nasional || 78.4}).\n` +
         `* 📉 **PoU ${latestPou?.year || '2025'}:** Angka **${latestPou?.cilegon || 4.8}%** (Menurun, semakin rendah semakin baik).\n\n` +
@@ -623,7 +623,7 @@ export async function POST(req: NextRequest) {
       const indikatorData = await getLiveIndikatorKetapangData();
 
       const summaryText =
-        `Berikut visualisasi capaian **7 Indikator Utama Ketahanan Pangan** Kota Cilegon 5 tahun terakhir vs Target Nasional yang bersumber live dari Dashboard Ketahanan Pangan:\n\n` +
+        `Berikut visualisasi capaian **7 Indikator Utama Ketahanan Pangan** Kota Cilegon 5 tahun terakhir vs Target Nasional yang bersumber live dari database real-time Sistem Informasi Pangan Kota Cilegon:\n\n` +
         `1. **CV Beras Medium:** Stabilitas variasi pasokan beras bulanan\n` +
         `2. **PPH (Pola Pangan Harapan):** Kualitas keanekaragaman konsumsi pangan\n` +
         `3. **Konsumsi Protein & Energi:** Tingkat pemenuhan gizi masyarakat per kapita/hari\n` +
@@ -680,7 +680,7 @@ export async function POST(req: NextRequest) {
       const ewsData = await getLiveEwsData();
 
       const summaryText =
-        `Berikut status **Sistem Peringatan Dini / Early Warning System (EWS ML)** ketahanan pangan Kota Cilegon yang dianalisis menggunakan machine learning berbasis fluktuasi koefisien variasi (CV) dan model proyeksi pasokan:\n\n` +
+        `Berikut status **Sistem Peringatan Dini / Early Warning System (EWS ML)** ketahanan pangan Kota Cilegon yang dianalisis menggunakan machine learning berbasis fluktuasi koefisien variasi (CV) dan model proyeksi pasokan yang terhubung dengan database real-time Sistem Informasi Pangan Kota Cilegon:\n\n` +
         `### ⚠️ Status Peringatan: **EWS AKTIF**\n` +
         `* Ditemukan **${ewsData.warnings.length} komoditas** dalam pantauan khusus dengan volatilitas dan proyeksi kenaikan harga.\n` +
         `* Klik pada komoditas di bawah untuk melihat rincian proyeksi 3 bulan ke depan dan rekomendasi intervensi dinas.\n` +
@@ -734,7 +734,7 @@ export async function POST(req: NextRequest) {
       const gkgData = await getLiveGkgData();
 
       const summaryText =
-        `Berikut data dan visualisasi **Produksi Gabah Kering Giling (GKG) & Konversi Beras** Kota Cilegon 5 tahun terakhir yang terhubung live dengan database Dinas Ketahanan Pangan dan Pertanian:\n\n` +
+        `Berikut data dan visualisasi **Produksi Gabah Kering Giling (GKG) & Konversi Beras** Kota Cilegon 5 tahun terakhir yang terhubung live dengan database real-time Sistem Informasi Pangan Kota Cilegon:\n\n` +
         `### 🌾 Ringkasan Produksi Terkini (${gkgData.latestYear}):\n` +
         `* 🚜 **Total Produksi GKG:** **${gkgData.totalGkgLatest.toLocaleString('id-ID')} Ton** (+${gkgData.growthPct}% YoY)\n` +
         `* 🍚 **Estimasi Beras Lokal:** **${gkgData.totalBerasLatest.toLocaleString('id-ID')} Ton** (Rendemen 63.23%)\n` +

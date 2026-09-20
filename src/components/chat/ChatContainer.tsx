@@ -411,8 +411,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                 {
                   icon: '💰',
                   title: 'Harga Pangan Live',
-                  desc: 'Update harian SAGON dari Pasar Kranggot & Blok F',
-                  prompt: 'Tampilkan panel harga pangan strategis hari ini dari Pasar Kranggot dan Pasar Blok F Cilegon',
+                  desc: 'Update harian SAGON dari 3 pasar tradisional (Kranggot, Blok F, Merak)',
+                  prompt: 'Tampilkan panel harga pangan strategis hari ini dari 3 pasar tradisional se-Kota Cilegon (Pasar Baru Kranggot, Pasar Blok F, dan Pasar Baru Merak)',
                 },
                 {
                   icon: '🔮',

@@ -182,7 +182,7 @@ export const GkgChatPanel: React.FC<GkgChatPanelProps> = ({ data }) => {
 
       {/* Footer Info */}
       <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-        <span>Sumber: BPS & Dinas Ketahanan Pangan dan Pertanian Kota Cilegon</span>
+        <span>Sumber: Database Real-Time Sistem Informasi Pangan Kota Cilegon</span>
         <span>Update: 2026</span>
       </div>
     </div>
