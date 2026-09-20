@@ -410,6 +410,13 @@ Anda adalah AI Intelligence resmi **ChatDKPP** — Decision Support System (DSS)
 3. **DOKUMEN & TABEL PROGRAM RENSTRA 2025-2030** (Tujuan & Sasaran Strategis, Cascading Program, IKU, IKK, IKD, Subkegiatan Prioritas, serta Rincian Program, Kegiatan, Output, & Pagu Anggaran per Tahun)
 4. **BASIS DATA AGREGAT & KNOWLEDGE BASE DOKUMEN** (Juknis Bapanas, Susenas, DKB Penduduk, Realisasi DKPP, Neraca Pangan)
 
+## ATURAN IDENTITAS PENGEMBANG & ADMINISTRATOR CHATDKPP:
+Jika pengguna bertanya mengenai siapa pembuat, pengembang, perancang, pengelola, atau administrator platform ChatDKPP (misalnya: "siapa admin chatdkpp", "siapa yang buat chatdkpp", "siapa pengembang aplikasi ini", "siapa administratornya", dsb.), Anda WAJIB menjawab dengan narasi baku dan profesional berikut:
+
+"Platform **ChatDKPP** dikembangkan dan dikelola secara mandiri oleh seorang **Analis Ketahanan Pangan Ahli Muda** pada **Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon** sebagai bentuk kontribusi profesional dalam mendorong transformasi digital, pemanfaatan data, serta pengembangan sistem informasi ketahanan pangan dan pertanian daerah.
+
+Pengembangan dilakukan secara bertahap dengan pendekatan inovatif yang mengintegrasikan dashboard analitik, visualisasi spasial, pengelolaan data, dan teknologi kecerdasan buatan guna mendukung tata kelola pangan yang lebih efektif dan adaptif."
+
 ${renstraContext ? `
 ## BASIS DATA PROGRAM & RENSTRA DKPP KOTA CILEGON (2025 - 2030)
 Gunakan data resmi di bawah ini untuk menjawab secara presisi, akurat, dan lengkap jika user menanyakan tentang Program, Kegiatan, Subkegiatan, Target Capaian, Indikator Kinerja Utama (IKU), Indikator Kinerja Kunci (IKK), Indikator Kinerja Daerah (IKD), Sasaran RPJMD/Dinas, atau Alokasi Pagu Anggaran per Tahun:
@@ -1056,6 +1063,21 @@ function buildMapActions(
 function generateRuleBasedAnswer(userQuery: string, liveData?: PegawaiHumorItem[], canAccessSensitive: boolean = false): string {
   const q = userQuery.toLowerCase();
   const dataset = liveData && liveData.length > 0 ? liveData : OFFICIAL_DKPP_HUMOR_DATA;
+
+  // Pertanyaan tentang Admin / Pengembang / Pembuat ChatDKPP
+  if (
+    q.includes('siapa admin') ||
+    q.includes('siapa administrator') ||
+    q.includes('siapa yang buat') ||
+    q.includes('siapa yang bikin') ||
+    q.includes('siapa pembuat') ||
+    q.includes('siapa pengembang') ||
+    q.includes('siapa developer') ||
+    q.includes('tentang pengembang') ||
+    q.includes('pengembang chatdkpp')
+  ) {
+    return `Platform **ChatDKPP** dikembangkan dan dikelola secara mandiri oleh seorang **Analis Ketahanan Pangan Ahli Muda** pada **Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon** sebagai bentuk kontribusi profesional dalam mendorong transformasi digital, pemanfaatan data, serta pengembangan sistem informasi ketahanan pangan dan pertanian daerah.\n\nPengembangan dilakukan secara bertahap dengan pendekatan inovatif yang mengintegrasikan dashboard analitik, visualisasi spasial, pengelolaan data, dan teknologi kecerdasan buatan guna mendukung tata kelola pangan yang lebih efektif dan adaptif.`;
+  }
 
   // Mode bercanda/humor pegawai internal
   if (isPegawaiHumorQuery(userQuery)) {
