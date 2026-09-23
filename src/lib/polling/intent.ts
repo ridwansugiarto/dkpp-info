@@ -1,4 +1,4 @@
-import { PollIntentResult } from './types';
+import { PollIntentResult, PollTheme } from './types';
 
 interface RuleTheme {
   category: string;
@@ -11,16 +11,16 @@ const RULE_MAP: RuleTheme[] = [
   { category: 'cantik', keywords: ['cantik', 'tercantik', 'anggun', 'teranggun', 'jelita', 'terjelita', 'manis', 'termanis', 'wanita tercantik', 'cewek cantik'], title: 'Pegawai Paling Cantik' },
   { category: 'cerdas', keywords: ['cerdas', 'tercerdas', 'pintar', 'terpintar', 'genius', 'jenius', 'otak encer', 'solutif'], title: 'Pegawai Paling Cerdas' },
   { category: 'rajin', keywords: ['rajin', 'terajin', 'disiplin', 'terdisiplin', 'ulet', 'tepat waktu', 'pekerja keras'], title: 'Pegawai Paling Rajin' },
-  { category: 'soleh', keywords: ['soleh', 'tersoleh', 'sholeh', 'tersholeh', 'alim', 'santun', 'ibadah', 'agamis'], title: 'Pegawai Paling Soleh & Santun' },
-  { category: 'dermawan', keywords: ['dermawan', 'terdermawan', 'pemurah', 'suka berbagi', 'sedekah', 'ringan tangan'], title: 'Pegawai Paling Dermawan' },
+  { category: 'soleh', keywords: ['soleh', 'tersoleh', 'sholeh', 'tersholeh', 'alim', 'santun', 'ibadah', 'agamis', 'religius'], title: 'Pegawai Paling Soleh & Santun' },
+  { category: 'dermawan', keywords: ['dermawan', 'terdermawan', 'pemurah', 'suka berbagi', 'sedekah', 'ringan tangan', 'bersih', 'terbersih', 'paling bersih'], title: 'Pegawai Paling Dermawan' },
   { category: 'royal', keywords: ['royal', 'ter-royal', 'traktir', 'suka traktir', 'jajanin', 'bayarin'], title: 'Pegawai Paling Royal' },
   { category: 'baik', keywords: ['baik hati', 'paling baik', 'terbaik hati', 'tulus', 'teramah', 'penolong'], title: 'Pegawai Paling Baik Hati' },
-  { category: 'tahu_segala', keywords: ['tahu segala', 'paling tahu', 'kamus berjalan', 'serba tahu', 'wawasan luas'], title: 'Pegawai Paling Tahu Segala' },
-  { category: 'update', keywords: ['terupdate', 'ter-update', 'paling update', 'up to date'], title: 'Pegawai Paling Update' },
-  { category: 'gaptek', keywords: ['gaptek', 'tergaptek', 'gagap teknologi', 'bingung mouse'], title: 'Pegawai Paling Gaptek' },
+  { category: 'tahu_segala', keywords: ['tahu segala', 'paling tahu', 'kamus berjalan', 'serba tahu', 'wawasan luas', 'ramah', 'paling ramah', 'teramah', 'menyapa'], title: 'Pegawai Paling Tahu Segala' },
+  { category: 'update', keywords: ['terupdate', 'ter-update', 'paling update', 'up to date', 'pendiam', 'terpendiam', 'paling pendiam', 'diam'], title: 'Pegawai Paling Update' },
+  { category: 'gaptek', keywords: ['gaptek', 'tergaptek', 'gagap teknologi', 'bingung mouse', 'suka jajan', 'banyak jajan', 'jajan'], title: 'Pegawai Paling Gaptek' },
   { category: 'murah_senyum', keywords: ['murah senyum', 'paling murah senyum', 'sumringah'], title: 'Pegawai Paling Murah Senyum' },
-  { category: 'cool', keywords: ['cool', 'tercool', 'paling cool', 'terkalem', 'karismatik', 'kharisma'], title: 'Pegawai Paling Cool & Tenang' },
-  { category: 'trendy', keywords: ['trendy', 'tertrendy', 'modis', 'termodis', 'stylish', 'fashionable'], title: 'Pegawai Paling Trendy' },
+  { category: 'cool', keywords: ['cool', 'tercool', 'paling cool', 'terkalem', 'karismatik', 'kharisma', 'nyantai', 'santai'], title: 'Pegawai Paling Cool & Tenang' },
+  { category: 'trendy', keywords: ['trendy', 'tertrendy', 'modis', 'termodis', 'stylish', 'fashionable', 'sibuk', 'tersibuk', 'paling sibuk'], title: 'Pegawai Paling Trendy' },
   { category: 'lucu', keywords: ['terlucu', 'paling lucu', 'komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa'], title: 'Pegawai Paling Lucu' },
 ];
 
@@ -43,11 +43,69 @@ const EXPLICIT_POLL_PHRASES = [
 ];
 
 /**
+ * Ekstrak kata kunci dari tema polling kustom yang diedit admin
+ */
+function buildRulesFromThemes(themes?: PollTheme[]): RuleTheme[] {
+  if (!themes || themes.length === 0) {
+    return RULE_MAP;
+  }
+
+  const stopwords = new Set([
+    'pegawai', 'paling', 'yang', 'dan', 'atau', 'di', 'dkpp', 'kota', 'cilegon', 'siapa', 'ini', 'itu',
+    'dengan', 'para', 'bisa', 'kolega', 'rekan', 'kerja', 'selalu'
+  ]);
+
+  const dynamicRules: RuleTheme[] = themes.map((theme) => {
+    const kws = new Set<string>();
+    kws.add(theme.code.toLowerCase());
+
+    const titleLower = (theme.title || '').toLowerCase();
+    const shortLower = (theme.short_label || '').toLowerCase();
+
+    const cleanTitle = titleLower.replace(/^(pegawai|staf|kategori|tema)\s+/i, '').trim();
+    if (cleanTitle) kws.add(cleanTitle);
+
+    const cleanShort = shortLower.replace(/^paling\s+/i, '').trim();
+    if (cleanShort) {
+      kws.add(cleanShort);
+      kws.add(`paling ${cleanShort}`);
+      kws.add(`ter${cleanShort}`);
+      kws.add(`ter-${cleanShort}`);
+    }
+
+    // Ambil kata-kata penting
+    const tokens = `${titleLower} ${shortLower}`.split(/[^a-z0-9_-]+/).filter((w) => w.length >= 3 && !stopwords.has(w));
+    for (const tok of tokens) {
+      kws.add(tok);
+      kws.add(`paling ${tok}`);
+      kws.add(`ter${tok}`);
+      kws.add(`ter-${tok}`);
+    }
+
+    // Gabungkan dengan kata kunci dari RULE_MAP bawaan jika ada kecocokan kode
+    const existingRule = RULE_MAP.find((r) => r.category === theme.code);
+    if (existingRule) {
+      for (const ekw of existingRule.keywords) {
+        kws.add(ekw);
+      }
+    }
+
+    return {
+      category: theme.code,
+      keywords: Array.from(kws).filter(Boolean),
+      title: theme.title,
+    };
+  });
+
+  return dynamicRules;
+}
+
+/**
  * Deteksi maksud pengguna secara kontekstual:
  * Menghindari penafsiran membabi-buta terhadap kata seperti "baik", "cantik", "hasil", dsb.
  * yang berada dalam kalimat panjang atau konteks kedinasan formal.
  */
-export function detectPollingIntent(userMessage: string): PollIntentResult {
+export function detectPollingIntent(userMessage: string, customThemes?: PollTheme[]): PollIntentResult {
   if (!userMessage || typeof userMessage !== 'string') {
     return { intent: 'GENERAL_CHAT', confidence: 0 };
   }
@@ -70,10 +128,12 @@ export function detectPollingIntent(userMessage: string): PollIntentResult {
     return { intent: 'GENERAL_CHAT', confidence: 0 };
   }
 
-  // 3. Deteksi tema dari RULE_MAP
+  const activeRules = buildRulesFromThemes(customThemes);
+
+  // 3. Deteksi tema dari activeRules
   let matchedTheme: string | null = null;
   let matchedTitle: string | null = null;
-  for (const rule of RULE_MAP) {
+  for (const rule of activeRules) {
     if (rule.keywords.some((kw) => {
       // Pastikan pencocokan kata utuh atau frasa jelas, bukan substring acak
       const regex = new RegExp(`(^|\\b|\\s)${kw}(\\b|\\s|$)`, 'i');
@@ -86,7 +146,7 @@ export function detectPollingIntent(userMessage: string): PollIntentResult {
   }
 
   // 4. Deteksi apakah pertanyaan menanyakan predikat pegawai (Superlative inquiry)
-  // Contoh: "siapa pegawai paling ganteng?", "siapa staf terajin?", "siapa yang paling soleh di dkpp?"
+  // Contoh: "siapa pegawai paling ganteng?", "siapa staf terajin?", "siapa yang paling soleh di dkpp?", "siapa paling pendiam"
   const hasWho = /\b(siapa|siapakah)\b/i.test(normalized);
   const hasSuperlative = /\b(paling|ter|ter-)\b/i.test(normalized);
   const hasEmployeeContext = /\b(pegawai|staf|staff|asn|pejabat|karyawan|orang|cowok|cewek|pria|wanita|dkpp|kantor|dinas)\b/i.test(normalized);
@@ -109,7 +169,7 @@ export function detectPollingIntent(userMessage: string): PollIntentResult {
 
   // Jika query meminta carousel live hasil
   if (isCarouselOrLiveRequest) {
-    const targetCode = matchedTheme || 'cantik';
+    const targetCode = matchedTheme || (customThemes?.[0]?.code || 'cantik');
     return {
       intent: 'EMPLOYEE_POLL',
       category: 'carousel',
@@ -121,7 +181,7 @@ export function detectPollingIntent(userMessage: string): PollIntentResult {
   // 6. Jika query menyebut tema tertentu UNTUK voting / nominasi pegawai
   // Hanya berlaku jika:
   // a. Disertai konteks kepegawaian / pertanyaan "siapa paling..."
-  // b. Atau perintah pendek eksplisit (<= 5 kata, cth: "polling cantik", "vote pegawai ganteng", "pilih soleh")
+  // b. Atau perintah pendek eksplisit (<= 5 kata, cth: "polling cantik", "vote pegawai ganteng", "pilih soleh", "siapa paling pendiam")
   // c. Atau ada frasa eksplisit polling
   if (matchedTheme) {
     const isShortDirectCommand =
@@ -160,4 +220,5 @@ export function detectPollingIntent(userMessage: string): PollIntentResult {
   // 8. Default: Biarkan AI Gemini menjawab secara kontekstual dan menyeluruh
   return { intent: 'GENERAL_CHAT', confidence: 0 };
 }
+
 

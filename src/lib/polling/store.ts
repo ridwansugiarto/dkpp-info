@@ -1,3 +1,7 @@
+import { supabaseAdmin } from '@/lib/supabaseServer';
+import { OFFICIAL_POLL_THEMES } from './constants';
+import { PollTheme } from './types';
+
 // In-memory vote store for local and fallback real-time tally
 export interface MemoryVote {
   poll_id: string;
@@ -17,6 +21,7 @@ export interface MemoryParticipation {
 const globalForPolling = globalThis as unknown as {
   _memoryVotes?: MemoryVote[];
   _memoryParticipations?: MemoryParticipation[];
+  _cachedActiveThemes?: { data: PollTheme[]; timestamp: number };
 };
 
 if (!globalForPolling._memoryVotes) {
@@ -28,6 +33,76 @@ if (!globalForPolling._memoryParticipations) {
 
 export const memoryVotes = globalForPolling._memoryVotes;
 export const memoryParticipations = globalForPolling._memoryParticipations;
+
+/**
+ * Invalidate the in-memory cache of poll themes
+ */
+export function invalidatePollThemesCache() {
+  globalForPolling._cachedActiveThemes = undefined;
+}
+
+/**
+ * Ambil daftar seluruh tema polling aktif dari database Supabase secara dinamis.
+ * Menyimpan cache singkat (5 detik) untuk performa tinggi sekaligus sinkronisasi instan pasca edit admin.
+ */
+export async function getActivePollThemes(): Promise<PollTheme[]> {
+  const now = Date.now();
+  if (
+    globalForPolling._cachedActiveThemes &&
+    now - globalForPolling._cachedActiveThemes.timestamp < 5000 &&
+    globalForPolling._cachedActiveThemes.data.length > 0
+  ) {
+    return globalForPolling._cachedActiveThemes.data;
+  }
+
+  try {
+    const { data: dbPolls, error } = await supabaseAdmin
+      .from('polls')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (!error && dbPolls && dbPolls.length > 0) {
+      const themes: PollTheme[] = dbPolls.map((p) => ({
+        id: p.id,
+        code: p.code,
+        title: p.title,
+        short_label: p.short_label || p.title,
+        icon: p.icon || '🏆',
+        description: p.description || '',
+        max_choices: p.max_choices || 3,
+        allow_self_vote: p.allow_self_vote || false,
+        is_active: p.is_active ?? true,
+      }));
+
+      globalForPolling._cachedActiveThemes = {
+        data: themes,
+        timestamp: now,
+      };
+      return themes;
+    }
+  } catch (err) {
+    console.warn('getActivePollThemes DB fetch failed, using fallback:', err);
+  }
+
+  // Fallback ke tema resmi jika database belum tersedia
+  return OFFICIAL_POLL_THEMES;
+}
+
+/**
+ * Ambil detail satu tema polling berdasarkan kode atau ID
+ */
+export async function getPollThemeByCodeOrId(codeOrId: string): Promise<PollTheme> {
+  const clean = (codeOrId || '').trim();
+  const cleanCode = clean.replace(/^poll-/, '');
+  const themes = await getActivePollThemes();
+
+  const found = themes.find(
+    (t) => t.code === cleanCode || t.id === clean || t.code === clean || t.id === `poll-${cleanCode}`
+  );
+
+  return found || themes[0] || OFFICIAL_POLL_THEMES[0];
+}
 
 export function recordMemoryVote(pollId: string, userId: string, employeeIds: string[]) {
   // Normalize pollId

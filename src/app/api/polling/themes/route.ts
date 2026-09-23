@@ -1,31 +1,20 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
+import { getActivePollThemes } from '@/lib/polling/store';
 
 export async function GET() {
   try {
-    const { data: dbPolls, error } = await supabase
-      .from('polls')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (!error && dbPolls && dbPolls.length > 0) {
-      return NextResponse.json({
-        success: true,
-        themes: dbPolls,
-      });
-    }
-
-    // Fallback ke tema resmi jika belum ada di database
+    const themes = await getActivePollThemes();
     return NextResponse.json({
       success: true,
-      themes: OFFICIAL_POLL_THEMES,
+      themes,
     });
   } catch (err: any) {
     console.error('Fetch polling themes error:', err);
+    const { OFFICIAL_POLL_THEMES } = await import('@/lib/polling/constants');
     return NextResponse.json({
       success: true,
       themes: OFFICIAL_POLL_THEMES,
     });
   }
 }
+

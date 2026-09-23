@@ -124,14 +124,15 @@ export async function POST(req: NextRequest) {
 
     // 4. Deteksi Maksud Polling Pegawai (AI Intent Detection)
     const { detectPollingIntent } = await import('@/lib/polling/intent');
-    const { OFFICIAL_POLL_THEMES } = await import('@/lib/polling/constants');
-    const pollIntent = detectPollingIntent(message);
+    const { getActivePollThemes } = await import('@/lib/polling/store');
+    const activeThemes = await getActivePollThemes();
+    const pollIntent = detectPollingIntent(message, activeThemes);
 
     if (pollIntent.intent === 'EMPLOYEE_POLL' && pollIntent.category && (pollIntent.confidence ?? 0) >= 0.8) {
       if (pollIntent.category === 'carousel') {
         if (authProfile.role === 'GUEST') {
           const guestNotice = `### 🔒 Akses Dibatasi — Live Hasil Polling DKPP\n\n` +
-            `Hasil **Live Polling Pegawai & Apresiasi Internal (15 Tema)** di DKPP Kota Cilegon berkategori **INTERNAL**.\n\n` +
+            `Hasil **Live Polling Pegawai & Apresiasi Internal (${activeThemes.length} Tema)** di DKPP Kota Cilegon berkategori **INTERNAL**.\n\n` +
             `Silakan **Masuk dengan Google (Gmail)** untuk memutar carousel hasil polling secara lengkap.`;
           return NextResponse.json({
             message: {
@@ -149,8 +150,8 @@ export async function POST(req: NextRequest) {
         }
 
         const lowerMsg = message.toLowerCase();
-        let initialCode = 'cantik';
-        const foundTheme = OFFICIAL_POLL_THEMES.find(t => 
+        let initialCode = activeThemes[0]?.code || 'cantik';
+        const foundTheme = activeThemes.find(t => 
           lowerMsg.includes(t.code) || 
           lowerMsg.includes(t.short_label.toLowerCase()) || 
           lowerMsg.includes(t.title.toLowerCase())
@@ -159,7 +160,7 @@ export async function POST(req: NextRequest) {
           initialCode = foundTheme.code;
         }
 
-        const carouselText = `🎠 **Live Carousel Hasil Polling Pegawai (15 Tema DKPP)**\n\nBerikut tampilan live perolehan suara 15 tema polling apresiasi keluarga besar DKPP Kota Cilegon. Kamu bisa menggeser tema, menjeda putar otomatis (*auto-slide*), atau langsung memberikan suara!`;
+        const carouselText = `🎠 **Live Carousel Hasil Polling Pegawai (${activeThemes.length} Tema DKPP)**\n\nBerikut tampilan live perolehan suara ${activeThemes.length} tema polling apresiasi keluarga besar DKPP Kota Cilegon. Kamu bisa menggeser tema, menjeda putar otomatis (*auto-slide*), atau langsung memberikan suara!`;
 
         const { userMsgId, assistantMsgId } = await persistMessages(
           message,
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
           content: carouselText,
           type: 'poll_carousel',
           poll_carousel: {
-            themes: OFFICIAL_POLL_THEMES,
+            themes: activeThemes,
             initialThemeCode: initialCode,
           },
           message: {
@@ -193,7 +194,7 @@ export async function POST(req: NextRequest) {
             content: carouselText,
             type: 'poll_carousel',
             poll_carousel: {
-              themes: OFFICIAL_POLL_THEMES,
+              themes: activeThemes,
               initialThemeCode: initialCode,
             },
             created_at: new Date().toISOString(),
@@ -223,7 +224,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const responseText = `🏆 **Katalog 15 Tema Polling Pegawai DKPP Kota Cilegon**\n\nPilih tema polling yang ingin kamu ikuti langsung di bawah ini! Kamu bisa memilih 1 hingga 3 nama rekan kerja per tema secara aman & 100% anonim.`;
+        const responseText = `🏆 **Katalog ${activeThemes.length} Tema Polling Pegawai DKPP Kota Cilegon**\n\nPilih tema polling yang ingin kamu ikuti langsung di bawah ini! Kamu bisa memilih 1 hingga 3 nama rekan kerja per tema secara aman & 100% anonim.`;
 
         const { userMsgId, assistantMsgId } = await persistMessages(
           message,
@@ -245,7 +246,7 @@ export async function POST(req: NextRequest) {
           content: responseText,
           type: 'poll_catalog',
           poll_catalog: {
-            themes: OFFICIAL_POLL_THEMES,
+            themes: activeThemes,
           },
           message: {
             id: assistantMsgId,
@@ -254,7 +255,7 @@ export async function POST(req: NextRequest) {
             content: responseText,
             type: 'poll_catalog',
             poll_catalog: {
-              themes: OFFICIAL_POLL_THEMES,
+              themes: activeThemes,
             },
             auth_prompt: !authProfile.is_verified_employee ? 'NIP_REQUIRED' : undefined,
             created_at: new Date().toISOString(),
@@ -265,7 +266,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Ambil tema poll yang cocok
-      const targetTheme = OFFICIAL_POLL_THEMES.find((t) => t.code === pollIntent.category) || OFFICIAL_POLL_THEMES[0];
+      const targetTheme = activeThemes.find((t) => t.code === pollIntent.category) || activeThemes[0];
       let activePoll = { ...targetTheme };
 
       try {
@@ -318,7 +319,7 @@ export async function POST(req: NextRequest) {
           auth_prompt: 'NIP_REQUIRED',
           poll_card: {
             poll: activePoll,
-            available_themes: OFFICIAL_POLL_THEMES,
+            available_themes: activeThemes,
           },
           message: {
             id: 'msg-poll-citizen-' + Date.now(),
@@ -329,7 +330,7 @@ export async function POST(req: NextRequest) {
             auth_prompt: 'NIP_REQUIRED',
             poll_card: {
               poll: activePoll,
-              available_themes: OFFICIAL_POLL_THEMES,
+              available_themes: activeThemes,
             },
             created_at: new Date().toISOString(),
           },
@@ -388,7 +389,7 @@ export async function POST(req: NextRequest) {
         type: 'poll_card',
         poll_card: {
           poll: activePoll,
-          available_themes: OFFICIAL_POLL_THEMES,
+          available_themes: activeThemes,
         },
         message: {
           id: assistantMsgId,
@@ -398,7 +399,7 @@ export async function POST(req: NextRequest) {
           type: 'poll_card',
           poll_card: {
             poll: activePoll,
-            available_themes: OFFICIAL_POLL_THEMES,
+            available_themes: activeThemes,
           },
           created_at: new Date().toISOString(),
         },

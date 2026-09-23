@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin, resolveUserAuth } from '@/lib/supabaseServer';
 import { checkRateLimit } from '@/lib/polling/guards';
-import { recordMemoryVote } from '@/lib/polling/store';
+import { recordMemoryVote, getPollThemeByCodeOrId } from '@/lib/polling/store';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 
 const VoteSchema = z.object({
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     // 3. Cari Data Poll
     let dbPollId = poll_id;
     const cleanCode = poll_id.replace(/^poll-/, '');
-    const fallbackTheme = OFFICIAL_POLL_THEMES.find((t) => t.code === cleanCode || t.id === poll_id);
+    const fallbackTheme = await getPollThemeByCodeOrId(poll_id);
 
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poll_id);
     try {

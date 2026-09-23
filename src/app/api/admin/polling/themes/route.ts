@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin, resolveUserAuth } from '@/lib/supabaseServer';
 import { isAuthorizedAdmin, validateThemeGovernance } from '@/lib/polling/guards';
-import { clearMemoryPoll } from '@/lib/polling/store';
+import { clearMemoryPoll, invalidatePollThemesCache } from '@/lib/polling/store';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 
 // Helper verifikasi Superadmin
@@ -209,6 +209,8 @@ export async function POST(request: Request) {
       user_agent: userAgent,
     });
 
+    invalidatePollThemesCache();
+
     return NextResponse.json({
       success: true,
       message: `Tema polling "${title}" berhasil dibuat!`,
@@ -290,6 +292,8 @@ export async function PUT(request: Request) {
       user_agent: userAgent,
     });
 
+    invalidatePollThemesCache();
+
     return NextResponse.json({
       success: true,
       message: `Tema polling "${updated.title}" berhasil diperbarui!`,
@@ -344,6 +348,7 @@ export async function DELETE(request: Request) {
 
     // 2. Bersihkan di memory store
     clearMemoryPoll(pollIdVariants);
+    invalidatePollThemesCache();
 
     // 3. Hapus entri polls
     const { error: delError } = await supabaseAdmin.from('polls').delete().eq('id', targetPoll.id);
@@ -371,6 +376,8 @@ export async function DELETE(request: Request) {
       ip_address: ip,
       user_agent: userAgent,
     });
+
+    invalidatePollThemesCache();
 
     return NextResponse.json({
       success: true,

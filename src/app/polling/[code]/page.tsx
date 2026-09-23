@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { getPollThemeByCodeOrId } from '@/lib/polling/store';
 import { PollCard } from '@/components/polling/PollCard';
 import { PollTheme } from '@/lib/polling/types';
 import { FiChevronLeft, FiGrid } from 'react-icons/fi';
@@ -15,17 +15,10 @@ export const revalidate = 0; // Dynamic
 export default async function PollDetailPage({ params }: PageProps) {
   const { code } = await params;
 
-  const { data: poll, error } = await supabase
-    .from('polls')
-    .select('*')
-    .eq('code', code)
-    .maybeSingle();
-
-  if (error || !poll) {
+  const pollTheme = await getPollThemeByCodeOrId(code);
+  if (!pollTheme) {
     notFound();
   }
-
-  const pollTheme: PollTheme = poll;
 
   return (
     <div className="min-h-screen bg-slate-50/60 pb-16">

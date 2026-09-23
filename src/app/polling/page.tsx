@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { getActivePollThemes } from '@/lib/polling/store';
 import { ThemeCatalog } from '@/components/polling/ThemeCatalog';
 import { PollTheme } from '@/lib/polling/types';
 import { FiChevronLeft } from 'react-icons/fi';
@@ -8,13 +8,7 @@ import { FiChevronLeft } from 'react-icons/fi';
 export const revalidate = 0; // Dynamic
 
 export default async function PollingCatalogPage() {
-  const { data: polls } = await supabase
-    .from('polls')
-    .select('*')
-    .eq('is_active', true)
-    .order('created_at', { ascending: true });
-
-  const themes: PollTheme[] = polls || [];
+  const themes: PollTheme[] = await getActivePollThemes();
 
   return (
     <div className="min-h-screen bg-slate-50/60 pb-16">

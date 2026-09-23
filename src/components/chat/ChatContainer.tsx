@@ -598,22 +598,33 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                                 }}
                                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-xs transition-all cursor-pointer active:scale-95 shrink-0 whitespace-normal text-center leading-tight"
                               >
-                                <span>🎠 Live Carousel (15 Tema)</span>
+                                <span>🎠 Live Carousel ({msg.poll_card?.available_themes?.length || 15} Tema)</span>
                               </button>
                             </div>
 
                             <div className="flex flex-wrap gap-1.5">
-                              {[
-                                { label: '💃 Paling Cantik', code: 'cantik' },
-                                { label: '💇 Paling Ganteng', code: 'ganteng' },
-                                { label: '📚 Paling Rajin', code: 'rajin' },
-                                { label: '🧠 Paling Cerdas', code: 'cerdas' },
-                                { label: '🕌 Paling Soleh', code: 'soleh' },
-                                { label: '😂 Paling Lucu', code: 'lucu' },
-                                { label: '🎁 Paling Royal', code: 'royal' },
-                                { label: '❤️ Paling Baik', code: 'baik' },
-                                { label: '📋 Semua 15 Tema', code: 'all' },
-                              ].map((cat) => (
+                              {(
+                                msg.poll_card?.available_themes && msg.poll_card.available_themes.length > 0
+                                  ? [
+                                      ...msg.poll_card.available_themes.map((t) => ({
+                                        label: `${t.icon || '🏆'} ${t.short_label || t.title}`,
+                                        code: t.code,
+                                        query: t.short_label || t.title,
+                                      })),
+                                      { label: '📋 Semua Tema', code: 'all', query: 'all' },
+                                    ]
+                                  : [
+                                      { label: '💃 Paling Cantik', code: 'cantik', query: 'paling cantik' },
+                                      { label: '💇 Paling Ganteng', code: 'ganteng', query: 'paling ganteng' },
+                                      { label: '📚 Paling Rajin', code: 'rajin', query: 'paling rajin' },
+                                      { label: '🧠 Paling Cerdas', code: 'cerdas', query: 'paling cerdas' },
+                                      { label: '🕌 Paling Soleh', code: 'soleh', query: 'paling soleh' },
+                                      { label: '😂 Paling Lucu', code: 'lucu', query: 'paling lucu' },
+                                      { label: '🎁 Paling Royal', code: 'royal', query: 'paling royal' },
+                                      { label: '❤️ Paling Baik', code: 'baik', query: 'paling baik' },
+                                      { label: '📋 Semua 15 Tema', code: 'all', query: 'all' },
+                                    ]
+                              ).map((cat) => (
                                 <button
                                   key={cat.code}
                                   type="button"
@@ -621,7 +632,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                                     if (cat.code === 'all') {
                                       onSendMessage?.('katalog semua polling');
                                     } else {
-                                      onSendMessage?.(`siapa pegawai ${cat.label.replace(/^[^\s]+\s*/, '')}`);
+                                      onSendMessage?.(`siapa pegawai ${cat.query.toLowerCase()}`);
                                     }
                                   }}
                                   className={`px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all cursor-pointer whitespace-normal break-words leading-tight max-w-full inline-flex items-center text-left ${

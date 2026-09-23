@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { OFFICIAL_DKPP_PEGAWAI } from '@/data/pegawai_dkpp';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
-import { getMemoryResults } from '@/lib/polling/store';
+import { getMemoryResults, getPollThemeByCodeOrId } from '@/lib/polling/store';
 import { resolveEmployeeProfilesBatch } from '@/lib/polling/resolver';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -21,7 +21,7 @@ export async function GET(
     }
 
     // 1. Ambil Data Tema Poll (dari Database atau Constants Fallback)
-    let targetPoll = OFFICIAL_POLL_THEMES.find((t) => t.code === cleanCode || t.id === identifier) || OFFICIAL_POLL_THEMES[0];
+    let targetPoll = await getPollThemeByCodeOrId(identifier);
 
     try {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);

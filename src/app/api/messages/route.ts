@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import { getActivePollThemes } from '@/lib/polling/store';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 
 export async function GET(req: NextRequest) {
@@ -93,6 +94,9 @@ export async function GET(req: NextRequest) {
       cachedGkgData = await getLiveGkgData();
     }
 
+    // Ambil seluruh tema aktif terbaru
+    const activeThemes = await getActivePollThemes();
+
     // Hydrate interactive polling / carousel widgets from tool_calls or content
     const messages = (rawMessages || []).map((msg) => {
       const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -102,16 +106,16 @@ export async function GET(req: NextRequest) {
       const isCarouselContent = typeof msg.content === 'string' && (
         msg.content.includes('🎠 **Live Carousel Hasil Polling Pegawai') ||
         msg.content.includes('Live Carousel Hasil Polling') ||
-        msg.content.includes('Carousel 15 Tema')
+        msg.content.includes('Carousel')
       );
 
       if (carouselTool || isCarouselContent) {
-        const initialCode = carouselTool?.args?.initialThemeCode || 'cantik';
+        const initialCode = carouselTool?.args?.initialThemeCode || (activeThemes[0]?.code || 'cantik');
         return {
           ...msg,
           type: 'poll_carousel',
           poll_carousel: {
-            themes: OFFICIAL_POLL_THEMES,
+            themes: activeThemes,
             initialThemeCode: initialCode,
           },
         };
@@ -120,7 +124,8 @@ export async function GET(req: NextRequest) {
       // 2. Check for poll_catalog
       const catalogTool = toolCalls.find((t: any) => t?.name === 'poll_catalog');
       const isCatalogContent = typeof msg.content === 'string' && (
-        msg.content.includes('🏆 **Katalog 15 Tema Polling Pegawai') ||
+        msg.content.includes('🏆 **Katalog') ||
+        msg.content.includes('Katalog') && msg.content.includes('Tema Polling') ||
         msg.content.includes('Daftar Tema Polling Pegawai')
       );
 
@@ -129,31 +134,35 @@ export async function GET(req: NextRequest) {
           ...msg,
           type: 'poll_catalog',
           poll_catalog: {
-            themes: OFFICIAL_POLL_THEMES,
+            themes: activeThemes,
           },
         };
       }
 
       // 3. Check for poll_card
       const pollCardTool = toolCalls.find((t: any) => t?.name === 'poll_card');
-      const isPollCardContent = typeof msg.content === 'string' && msg.content.includes('Berikut ini polling');
+      const isPollCardContent = typeof msg.content === 'string' && (
+        msg.content.includes('Berikut ini formulir polling') ||
+        msg.content.includes('Berikut ini polling') ||
+        msg.content.includes('formulir polling')
+      );
 
       if (pollCardTool || isPollCardContent) {
-        let pollCode = pollCardTool?.args?.pollCode || 'cantik';
+        let pollCode = pollCardTool?.args?.pollCode || (activeThemes[0]?.code || 'cantik');
         if (!pollCardTool && isPollCardContent) {
           const match = msg.content.match(/polling "([^"]+)"/);
           if (match) {
-            const found = OFFICIAL_POLL_THEMES.find(t => t.title.toLowerCase() === match[1].toLowerCase());
+            const found = activeThemes.find(t => t.title.toLowerCase() === match[1].toLowerCase());
             if (found) pollCode = found.code;
           }
         }
-        const foundTheme = OFFICIAL_POLL_THEMES.find((t) => t.code === pollCode) || OFFICIAL_POLL_THEMES[0];
+        const foundTheme = activeThemes.find((t) => t.code === pollCode || t.id === pollCode) || activeThemes[0];
         return {
           ...msg,
           type: 'poll_card',
           poll_card: {
             poll: foundTheme,
-            available_themes: OFFICIAL_POLL_THEMES,
+            available_themes: activeThemes,
           },
         };
       }
