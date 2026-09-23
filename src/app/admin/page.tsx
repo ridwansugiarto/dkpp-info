@@ -68,18 +68,42 @@ export default function AdminPortalPage() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
   // Polling Management States
-  const [selectedPollThemeCode, setSelectedPollThemeCode] = useState('cantik');
+  const [pollThemes, setPollThemes] = useState<any[]>(OFFICIAL_POLL_THEMES);
+  const [selectedPollThemeCode, setSelectedPollThemeCode] = useState('cerdas');
   const [pollDetail, setPollDetail] = useState<any>(null);
   const [pollResults, setPollResults] = useState<any[]>([]);
   const [pollTotalVotes, setPollTotalVotes] = useState(0);
   const [pollVoters, setPollVoters] = useState<any[]>([]);
   const [pollAuditLogs, setPollAuditLogs] = useState<any[]>([]);
-  const [pollSubTab, setPollSubTab] = useState<'AGREGAT' | 'ANONIM' | 'AUDIT'>('AGREGAT');
+  const [pollSubTab, setPollSubTab] = useState<'TEMA' | 'AGREGAT' | 'ANONIM' | 'AUDIT'>('TEMA');
   const [pollLoading, setPollLoading] = useState(false);
   const [pollActionMsg, setPollActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [resetReason, setResetReason] = useState('Audit berkala & pembersihan data uji');
   const [isResetting, setIsResetting] = useState(false);
+
+  // Polling Theme CRUD Modal States
+  const [showAddThemeModal, setShowAddThemeModal] = useState(false);
+  const [newThemeCode, setNewThemeCode] = useState('');
+  const [newThemeTitle, setNewThemeTitle] = useState('');
+  const [newThemeLabel, setNewThemeLabel] = useState('');
+  const [newThemeIcon, setNewThemeIcon] = useState('🏆');
+  const [newThemeDesc, setNewThemeDesc] = useState('');
+  const [newThemeMaxChoices, setNewThemeMaxChoices] = useState(3);
+  const [isSavingNewTheme, setIsSavingNewTheme] = useState(false);
+
+  const [editingTheme, setEditingTheme] = useState<any | null>(null);
+  const [editThemeTitle, setEditThemeTitle] = useState('');
+  const [editThemeLabel, setEditThemeLabel] = useState('');
+  const [editThemeIcon, setEditThemeIcon] = useState('🏆');
+  const [editThemeDesc, setEditThemeDesc] = useState('');
+  const [editThemeMaxChoices, setEditThemeMaxChoices] = useState(3);
+  const [editThemeActive, setEditThemeActive] = useState(true);
+  const [isSavingEditTheme, setIsSavingEditTheme] = useState(false);
+
+  const [deletingTheme, setDeletingTheme] = useState<any | null>(null);
+  const [deleteThemeReason, setDeleteThemeReason] = useState('Penghapusan tema polling oleh Super Admin');
+  const [isDeletingTheme, setIsDeletingTheme] = useState(false);
 
   // Filter & Search Documents
   const [selectedFolderFilter, setSelectedFolderFilter] = useState<string | null>(null);
@@ -143,6 +167,8 @@ export default function AdminPortalPage() {
       fetchAuditLogs();
       fetchNips();
       fetchSyncStatus();
+      fetchPollThemes();
+      fetchPollData(selectedPollThemeCode);
     }
   }, [isAuthorizedAdmin]);
 
@@ -586,6 +612,182 @@ export default function AdminPortalPage() {
   }
 
   // Polling fetch & mutation handlers
+  const fetchPollThemes = async () => {
+    try {
+      const res = await fetch(`/api/admin/polling/themes?adminEmail=${encodeURIComponent(currentUserEmail || AUTHORIZED_ADMIN_EMAIL)}`);
+      const data = await res.json();
+      if (res.ok && data.polls) {
+        setPollThemes(data.polls);
+      }
+    } catch (err) {
+      console.error('Fetch admin poll themes error:', err);
+    }
+  };
+
+  const handleCreateThemeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newThemeCode.trim() || !newThemeTitle.trim() || !newThemeLabel.trim()) {
+      setPollActionMsg({ type: 'error', text: 'Kode (slug), Judul Polling, dan Label Pendek wajib diisi.' });
+      return;
+    }
+    setIsSavingNewTheme(true);
+    setPollActionMsg(null);
+    try {
+      const res = await fetch('/api/admin/polling/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newThemeCode,
+          title: newThemeTitle,
+          short_label: newThemeLabel,
+          icon: newThemeIcon,
+          description: newThemeDesc,
+          max_choices: newThemeMaxChoices,
+          is_active: true,
+          adminEmail: currentUserEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        setShowAddThemeModal(false);
+        setNewThemeCode('');
+        setNewThemeTitle('');
+        setNewThemeLabel('');
+        setNewThemeIcon('🏆');
+        setNewThemeDesc('');
+        setNewThemeMaxChoices(3);
+        await fetchPollThemes();
+        if (data.poll?.code) {
+          setSelectedPollThemeCode(data.poll.code);
+          fetchPollData(data.poll.code);
+        }
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal membuat tema baru.' });
+      }
+    } catch (err: any) {
+      setPollActionMsg({ type: 'error', text: err.message || 'Koneksi terganggu.' });
+    } finally {
+      setIsSavingNewTheme(false);
+    }
+  };
+
+  const handleOpenEditTheme = (theme: any) => {
+    setEditingTheme(theme);
+    setEditThemeTitle(theme.title || '');
+    setEditThemeLabel(theme.short_label || '');
+    setEditThemeIcon(theme.icon || '🏆');
+    setEditThemeDesc(theme.description || '');
+    setEditThemeMaxChoices(theme.max_choices || 3);
+    setEditThemeActive(theme.is_active !== false);
+  };
+
+  const handleUpdateThemeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTheme) return;
+    setIsSavingEditTheme(true);
+    setPollActionMsg(null);
+    try {
+      const res = await fetch('/api/admin/polling/themes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingTheme.id,
+          code: editingTheme.code,
+          title: editThemeTitle,
+          short_label: editThemeLabel,
+          icon: editThemeIcon,
+          description: editThemeDesc,
+          max_choices: editThemeMaxChoices,
+          is_active: editThemeActive,
+          adminEmail: currentUserEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        setEditingTheme(null);
+        await fetchPollThemes();
+        if (selectedPollThemeCode === editingTheme.code) {
+          fetchPollData(selectedPollThemeCode);
+        }
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal mengubah tema polling.' });
+      }
+    } catch (err: any) {
+      setPollActionMsg({ type: 'error', text: err.message || 'Koneksi terganggu.' });
+    } finally {
+      setIsSavingEditTheme(false);
+    }
+  };
+
+  const handleToggleThemeActive = async (theme: any) => {
+    try {
+      const newStatus = !theme.is_active;
+      const res = await fetch('/api/admin/polling/themes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: theme.id,
+          code: theme.code,
+          is_active: newStatus,
+          adminEmail: currentUserEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({
+          type: 'success',
+          text: `Status tema "${theme.title}" diubah menjadi: ${newStatus ? 'Aktif' : 'Non-Aktif'}`,
+        });
+        fetchPollThemes();
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal mengubah status tema.' });
+      }
+    } catch (err: any) {
+      setPollActionMsg({ type: 'error', text: err.message || 'Koneksi terganggu.' });
+    }
+  };
+
+  const handleOpenDeleteTheme = (theme: any) => {
+    setDeletingTheme(theme);
+    setDeleteThemeReason(`Penghapusan tema ${theme.title} oleh Super Admin`);
+  };
+
+  const handleDeleteThemeSubmit = async () => {
+    if (!deletingTheme) return;
+    setIsDeletingTheme(true);
+    setPollActionMsg(null);
+    try {
+      const res = await fetch('/api/admin/polling/themes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: deletingTheme.id,
+          code: deletingTheme.code,
+          reason: deleteThemeReason,
+          adminEmail: currentUserEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPollActionMsg({ type: 'success', text: data.message });
+        setDeletingTheme(null);
+        await fetchPollThemes();
+        if (selectedPollThemeCode === deletingTheme.code) {
+          setSelectedPollThemeCode('cantik');
+          fetchPollData('cantik');
+        }
+      } else {
+        setPollActionMsg({ type: 'error', text: data.error || 'Gagal menghapus tema polling.' });
+      }
+    } catch (err: any) {
+      setPollActionMsg({ type: 'error', text: err.message || 'Koneksi terganggu.' });
+    } finally {
+      setIsDeletingTheme(false);
+    }
+  };
+
   const fetchPollData = async (code: string) => {
     setPollLoading(true);
     setPollActionMsg(null);
@@ -1988,59 +2190,79 @@ export default function AdminPortalPage() {
           {/* TAB 7: POLLING PEGAWAI */}
           {activeTab === 'POLLING' && (
             <div className="space-y-6 animate-in fade-in">
-              {/* Header Polling Detail */}
+              {/* Header Polling Detail & Theme Selector */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">Detail Polling</h2>
-                  <div className="mt-2 flex items-center gap-2">
-                    <select
-                      value={selectedPollThemeCode}
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        setSelectedPollThemeCode(code);
-                        fetchPollData(code);
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-emerald-300 font-bold text-sm focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
-                    >
-                      {OFFICIAL_POLL_THEMES.map((theme) => (
-                        <option key={theme.code} value={theme.code}>
-                          {theme.icon || '🏆'} {theme.title}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-800">
+                      Superadmin Polling Engine
+                    </span>
+                    <span className="text-xs text-slate-400">Total {pollThemes.length} Tema Terdaftar</span>
                   </div>
+                  <h2 className="text-xl font-bold text-white tracking-tight mt-1.5 flex items-center gap-2">
+                    <span>Tata Kelola &amp; Hasil Polling Pegawai DKPP</span>
+                  </h2>
 
-                  {/* Meta Stats Badges */}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full border border-slate-400" />
-                      <span>Total suara: <strong className="text-white font-mono">{pollTotalVotes}</strong></span>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 font-medium">Tema Terpilih:</span>
+                      <select
+                        value={selectedPollThemeCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          setSelectedPollThemeCode(code);
+                          fetchPollData(code);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-emerald-300 font-bold text-xs sm:text-sm focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
+                      >
+                        {pollThemes.map((theme) => (
+                          <option key={theme.code || theme.id} value={theme.code}>
+                            {theme.icon || '🏆'} {theme.title} {theme.is_active === false ? '(Non-Aktif)' : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Status: Aktif</span>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-400 pl-1 border-l border-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full border border-slate-400" />
+                        <span>Suara Masuk: <strong className="text-white font-mono">{pollTotalVotes}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Status: {pollThemes.find((t) => t.code === selectedPollThemeCode)?.is_active === false ? 'Non-Aktif' : 'Aktif'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Top Action Buttons */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddThemeModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tambah Tema Baru</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleExportPollCsv}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition-all shadow-sm active:scale-95 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition-all shadow-sm active:scale-95 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 text-slate-300" />
-                    <span>Ekspor Data &gt;</span>
+                    <span>Ekspor CSV</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowResetConfirmModal(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Hapus / Reset Polling</span>
+                    <span>Reset Suara</span>
                   </button>
                 </div>
               </div>
@@ -2054,19 +2276,41 @@ export default function AdminPortalPage() {
                       : 'bg-rose-950/60 border-rose-800 text-rose-300'
                   }`}
                 >
-                  <span>{pollActionMsg.text}</span>
-                  <button onClick={() => setPollActionMsg(null)} className="text-slate-400 hover:text-white">
+                  <div className="flex items-center gap-2">
+                    {pollActionMsg.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                    )}
+                    <span>{pollActionMsg.text}</span>
+                  </div>
+                  <button onClick={() => setPollActionMsg(null)} className="text-slate-400 hover:text-white cursor-pointer">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
 
-              {/* 3 Sub-Tabs Navigation */}
-              <div className="flex items-center gap-6 border-b border-slate-800 text-xs font-bold pb-2">
+              {/* 4 Sub-Tabs Navigation */}
+              <div className="flex items-center gap-4 sm:gap-6 border-b border-slate-800 text-xs font-bold pb-2 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setPollSubTab('TEMA')}
+                  className={`pb-2 relative whitespace-nowrap transition-all cursor-pointer ${
+                    pollSubTab === 'TEMA'
+                      ? 'text-emerald-400'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>Daftar Semua Tema ({pollThemes.length})</span>
+                  {pollSubTab === 'TEMA' && (
+                    <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setPollSubTab('AGREGAT')}
-                  className={`pb-2 relative transition-all cursor-pointer ${
+                  className={`pb-2 relative whitespace-nowrap transition-all cursor-pointer ${
                     pollSubTab === 'AGREGAT'
                       ? 'text-emerald-400'
                       : 'text-slate-400 hover:text-slate-200'
@@ -2081,7 +2325,7 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setPollSubTab('ANONIM')}
-                  className={`pb-2 relative transition-all cursor-pointer ${
+                  className={`pb-2 relative whitespace-nowrap transition-all cursor-pointer ${
                     pollSubTab === 'ANONIM'
                       ? 'text-emerald-400'
                       : 'text-slate-400 hover:text-slate-200'
@@ -2096,28 +2340,188 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setPollSubTab('AUDIT')}
-                  className={`pb-2 relative transition-all cursor-pointer ${
+                  className={`pb-2 relative whitespace-nowrap transition-all cursor-pointer ${
                     pollSubTab === 'AUDIT'
                       ? 'text-emerald-400'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span>Log Aktivitas (Khusus Super Admin)</span>
+                  <span>Log Aktivitas (Super Admin)</span>
                   {pollSubTab === 'AUDIT' && (
                     <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
                   )}
                 </button>
               </div>
 
+              {/* TAB 0: DAFTAR SEMUA TEMA POLLING (CRUD MANAGER) */}
+              {pollSubTab === 'TEMA' && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Kelola Tema Polling DKPP</h3>
+                      <p className="text-[11px] text-slate-400">
+                        Tambah, ganti/edit judul &amp; deskripsi, non-aktifkan, atau hapus tema polling langsung via panel superadmin.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddThemeModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Tambah Tema</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-900 text-slate-300 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="py-3 px-4 w-12 text-center">No</th>
+                          <th className="py-3 px-4 w-14 text-center">Ikon</th>
+                          <th className="py-3 px-4">Judul &amp; Kode Polling</th>
+                          <th className="py-3 px-4">Deskripsi / Pertanyaan</th>
+                          <th className="py-3 px-4 text-center w-28">Status</th>
+                          <th className="py-3 px-4 text-center w-24">Batas Suara</th>
+                          <th className="py-3 px-4 text-center w-48">Aksi Tata Kelola</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {pollThemes.length > 0 ? (
+                          pollThemes.map((theme, idx) => {
+                            const isSelected = theme.code === selectedPollThemeCode;
+                            return (
+                              <tr
+                                key={theme.id || theme.code || idx}
+                                className={`transition-colors ${
+                                  isSelected ? 'bg-emerald-950/20' : 'hover:bg-slate-900/50'
+                                }`}
+                              >
+                                <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                                <td className="py-3 px-4 text-center text-xl">
+                                  <span>{theme.icon || '🏆'}</span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="font-bold text-white text-sm flex items-center gap-2">
+                                    <span>{theme.title}</span>
+                                    {isSelected && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                        Sedang Dibuka
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                    Kode: <code className="text-emerald-400">{theme.code}</code> · Label: &quot;{theme.short_label}&quot;
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-slate-300 text-xs max-w-xs">
+                                  <p className="line-clamp-2">{theme.description || '—'}</p>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleThemeActive(theme)}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95 cursor-pointer ${
+                                      theme.is_active !== false
+                                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-800 hover:bg-emerald-900'
+                                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                                    }`}
+                                    title="Klik untuk mengubah status aktif"
+                                  >
+                                    {theme.is_active !== false ? (
+                                      <>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        <span>Aktif</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                        <span>Non-Aktif</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </td>
+                                <td className="py-3 px-4 text-center font-mono text-slate-300">
+                                  {theme.max_choices || 3} Nama
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedPollThemeCode(theme.code);
+                                        fetchPollData(theme.code);
+                                        setPollSubTab('AGREGAT');
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
+                                      title="Buka perolehan suara hasil polling ini"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>Hasil</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditTheme(theme)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                                      title="Edit tema ini"
+                                    >
+                                      <Edit3 className="w-3 h-3 text-slate-300" />
+                                      <span>Edit</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenDeleteTheme(theme)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-[11px] font-bold transition-all active:scale-95 cursor-pointer"
+                                      title="Hapus tema ini secara permanen"
+                                    >
+                                      <Trash2 className="w-3 h-3 text-rose-400" />
+                                      <span>Hapus</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                              Belum ada tema polling yang terdaftar. Klik &quot;Tambah Tema Baru&quot; untuk memulai.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* TAB 1: HASIL AGREGAT (Table with individual candidate vote deletion) */}
               {pollSubTab === 'AGREGAT' && (
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span>📊</span>
+                        <span>Hasil Perolehan Suara: {pollThemes.find((t) => t.code === selectedPollThemeCode)?.title || selectedPollThemeCode}</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Peringkat dihitung secara realtime berdasarkan suara sah yang masuk dari pegawai dinas.
+                      </p>
+                    </div>
+
+                    <div className="text-xs text-slate-400 font-mono">
+                      Total Suara: <strong className="text-emerald-400">{pollTotalVotes}</strong>
+                    </div>
+                  </div>
+
                   <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 shadow-sm">
                     <table className="w-full text-xs text-left">
                       <thead className="bg-slate-900 text-slate-300 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
                         <tr>
                           <th className="py-3 px-4 w-14 text-center">No</th>
-                          <th className="py-3 px-4">Nama Pegawai</th>
+                          <th className="py-3 px-4">Nama Pegawai &amp; Jabatan</th>
                           <th className="py-3 px-4 text-center w-36">Jumlah Suara</th>
                           <th className="py-3 px-4 text-right w-28">Persentase</th>
                           <th className="py-3 px-4 text-center w-36">Aksi Tata Kelola</th>
@@ -2129,7 +2533,7 @@ export default function AdminPortalPage() {
                             <tr key={row.employee_id || idx} className="hover:bg-slate-900/50 transition-colors">
                               <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
                               <td className="py-3 px-4 font-semibold text-white">
-                                <div>{row.full_name}</div>
+                                <div className="text-sm">{row.full_name}</div>
                                 <div className="text-[10px] text-slate-400 font-normal">{row.position} • {row.unit}</div>
                               </td>
                               <td className="py-3 px-4 text-center font-mono text-slate-200 font-bold">
@@ -2513,6 +2917,345 @@ export default function AdminPortalPage() {
                 >
                   {isResetting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   <span>{isResetting ? 'Mereset...' : 'Ya, Reset Sekarang'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: TAMBAH TEMA BARU (SUPERADMIN ONLY) */}
+      {showAddThemeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Tambah Tema Polling Baru</h3>
+                  <span className="text-[10px] text-slate-400">Hak Akses: Super Administrator</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddThemeModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateThemeSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Kode Unik (Slug) */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Kode Unik (Slug) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newThemeCode}
+                    onChange={(e) => setNewThemeCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                    placeholder="contoh: paling_kreatif"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-emerald-300 font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Label Pendek & Ikon */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Label Pendek &amp; Ikon <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={newThemeIcon}
+                      onChange={(e) => setNewThemeIcon(e.target.value)}
+                      placeholder="Emoji"
+                      className="w-14 text-center text-base p-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={newThemeLabel}
+                      onChange={(e) => setNewThemeLabel(e.target.value)}
+                      placeholder="Paling Kreatif"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Judul Lengkap */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Judul Lengkap Polling <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newThemeTitle}
+                  onChange={(e) => setNewThemeTitle(e.target.value)}
+                  placeholder="contoh: Pegawai Paling Kreatif & Inovatif"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* Deskripsi / Pertanyaan */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Deskripsi / Pertanyaan Polling
+                </label>
+                <textarea
+                  rows={2}
+                  value={newThemeDesc}
+                  onChange={(e) => setNewThemeDesc(e.target.value)}
+                  placeholder="Siapa pegawai yang selalu punya ide segar, inovatif, dan solutif dalam bekerja?"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Batas Pilihan */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Batas Pilihan Nama per Pemilih
+                </label>
+                <select
+                  value={newThemeMaxChoices}
+                  onChange={(e) => setNewThemeMaxChoices(Number(e.target.value))}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value={1}>1 Nama Pegawai (Single choice)</option>
+                  <option value={2}>2 Nama Pegawai</option>
+                  <option value={3}>3 Nama Pegawai (Standar Rekomendasi)</option>
+                </select>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[10.5px] text-slate-400">
+                💡 <strong>Pedoman Governance:</strong> Tema harus bernuansa apresiasi positif. Dilarang menggunakan kategori bernuansa fisik negatif, SARA, atau kondisi ekonomi.
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAddThemeModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingNewTheme}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-98 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingNewTheme ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>{isSavingNewTheme ? 'Menyimpan...' : 'Simpan Tema Baru'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: EDIT TEMA (SUPERADMIN ONLY) */}
+      {editingTheme && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Edit Tema Polling</h3>
+                  <span className="text-[10px] text-slate-400">Kode: {editingTheme.code}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingTheme(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateThemeSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Ikon & Label Pendek */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Ikon Emoji &amp; Label Pendek
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={editThemeIcon}
+                      onChange={(e) => setEditThemeIcon(e.target.value)}
+                      placeholder="Emoji"
+                      className="w-14 text-center text-base p-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={editThemeLabel}
+                      onChange={(e) => setEditThemeLabel(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Batas Pilihan */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Batas Pilihan Nama
+                  </label>
+                  <select
+                    value={editThemeMaxChoices}
+                    onChange={(e) => setEditThemeMaxChoices(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value={1}>1 Nama Pegawai</option>
+                    <option value={2}>2 Nama Pegawai</option>
+                    <option value={3}>3 Nama Pegawai</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Judul Lengkap */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Judul Lengkap Polling
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editThemeTitle}
+                  onChange={(e) => setEditThemeTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* Deskripsi */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Deskripsi / Pertanyaan Polling
+                </label>
+                <textarea
+                  rows={2}
+                  value={editThemeDesc}
+                  onChange={(e) => setEditThemeDesc(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Status Aktif Toggle */}
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div className="space-y-0.5 pr-3">
+                  <span className="text-xs font-semibold text-white block">Status Publikasi Tema</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    Jika aktif, tema ini akan tampil di Live Carousel dan dapat dipilih oleh pegawai.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={editThemeActive}
+                  onChange={(e) => setEditThemeActive(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700 cursor-pointer"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingTheme(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEditTheme}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-98 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingEditTheme ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>{isSavingEditTheme ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: HAPUS TEMA (SUPERADMIN ONLY) */}
+      {deletingTheme && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-600/20 border border-rose-500/30 text-rose-400 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Hapus Tema Polling</h3>
+                  <span className="text-[10px] text-slate-400">Hak Akses: Super Administrator</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeletingTheme(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-300">
+                Apakah Anda yakin ingin menghapus tema polling berikut secara permanen?
+                <strong className="block text-rose-400 mt-1 font-semibold text-sm">
+                  {deletingTheme.icon || '🏆'} {deletingTheme.title} (Kode: {deletingTheme.code})
+                </strong>
+              </p>
+
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-200 text-[11px] leading-relaxed">
+                ⚠️ <strong>Peringatan:</strong> Tema ini beserta seluruh perolehan suara, riwayat partisipasi pemilih, dan agregat hasil akan dihapus secara permanen dari basis data. Tindakan ini akan dicatat ke Audit Log.
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                  Alasan Penghapusan:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={deleteThemeReason}
+                  onChange={(e) => setDeleteThemeReason(e.target.value)}
+                  placeholder="Contoh: Tema sudah selesai / tidak relevan"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDeletingTheme(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteThemeSubmit}
+                  disabled={isDeletingTheme || !deleteThemeReason.trim()}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md active:scale-98 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isDeletingTheme ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{isDeletingTheme ? 'Menghapus...' : 'Ya, Hapus Tema Ini'}</span>
                 </button>
               </div>
             </div>

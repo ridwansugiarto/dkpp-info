@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseServer';
 import { OFFICIAL_DKPP_PEGAWAI } from '@/data/pegawai_dkpp';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 import { getMemoryResults } from '@/lib/polling/store';
+import { resolveEmployeeProfilesBatch } from '@/lib/polling/resolver';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -111,24 +112,22 @@ export async function GET(
       }
     }
 
-    // 4. Susun Hasil Terurut
+    // 4. Susun Hasil Terurut dengan Profil Pegawai Lengkap
     const totalVotes = Array.from(voteMap.values()).reduce((sum, v) => sum + v, 0);
+    const candidateEmpIds = Array.from(voteMap.keys());
+    const resolvedProfileMap = await resolveEmployeeProfilesBatch(candidateEmpIds);
 
     const resultsList = Array.from(voteMap.entries()).map(([empId, votes]) => {
-      // Cari profil pegawai di master data
-      const emp = OFFICIAL_DKPP_PEGAWAI.find(
-        (p) => p.id === empId || p.nip === empId || p.nama.toLowerCase() === empId.toLowerCase()
-      );
-
+      const profile = resolvedProfileMap.get(empId);
       const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 1000) / 10 : 0;
 
       return {
         poll_id: targetPoll.id,
         employee_id: empId,
-        full_name: emp?.nama || empId,
-        position: emp?.jabatan || 'Pegawai DKPP Kota Cilegon',
-        unit: emp?.bidang || 'DKPP',
-        photo_url: null,
+        full_name: profile?.nama || empId,
+        position: profile?.jabatan || 'Pegawai DKPP Kota Cilegon',
+        unit: profile?.bidang || 'DKPP',
+        photo_url: profile?.photo_url || null,
         total_votes: votes,
         percentage,
         rank: 1,

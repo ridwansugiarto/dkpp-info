@@ -6,6 +6,7 @@ import { isAuthorizedAdmin } from '@/lib/polling/guards';
 import { OFFICIAL_DKPP_PEGAWAI } from '@/data/pegawai_dkpp';
 import { memoryVotes } from '@/lib/polling/store';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
+import { resolveEmployeeProfilesBatch } from '@/lib/polling/resolver';
 
 export async function POST(request: Request) {
   try {
@@ -141,6 +142,10 @@ export async function POST(request: Request) {
       }
     }
 
+    // Kumpulkan seluruh employee_id yang dipilih untuk di-resolve profilnya
+    const allEmployeeIds = combinedVotes.map((v) => v.employee_id).filter(Boolean);
+    const resolvedProfileMap = await resolveEmployeeProfilesBatch(allEmployeeIds);
+
     // Kelompokkan per user_id
     const userVotesMap = new Map<string, any>();
     for (const v of combinedVotes) {
@@ -156,17 +161,14 @@ export async function POST(request: Request) {
         });
       }
 
-      // Cari profil pegawai dari master data
-      const emp = OFFICIAL_DKPP_PEGAWAI.find(
-        (p) => p.id === v.employee_id || p.nip === v.employee_id || p.nama.toLowerCase() === v.employee_id.toLowerCase()
-      );
+      const profile = resolvedProfileMap.get(v.employee_id);
 
       userVotesMap.get(v.user_id).choices.push({
         vote_id: v.id,
         employee_id: v.employee_id,
-        full_name: emp?.nama || v.employee_id,
-        position: emp?.jabatan || 'Pegawai DKPP Kota Cilegon',
-        unit: emp?.bidang || 'DKPP'
+        full_name: profile?.nama || v.employee_id,
+        position: profile?.jabatan || 'Pegawai DKPP Kota Cilegon',
+        unit: profile?.bidang || 'DKPP'
       });
     }
 

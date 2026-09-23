@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
+import { PollTheme } from '@/lib/polling/types';
 import { usePollResults } from '@/hooks/usePollResults';
 import { 
   FiChevronLeft, 
@@ -105,7 +106,7 @@ const DraggableScrollContainer: React.FC<{
 
 // Sub-komponen per slide agar data terisolasi & efisien
 const CarouselSlideTheme: React.FC<{
-  theme: typeof OFFICIAL_POLL_THEMES[0];
+  theme: PollTheme;
   isActive: boolean;
   shouldLoad: boolean;
   onVoteClick?: (code: string) => void;
@@ -305,7 +306,19 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
   onSelectThemeForVoting,
   onAskAi,
 }) => {
-  const themes = OFFICIAL_POLL_THEMES;
+  const [themes, setThemes] = useState<PollTheme[]>(OFFICIAL_POLL_THEMES);
+
+  useEffect(() => {
+    fetch('/api/polling/themes')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.themes && data.themes.length > 0) {
+          setThemes(data.themes);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const initialIndex = initialThemeCode 
     ? Math.max(0, themes.findIndex((t) => t.code === initialThemeCode.replace(/^poll-/, '')))
     : 0;
@@ -441,7 +454,7 @@ export const LiveResultsCarousel: React.FC<LiveResultsCarouselProps> = ({
                 Live Hasil Polling Pegawai DKPP
               </h3>
               <p className="text-[10px] sm:text-[11px] text-emerald-100/90 truncate">
-                15 Tema Apresiasi Internal
+                {themes.length} Tema Apresiasi Internal
               </p>
             </div>
           </div>
