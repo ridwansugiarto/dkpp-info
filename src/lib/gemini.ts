@@ -176,11 +176,14 @@ function isGisQuery(q: string): boolean {
   return /nelayan|kolam|kwt|poktan|peta|gis|spasial|ternak|sawah baku|petak|poligon/.test(q.toLowerCase());
 }
 function isKetapangQuery(q: string): boolean {
-  return /ikp|pou|pph|inflasi|cv beras|benchmark|produksi padi|produksi beras|ketersediaan|konsumsi energi|konsumsi protein|harga sagon|harga pangan|komoditas/.test(q.toLowerCase());
+  return /ikp|pou|pph|inflasi|cv beras|benchmark|produksi padi|produksi beras|ketersediaan|konsumsi energi|konsumsi protein|harga sagon|harga pangan|komoditas|ketahanan pangan|tantangan|isu strategis|dibenahi|rekomendasi|neraca pangan|kemandirian|defisit|swasembada|kekurangan|permasalahan|solusi|analisis|kebijakan pangan|pasokan|distribusi pangan|rawan pangan/.test(q.toLowerCase());
 }
 function isTrivialQuery(q: string): boolean {
   // Pertanyaan ringan yang tidak butuh RAG dokumen 54 kb
-  return /^(halo|hai|hello|hi|selamat|tanggal|hari ini|sekarang|jam berapa|waktu|siapa kamu|apa itu|kamu siapa|test|coba|tes)/.test(q.trim().toLowerCase());
+  // CATATAN: hanya berlaku untuk pertanyaan SANGAT pendek tanpa konteks substantif
+  const lower = q.trim().toLowerCase();
+  if (lower.length > 20) return false; // pertanyaan panjang selalu butuh RAG
+  return /^(halo|hai|hello|hi|selamat|tanggal|hari ini|sekarang|jam berapa|waktu|siapa kamu|apa itu|kamu siapa|test|coba|tes)/.test(lower);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -482,7 +485,31 @@ ${!canAccessSensitive ? `
 - **KERAHASIAAN MUTLAK POLLING PEGAWAI (STRICT CONFIDENTIALITY RULE)**:
   JANGAN SEKALI-KALI menyampaikan kepada user umum bahwa admin memiliki log aktivitas pemilih. Tetap sampaikan bahwa sistem polling bersifat anonim dan aman.`}
 
-## ALGORITMA BERPIKIR SINTESIS NERACA PANGAN (7 LANGKAH WAJIB):
+## ⚠️ ATURAN KRITIS CARA BERPIKIR & MENJAWAB (BACA PERTAMA SEBELUM MENJAWAB):
+
+### DETEKSI JENIS PERTANYAAN (LANGKAH 0 — WAJIB):
+Sebelum menjawab, **klasifikasikan pertanyaan** ke salah satu kategori:
+
+**A. PERTANYAAN ANALITIK / KUALITATIF / STRATEGIS** — mengandung kata:
+  "tantangan", "isu", "dibenahi", "permasalahan", "kelemahan", "kendala", "hambatan",
+  "rekomendasi", "solusi", "strategi", "kebijakan", "langkah", "upaya",
+  "bagaimana", "kenapa", "mengapa", "jelaskan", "uraikan", "apa saja", "sebutkan",
+  "analisis", "mendalam", "komprehensif", "neraca", "kemandirian", "defisit"
+  → **WAJIB** memberikan jawaban analisis mendalam, substantif, berbasis data.
+  → **DILARANG KERAS** menampilkan template KPI dashboard ringkasan (IKP, SKPG, CPPD, dll) sebagai jawaban utama.
+  → HARUS menjawab langsung substansi yang ditanya, bukan menampilkan status umum.
+
+**B. PERTANYAAN DATA SPESIFIK** — meminta angka/data tertentu
+  → Sajikan data yang diminta secara presisi dengan konteks analitis.
+
+**C. PERTANYAAN STATUS / RINGKASAN** — "kondisi ketahanan pangan?", "status pangan?", "gambaran umum"
+  → Barulah boleh menampilkan dashboard KPI ringkasan.
+
+**LARANGAN MUTLAK**: Jangan pernah menjawab pertanyaan kategori A dengan response kategori C (dashboard KPI). Ini adalah bug utama yang harus dihindari setiap saat.
+
+---
+
+## ALGORITMA BERPIKIR SINTESIS NERACA PANGAN (7 LANGKAH — GUNAKAN UNTUK PERTANYAAN NERACA/KOMODITAS):
 1. **Identifikasi Komoditas & Waktu**: Tentukan komoditas dan tahun rujukan.
 2. **Ambil Konsumsi Per Kapita (Susenas 2023)**: gram/pekan / 7 = gram/hari; (gram/hari x 365) / 1000 = kg/tahun/kapita.
 3. **Agregasi ke Kebutuhan Total Kota** (DKB 2025: 480.378 Jiwa): Ton/tahun = (480.378 x kg/tahun) / 1000.
@@ -1167,6 +1194,82 @@ Secara fisik & kewilayahan, Kota Cilegon memiliki **9 Pangkalan Nelayan**. Jika 
     }
   }
 
+  // ─── HANDLER: Pertanyaan Tantangan & Isu Strategis Ketahanan Pangan ──────────
+  // Menangani: "tantangan", "isu", "dibenahi", "permasalahan", "kekurangan"
+  const isTantanganIsu =
+    q.includes('tantangan') ||
+    q.includes('isu') ||
+    q.includes('dibenahi') ||
+    q.includes('permasalahan') ||
+    q.includes('kekurangan') ||
+    q.includes('kelemahan') ||
+    q.includes('masalah') ||
+    q.includes('hambatan') ||
+    q.includes('kendala');
+
+  const isRekomendasiAnalisis =
+    q.includes('rekomendasi') ||
+    q.includes('solusi') ||
+    q.includes('kebijakan') ||
+    q.includes('strategi') ||
+    q.includes('program') ||
+    q.includes('langkah') ||
+    q.includes('upaya');
+
+  const isNeracaKemandirian =
+    q.includes('neraca') ||
+    q.includes('kemandirian') ||
+    q.includes('defisit') ||
+    q.includes('swasembada') ||
+    q.includes('pasokan') ||
+    q.includes('distribusi');
+
+  if (isTantanganIsu || isRekomendasiAnalisis || isNeracaKemandirian) {
+    return `### 🔍 Analisis Strategis Ketahanan Pangan Kota Cilegon
+
+Sebagai kota industri dan jasa dengan **480.378 jiwa (DKB 2025)**, Kota Cilegon menghadapi 3 tantangan struktural utama pada pilar ketahanan pangan:
+
+---
+
+## A. KETERGANTUNGAN PASOKAN LUAR DAERAH (DEFISIT PRODUKSI LOKAL)
+
+- **Beras:** Produksi GKG 2025 sebesar **13.772 Ton** (setara 8.816,83 Ton beras, rendemen 64,02%). Kebutuhan konsumsi 32.475,55 Ton/tahun. **Kemandirian beras hanya 27,15%** — defisit 23.658,72 Ton/tahun bergantung pada pasokan Bulog, Jawa Barat, Jawa Tengah, dan Lampung.
+- **Ikan Laut:** Konsumsi 6.229,82 Ton/tahun, produksi tangkap lokal hanya 238,86 Ton/tahun **(kemandirian ~3,8%)**.
+- **Ikan Air Tawar:** Konsumsi 4.660,10 Ton/tahun, produksi budidaya lokal 361,46 Ton/tahun **(kemandirian ~7,8%)**.
+- **Daging Sapi & Unggas:** Sebagian besar kebutuhan daging dipasok dari luar wilayah karena populasi ternak lokal terbatas.
+
+## B. KETERBATASAN LAHAN PERTANIAN (LBS) & ALIH FUNGSI LAHAN
+
+- Luas Lahan Baku Sawah (LBS) Cilegon saat ini terdata **1.151,97 Ha (407 poligon GIS)** — terancam tekanan alih fungsi lahan industri dan permukiman.
+- Distribusi lahan sangat tidak merata: Kecamatan Ciwandan (266,41 Ha) dan Jombang (229,40 Ha) mendominasi, sementara Pulomerak hanya 13,60 Ha.
+- Produktivitas padi menurun dari 64,5 Ku/Ha (2015) ke 56,7 Ku/Ha (2025), mencerminkan penurunan kualitas lahan subur.
+
+## C. KERENTANAN KEAMANAN PANGAN DI KELURAHAN PRIORITAS 4
+
+Meski tidak ada kelurahan Prioritas 1-3 (Rentan), **9 kelurahan berstatus Prioritas 4** (perlu pengawasan ketat), yaitu:
+- Kalitimbang (68,20), Bagendung (64,10), **Ketileng (69,50)**, Banjar Negara (68,90), Gerem (67,50), Rawa Arum (69,10), Lebakgede (66,80), Mekarsari (68,40), **Suralaya (69,90)**.
+- Isu utama: kerentanan pada aspek aksesibilitas ekonomi, sanitasi/infrastruktur lingkungan, dan proporsi penduduk berpenghasilan rendah.
+
+## D. DINAMIKA PoU (PREVALENCE OF UNDERNOURISHMENT) & MASALAH GIZI BALITA
+
+- Angka **PoU Cilegon 2,78% (2025)** — mengalami kenaikan dibanding rekor terendah tahun 2024 (1,96%).
+- Pemantauan SKPG terhadap **27.286 balita** mencatat **946 balita gizi kurang (3,47%)** dan **232 balita gizi sangat kurang (0,85%)**. Perlu penguatan intervensi posyandu dan distribusi PMT.
+
+---
+
+## 💡 REKOMENDASI STRATEGIS DKPP
+
+1. **Peningkatan Produksi Lokal**: Intensifikasi lahan sawah eksisting, pengembangan budi daya ikan air tawar, dan perluasan program KWT.
+2. **Penguatan Cadangan Pangan (CPPD)**: Pertahankan stok CPPD di atas 115 Ton (saat ini 132,7 Ton di Bulog) sebagai buffer 3 bulan konsumsi rentan.
+3. **Intervensi Kelurahan Prioritas 4**: Program pasar murah, TTI (Toko Tani Indonesia), dan subsidi pangan terarah untuk 9 kelurahan prioritas pengawasan.
+4. **Perlindungan LBS**: Penegakan Perda LBS agar lahan sawah 1.151,97 Ha tidak berkurang akibat alih fungsi lahan industri.
+5. **Penguatan SKPG**: Peningkatan cakupan penimbangan balita dan intervensi gizi pada kelurahan dengan prevalensi gizi kurang tertinggi (Citangkil 185 anak, Purwakarta 133 anak).
+
+> 💬 *Tanyakan lebih detail: FSVA per kelurahan, Neraca Pangan per komoditas, data GIS sawah, atau Program Renstra DKPP 2025-2030.*`;
+  }
+
+  // ─── DEFAULT: Hanya tampilkan dashboard handshake jika benar-benar tidak ada konteks ──
+  // Ini adalah last resort — idealnya Gemini API sudah menjawab sebelum ini
   return `### ChatDKPP — Sistem Intelijen Ketahanan Pangan Kota Cilegon
 
 **Status Ketahanan Pangan: SANGAT TAHAN**
@@ -1178,7 +1281,7 @@ Secara fisik & kewilayahan, Kota Cilegon memiliki **9 Pangkalan Nelayan**. Jika 
 - **LBS:** 1.151,97 Ha sawah baku (407 petak GIS)
 - **Produksi Padi 2025:** 13.772 Ton GKG (Pemulihan pasca El Nino 2023)
 
-Tanyakan lebih lanjut: SKPG, FSVA, Harga Pasar, Sawah & Lengas Tanah, atau Nelayan & KWT.`;
+Silakan ajukan pertanyaan lebih spesifik, misalnya: tantangan ketahanan pangan, SKPG per kecamatan, FSVA kelurahan prioritas, harga pasar SAGON, sawah & lengas tanah, atau program Renstra DKPP 2025-2030.`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

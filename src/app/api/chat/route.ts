@@ -548,6 +548,38 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Guard: pertanyaan analitik/strategis harus SELALU diteruskan ke Gemini AI
+    // Tidak boleh dipotong oleh quick-panel detectors
+    const isAnalyticalQuery =
+      normMsg.includes('tantangan') ||
+      normMsg.includes('isu') ||
+      normMsg.includes('dibenahi') ||
+      normMsg.includes('analisis') ||
+      normMsg.includes('masalah') ||
+      normMsg.includes('permasalahan') ||
+      normMsg.includes('rekomendasi') ||
+      normMsg.includes('strategi') ||
+      normMsg.includes('kenapa') ||
+      normMsg.includes('mengapa') ||
+      normMsg.includes('bagaimana') ||
+      normMsg.includes('hambatan') ||
+      normMsg.includes('kendala') ||
+      normMsg.includes('solusi') ||
+      normMsg.includes('kebijakan') ||
+      normMsg.includes('kelemahan') ||
+      normMsg.includes('kekurangan') ||
+      normMsg.includes('langkah') ||
+      normMsg.includes('upaya') ||
+      normMsg.includes('neraca') ||
+      normMsg.includes('kemandirian') ||
+      normMsg.includes('defisit') ||
+      normMsg.includes('jelaskan') ||
+      normMsg.includes('uraikan') ||
+      normMsg.includes('sebutkan') ||
+      normMsg.includes('apa saja') ||
+      normMsg.includes('komprehensif') ||
+      normMsg.includes('mendalam');
+
     // 7. Deteksi Maksud IKP & PoU 5 Tahun (Captures 1 & 2)
     const isIkpPouRequest =
       normMsg.includes('ikp') ||
@@ -557,7 +589,7 @@ export async function POST(req: NextRequest) {
       normMsg.includes('skor ikp') ||
       normMsg.includes('tren ikp');
 
-    if (isIkpPouRequest && !normMsg.includes('bagaimana cara menghitung')) {
+    if (isIkpPouRequest && !normMsg.includes('bagaimana cara menghitung') && !isAnalyticalQuery) {
       const { getLiveIkpPouData } = await import('@/lib/ketapang/ikpPouService');
       const ikpPouData = await getLiveIkpPouData();
 
@@ -619,7 +651,7 @@ export async function POST(req: NextRequest) {
       normMsg.includes('cppd') ||
       normMsg.includes('cadangan pangan');
 
-    if (isIndikatorRequest) {
+    if (isIndikatorRequest && !isAnalyticalQuery) {
       const { getLiveIndikatorKetapangData } = await import('@/lib/ketapang/indikatorService');
       const indikatorData = await getLiveIndikatorKetapangData();
 
@@ -676,7 +708,7 @@ export async function POST(req: NextRequest) {
       normMsg.includes('kerentanan pangan') ||
       normMsg.includes('waspada fluktuasi');
 
-    if (isEwsRequest && !normMsg.includes('singkatan dari ews')) {
+    if (isEwsRequest && !normMsg.includes('singkatan dari ews') && !isAnalyticalQuery) {
       const { getLiveEwsData } = await import('@/lib/ketapang/ewsService');
       const ewsData = await getLiveEwsData();
 
@@ -730,7 +762,7 @@ export async function POST(req: NextRequest) {
       normMsg.includes('panen padi') ||
       normMsg.includes('produktivitas padi');
 
-    if (isGkgRequest) {
+    if (isGkgRequest && !isAnalyticalQuery) {
       const { getLiveGkgData } = await import('@/lib/ketapang/gkgService');
       const gkgData = await getLiveGkgData();
 
