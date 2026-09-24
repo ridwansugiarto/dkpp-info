@@ -2816,13 +2816,42 @@ export function buildPegawaiDkppContext(userMessage: string): string {
       });
     }
   } else {
-    // Ringkasan Pimpinan & Pejabat Struktural Aktif 2026
-    ctx += `STRUKTUR UTAMA PEGAWAI AKTIF DKPP KOTA CILEGON (2026):\n`;
-    const pimpinanDanStruktural = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && (p.bidang === 'Pimpinan' || p.status_pegawai === 'Struktural' || p.esselon));
-    pimpinanDanStruktural.slice(0, 15).forEach(p => {
-      ctx += `• ${p.nama} — ${p.jabatan} (${p.bidang}) [${p.kategori_pegawai || p.status_pegawai}]\n`;
-    });
-    ctx += `\n(Terdapat total 92 pegawai aktif: PNS, PPPK, dan Penyuluh Pertanian/Perikanan. Sebutkan nama lengkap untuk melihat detail profil TTL, NIP, Pangkat, dan Jabatan)\n`;
+    // Cek apakah query menanyakan bidang tertentu
+    let matchedBidang: typeof OFFICIAL_DKPP_PEGAWAI = [];
+    let labelBidang = '';
+
+    if (q.includes('pertanian')) {
+      matchedBidang = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && (p.bidang === 'Pertanian' || p.bidang === 'PPL Pertanian' || (p.bidang && p.bidang.includes('KPT'))));
+      labelBidang = 'Lingkup Pertanian (Bidang Pertanian, PPL Pertanian, dan UPTD KPT)';
+    } else if (q.includes('peternakan') || q.includes('keswan') || q.includes('hewan')) {
+      matchedBidang = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && (p.bidang === 'Peternakan' || p.bidang === 'Peternakan & Keswan' || (p.bidang && p.bidang.includes('RPH')) || (p.bidang && p.bidang.includes('PUSKESWAN'))));
+      labelBidang = 'Lingkup Peternakan & Kesehatan Hewan (Peternakan, UPTD RPH, dan Puskeswan)';
+    } else if (q.includes('ketahanan pangan')) {
+      matchedBidang = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && p.bidang === 'Ketahanan Pangan');
+      labelBidang = 'Bidang Ketahanan Pangan';
+    } else if (q.includes('perikanan')) {
+      matchedBidang = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && p.bidang === 'Perikanan');
+      labelBidang = 'Bidang Perikanan';
+    } else if (q.includes('sekretariat') || q.includes('umum') || q.includes('kepegawaian')) {
+      matchedBidang = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && p.bidang === 'Sekretariat');
+      labelBidang = 'Sekretariat DKPP';
+    }
+
+    if (matchedBidang.length > 0) {
+      ctx += `DAFTAR SELURUH PEGAWAI AKTIF PADA ${labelBidang.toUpperCase()} (${matchedBidang.length} ORANG):\n`;
+      ctx += `⚠️ WAJIB: Tampilkan SEMUA nama pegawai berikut secara bernomor urut tanpa memotong/meringkas daftar!\n\n`;
+      matchedBidang.forEach((p, idx) => {
+        ctx += `${idx + 1}. **${p.nama}** — ${p.jabatan} [${p.kategori_pegawai || p.status_pegawai}] (${p.bidang})\n`;
+      });
+    } else {
+      // Ringkasan Pimpinan & Pejabat Struktural Aktif 2026
+      ctx += `STRUKTUR UTAMA PEGAWAI AKTIF DKPP KOTA CILEGON (2026):\n`;
+      const pimpinanDanStruktural = OFFICIAL_DKPP_PEGAWAI.filter(p => p.is_active && (p.bidang === 'Pimpinan' || p.status_pegawai === 'Struktural' || p.esselon));
+      pimpinanDanStruktural.slice(0, 15).forEach(p => {
+        ctx += `• ${p.nama} — ${p.jabatan} (${p.bidang}) [${p.kategori_pegawai || p.status_pegawai}]\n`;
+      });
+      ctx += `\n(Terdapat total 92 pegawai aktif: PNS, PPPK, dan Penyuluh Pertanian/Perikanan. Sebutkan nama lengkap atau nama bidang untuk melihat daftar lengkap)\n`;
+    }
   }
 
   return ctx;

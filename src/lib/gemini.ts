@@ -22,6 +22,12 @@ import {
   buildPegawaiDkppContext,
 } from '@/data/pegawai_dkpp';
 import { getAllKwtPins, buildKwtPromptContext } from '@/lib/kwt/data';
+import {
+  getLivePegawaiFromSupabase,
+  isBidangStrukturKomposisiQuery,
+  buildBidangStrukturKomposisiPrompt,
+  type PegawaiNipRow,
+} from '@/lib/pegawaiSupabase';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -457,9 +463,11 @@ ${personalityContext}
 ` : ''}
 
 ${pegawaiProfileContext ? `
-## DATA KEPEGAWAIAN TERVERIFIKASI — PROFIL & JABATAN RESMI
-⚠️ INSTRUKSI KRITIS: Data jabatan, bidang, golongan, dan status pegawai di bawah ini bersumber dari database resmi DKPP Kota Cilegon.
-- GUNAKAN data ini sebagai satu-satunya sumber kebenaran untuk pertanyaan tentang profil pegawai.
+## DATA KEPEGAWAIAN TERVERIFIKASI — BIDANG, STRUKTUR, KOMPOSISI & PROFIL RESMI
+⚠️ INSTRUKSI KRITIS: Data jabatan, bidang, golongan, dan status pegawai di bawah ini bersumber dari database resmi Supabase tabel dkpp_pegawai_nip DKPP Kota Cilegon.
+- GUNAKAN data ini sebagai satu-satunya sumber kebenaran untuk pertanyaan tentang bidang, struktur pegawai, komposisi pegawai, maupun profil pegawai.
+- JIKA PENGGUNA MEMINTA DAFTAR PEGAWAI DI BIDANG TERTENTU (misalnya Bidang Pertanian, Peternakan, Perikanan, Ketahanan Pangan, Sekretariat, dll):
+  WAJIB cantumkan SEMUA nama pegawai yang terdaftar pada bidang tersebut secara lengkap dan bernomor urut tanpa memotong atau menyingkat daftar menjadi hanya 2-3 orang!
 - DILARANG KERAS mengarang, menambah, atau memodifikasi informasi jabatan yang tidak tercantum di sini.
 - Jika nama tidak ditemukan di data ini, nyatakan bahwa data tidak tersedia — JANGAN berasumsi.
 
@@ -1423,8 +1431,13 @@ export async function generateChatResponse(params: {
   // 2c. Cek apakah pertanyaan menyebut nama/jabatan pegawai — inject data faktual
   const isPegawaiProfile = isPegawaiProfileQuery(activeQuery);
 
-  // ⚠️ SECURITY GATE: GUEST/UNVERIFIED BLOCKED FROM INTERNAL/POLLING/PROFILE DATA
-  if ((isHumor || isPersonality || isPegawaiProfile) && !isAuthorizedForInternal) {
+  // 2d. Cek apakah pertanyaan menanyakan terkait bidang, struktur pegawai, atau komposisi pegawai
+  const isBidangStrukturKomposisi = isBidangStrukturKomposisiQuery(activeQuery);
+
+  // ⚠️ SECURITY GATE: GUEST/UNVERIFIED BLOCKED FROM INTERNAL/POLLING/INDIVIDUAL PROFILE DATA
+  // Catatan: Jika pengguna menanyakan tentang struktur organisasi / bidang / komposisi pegawai umum,
+  // mereka dapat melihat susunan organisasi resmi, namun atribut pribadi (NIP/TTL/NPWP) disesuaikan.
+  if ((isHumor || isPersonality || (isPegawaiProfile && !isBidangStrukturKomposisi)) && !isAuthorizedForInternal) {
     return {
       content:
         `### 🔒 Akses Dibatasi — Data Kepegawaian & Polling Internal DKPP\n\n` +
@@ -1460,9 +1473,26 @@ export async function generateChatResponse(params: {
     personalityContext = buildPersonalityContext(activeQuery, personalityDataset);
   }
 
-  const pegawaiProfileContext = (isPegawaiProfile && isAuthorizedForInternal)
-    ? buildPegawaiDkppContext(activeQuery)
-    : null;
+  // Ambil data live dari Supabase tabel dkpp_pegawai_nip jika menanyakan bidang/struktur/komposisi
+  let livePegawaiList: PegawaiNipRow[] = [];
+  if (isBidangStrukturKomposisi || (isPegawaiProfile && isAuthorizedForInternal)) {
+    try {
+      livePegawaiList = await getLivePegawaiFromSupabase();
+    } catch (err) {
+      console.warn('[Gemini] Failed to fetch live pegawai from Supabase:', err);
+    }
+  }
+
+  let pegawaiProfileContext: string | null = null;
+  if (isBidangStrukturKomposisi) {
+    pegawaiProfileContext = buildBidangStrukturKomposisiPrompt(
+      activeQuery,
+      livePegawaiList,
+      isAuthorizedForInternal
+    );
+  } else if (isPegawaiProfile && isAuthorizedForInternal) {
+    pegawaiProfileContext = buildPegawaiDkppContext(activeQuery);
+  }
 
   const kwtContext = buildKwtPromptContext(activeQuery);
 
@@ -1493,6 +1523,14 @@ export async function generateChatResponse(params: {
       type: 'KNOWLEDGE BASE',
       title: 'Dokumen Renstra DKPP Kota Cilegon 2025-2030',
       detail: 'Tabel Tujuan, Sasaran, Cascading Program, IKU, IKK, IKD, Subkegiatan Prioritas & Pagu Anggaran',
+    });
+  }
+
+  if (isBidangStrukturKomposisi) {
+    matchingDocSources.push({
+      type: 'LOCAL DATA',
+      title: 'Database Kepegawaian DKPP Cilegon (Tabel dkpp_pegawai_nip)',
+      detail: 'Data real-time bidang, struktur organisasi, dan komposisi pegawai aktif terverifikasi',
     });
   }
 
