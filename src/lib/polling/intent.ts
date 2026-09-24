@@ -56,8 +56,9 @@ const SYNONYM_MAP: Record<string, string[]> = {
   // code: cool — sinonim santai/kalem
   cool:         ['nyantai', 'santai', 'kalem', 'terkalem', 'karismatik', 'kharisma', 'tidak panik', 'tenang'],
 
-  // code: trendy — sinonim sibuk (kode tidak berubah meski judul diubah ke "Sibuk")
-  trendy:       ['sibuk', 'tersibuk', 'sibuk terus', 'selalu sibuk', 'produktif', 'aktif terus', 'kerja terus', 'kesibukan'],
+  // code: trendy — sinonim "Paling Sibuk" (judul aktif DB). Slug 'trendy' dipertahankan karena sudah ada data votes.
+  // Tambahkan sinonim kata-kata terkait kesibukan yang tidak bisa di-generate dari judul "Paling Sibuk"
+  trendy:       ['sibuk', 'tersibuk', 'sibuk terus', 'selalu sibuk', 'produktif', 'aktif terus', 'kerja terus', 'kesibukan', 'workaholic', 'overwork', 'super sibuk', 'nonstop kerja', 'multitasking'],
 
   // code: lucu — sinonim humor
   lucu:         ['komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa', 'kocak', 'pelawak'],

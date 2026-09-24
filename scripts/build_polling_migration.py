@@ -18,7 +18,7 @@ themes = [
     {"code": "gaptek", "label": "Paling Gaptek", "title": "Pegawai Paling Gaptek (Lucu & Innocent)", "icon": "💻", "description": "Siapa yang paling sering minta bantuan klik mouse atau bingung format file tapi tetap bikin gemas?"},
     {"code": "murah_senyum", "label": "Paling Murah Senyum", "title": "Pegawai Paling Murah Senyum", "icon": "😊", "description": "Siapa yang senyumnya selalu merekah dari pagi hingga sore mencairkan suasana kantor?"},
     {"code": "cool", "label": "Paling Cool", "title": "Pegawai Paling Cool & Tenang", "icon": "😎", "description": "Siapa yang selalu santai, tenang menghadapi deadline badai, dan tetap berkharisma?"},
-    {"code": "trendy", "label": "Paling Trendy", "title": "Pegawai Paling Trendy & Modis", "icon": "👔", "description": "Siapa yang gaya pakaian, sepatu, dan aksesorisnya selalu paling stylish dan rapi?"},
+    {"code": "trendy", "label": "Paling Sibuk", "title": "Pegawai Paling Sibuk", "icon": "🤓", "description": "Siapa pegawai yang kelihatannya sibuk mulai pagi sampai sore setiap harinya?"},
     {"code": "lucu", "label": "Paling Lucu", "title": "Pegawai Paling Lucu (Komika DKPP)", "icon": "😂", "description": "Siapa yang celetukannya selalu bikin seisi ruangan tertawa terpingkal-pingkal?"}
 ]
 

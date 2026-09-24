@@ -10,7 +10,7 @@ Fitur **Polling Pegawai** adalah fitur keterlibatan internal berbasis voting mul
 
 ### Karakteristik & Aturan Bisnis:
 1. **Akses Khusus Pegawai Terverifikasi:** Hanya pegawai login yang telah terverifikasi NIP / status pegawai aktif yang dapat melihat dan memberikan suara.
-2. **Multitematik:** 15 tema aktif (Paling Ganteng, Paling Cantik, Paling Rajin, Paling Cerdas, Paling Soleh, Paling Dermawan, Paling Royal, Paling Baik, Paling Tahu Segala, Paling Update, Paling Gaptek, Paling Murah Senyum, Paling Cool, Paling Trendy, Paling Lucu).
+2. **Multitematik:** 15 tema aktif (Paling Ganteng, Paling Cantik, Paling Rajin, Paling Cerdas, Paling Soleh, Paling Dermawan, Paling Royal, Paling Baik, Paling Tahu Segala, Paling Update, Paling Gaptek, Paling Murah Senyum, Paling Cool, Paling Sibuk, Paling Lucu).
 3. **Maksimal 3 Pilihan:** Dalam 1 tema, pemilih memilih 1 hingga maksimal 3 kandidat nama pegawai (tidak boleh 0 saat submit).
 4. **Tanpa Perangkingan Bobot:** Setiap nama yang dipilih mendapatkan bobot sama (+1 suara).
 5. **1 User = 1 Kali Vote per Tema:** Ditegakkan langsung di level database (`poll_participations` & RPC `submit_poll_vote`).

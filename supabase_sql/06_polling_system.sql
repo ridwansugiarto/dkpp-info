@@ -389,7 +389,7 @@ INSERT INTO public.polls (code, title, short_label, icon, description, max_choic
 ('gaptek', 'Pegawai Paling Gaptek (Lucu & Innocent)', 'Paling Gaptek', '💻', 'Siapa yang paling sering minta bantuan klik mouse atau bingung format file tapi tetap bikin gemas?', 3, false, true),
 ('murah_senyum', 'Pegawai Paling Murah Senyum', 'Paling Murah Senyum', '😊', 'Siapa yang senyumnya selalu merekah dari pagi hingga sore mencairkan suasana kantor?', 3, false, true),
 ('cool', 'Pegawai Paling Cool & Tenang', 'Paling Cool', '😎', 'Siapa yang selalu santai, tenang menghadapi deadline badai, dan tetap berkharisma?', 3, false, true),
-('trendy', 'Pegawai Paling Trendy & Modis', 'Paling Trendy', '👔', 'Siapa yang gaya pakaian, sepatu, dan aksesorisnya selalu paling stylish dan rapi?', 3, false, true),
+('trendy', 'Pegawai Paling Sibuk', 'Paling Sibuk', '🤓', 'Siapa pegawai yang kelihatannya sibuk mulai pagi sampai sore setiap harinya?', 3, false, true),
 ('lucu', 'Pegawai Paling Lucu (Komika DKPP)', 'Paling Lucu', '😂', 'Siapa yang celetukannya selalu bikin seisi ruangan tertawa terpingkal-pingkal?', 3, false, true)
 ON CONFLICT (code) DO UPDATE SET
     title = EXCLUDED.title,
