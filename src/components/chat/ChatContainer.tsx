@@ -603,26 +603,21 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             </div>
 
                             <div className="flex flex-wrap gap-1.5">
+                              {/* Pills tema polling — selalu dinamis dari database, tidak ada hardcoded */}
                               {(
                                 msg.poll_card?.available_themes && msg.poll_card.available_themes.length > 0
                                   ? [
                                       ...msg.poll_card.available_themes.map((t) => ({
                                         label: `${t.icon || '🏆'} ${t.short_label || t.title}`,
                                         code: t.code,
-                                        query: t.short_label || t.title,
+                                        // query menggunakan short_label dinamis dari DB; fallback ke title
+                                        query: (t.short_label && t.short_label.trim()) ? t.short_label : t.title,
                                       })),
                                       { label: '📋 Semua Tema', code: 'all', query: 'all' },
                                     ]
                                   : [
-                                      { label: '💃 Paling Cantik', code: 'cantik', query: 'paling cantik' },
-                                      { label: '💇 Paling Ganteng', code: 'ganteng', query: 'paling ganteng' },
-                                      { label: '📚 Paling Rajin', code: 'rajin', query: 'paling rajin' },
-                                      { label: '🧠 Paling Cerdas', code: 'cerdas', query: 'paling cerdas' },
-                                      { label: '🕌 Paling Soleh', code: 'soleh', query: 'paling soleh' },
-                                      { label: '😂 Paling Lucu', code: 'lucu', query: 'paling lucu' },
-                                      { label: '🎁 Paling Royal', code: 'royal', query: 'paling royal' },
-                                      { label: '❤️ Paling Baik', code: 'baik', query: 'paling baik' },
-                                      { label: '📋 Semua 15 Tema', code: 'all', query: 'all' },
+                                      // Fallback minimal jika available_themes belum di-hydrate
+                                      { label: '📋 Lihat Semua Tema Polling', code: 'all', query: 'all' },
                                     ]
                               ).map((cat) => (
                                 <button
@@ -632,6 +627,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                                     if (cat.code === 'all') {
                                       onSendMessage?.('katalog semua polling');
                                     } else {
+                                      // Kirim query berdasarkan label/judul dinamis dari DB
                                       onSendMessage?.(`siapa pegawai ${cat.query.toLowerCase()}`);
                                     }
                                   }}
@@ -656,7 +652,10 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             themes={msg.poll_catalog.themes}
                             onSelectTheme={(themeCode) => {
                               const selectedTheme = msg.poll_catalog?.themes.find((t) => t.code === themeCode);
-                              const label = selectedTheme?.short_label || themeCode;
+                              // Gunakan short_label dinamis dari DB; fallback ke title; fallback terakhir ke code
+                              const label = (selectedTheme?.short_label && selectedTheme.short_label.trim())
+                                ? selectedTheme.short_label
+                                : (selectedTheme?.title || themeCode);
                               onSendMessage?.(`siapa pegawai ${label.toLowerCase()}`);
                             }}
                           />

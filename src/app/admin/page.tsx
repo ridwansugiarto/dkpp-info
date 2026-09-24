@@ -38,7 +38,11 @@ import {
   Trophy,
   Download,
   Award,
-  Vote
+  Vote,
+  Sprout,
+  MapPin,
+  ExternalLink,
+  Save
 } from 'lucide-react';
 import { DocumentItem, DocumentFolder, DocumentVisibility } from '@/types/dkpp';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -61,7 +65,7 @@ export default function AdminPortalPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'SYNC' | 'AUDIT' | 'HEALTH' | 'POLLING'>('DOCUMENTS');
+  const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'FOLDERS' | 'NIP' | 'UPLOAD' | 'SYNC' | 'AUDIT' | 'HEALTH' | 'POLLING' | 'KWT'>('DOCUMENTS');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,6 +122,16 @@ export default function AdminPortalPage() {
   const [editDocVisibility, setEditDocVisibility] = useState('INTERNAL');
   const [editDocSensitive, setEditDocSensitive] = useState(false);
   const [isSavingEditDoc, setIsSavingEditDoc] = useState(false);
+ 
+  // KWT (Kelompok Wanita Tani) States
+  const [kwtList, setKwtList] = useState<any[]>([]);
+  const [kwtLoading, setKwtLoading] = useState(false);
+  const [kwtSearch, setKwtSearch] = useState('');
+  const [kwtFilterKecamatan, setKwtFilterKecamatan] = useState('ALL');
+  const [kwtFilterStatus, setKwtFilterStatus] = useState('ALL');
+  const [kwtSavingId, setKwtSavingId] = useState<number | null>(null);
+  const [kwtSaveSuccess, setKwtSaveSuccess] = useState<Record<number, boolean>>({});
+  const [kwtEdits, setKwtEdits] = useState<Record<number, any>>({});
 
   // New Doc Form
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +183,7 @@ export default function AdminPortalPage() {
       fetchSyncStatus();
       fetchPollThemes();
       fetchPollData(selectedPollThemeCode);
+      fetchKwtList();
     }
   }, [isAuthorizedAdmin]);
 
@@ -362,6 +377,112 @@ export default function AdminPortalPage() {
     } catch (e) {
       console.error('Failed to toggle NIP status:', e);
     }
+  };
+
+  // KWT Handlers
+  const fetchKwtList = async () => {
+    try {
+      setKwtLoading(true);
+      const res = await fetch('/api/kwt?limit=200');
+      const data = await res.json();
+      if (data.kwt) {
+        setKwtList(data.kwt);
+      }
+    } catch (e) {
+      console.error('Failed to fetch KWT:', e);
+    } finally {
+      setKwtLoading(false);
+    }
+  };
+
+  const handleKwtInputChange = (no_urut: number, field: string, value: any) => {
+    setKwtEdits((prev) => ({
+      ...prev,
+      [no_urut]: {
+        ...(prev[no_urut] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveKwtRow = async (kwtItem: any) => {
+    const no = kwtItem.no_urut;
+    const edits = kwtEdits[no] || {};
+    setKwtSavingId(no);
+    try {
+      const payload: any = {
+        id: kwtItem.id,
+        no_urut: kwtItem.no_urut,
+      };
+      if (edits.nama_ketua !== undefined) payload.nama_ketua = edits.nama_ketua;
+      if (edits.no_wa_ketua !== undefined) payload.no_wa_ketua = edits.no_wa_ketua;
+      if (edits.latitude !== undefined) payload.latitude = edits.latitude ? Number(edits.latitude) : null;
+      if (edits.longitude !== undefined) payload.longitude = edits.longitude ? Number(edits.longitude) : null;
+      if (edits.alamat_sekretariat !== undefined) payload.alamat_sekretariat = edits.alamat_sekretariat;
+      if (payload.latitude && payload.longitude) {
+        payload.maps_link = `https://www.google.com/maps?q=${payload.latitude},${payload.longitude}`;
+      }
+
+      const res = await fetch('/api/kwt', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setKwtSaveSuccess((prev) => ({ ...prev, [no]: true }));
+        setTimeout(() => {
+          setKwtSaveSuccess((prev) => ({ ...prev, [no]: false }));
+        }, 3000);
+        setKwtList((prev) =>
+          prev.map((k) => (k.no_urut === no ? { ...k, ...payload } : k))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to save KWT row:', err);
+    } finally {
+      setKwtSavingId(null);
+    }
+  };
+
+  const exportKwtToCsv = () => {
+    if (!kwtList.length) return;
+    const headers = [
+      'No', 'Kecamatan', 'Kelurahan', 'Nama KWT', 'Nama Ketua',
+      'No WA Ketua', 'Alamat Sekretariat', 'Jenis Usaha', 'Bantuan',
+      'Status', 'Latitude', 'Longitude', 'Google Maps'
+    ];
+    const rows = kwtList.map((k) => {
+      const edits = kwtEdits[k.no_urut] || {};
+      const ketua = edits.nama_ketua !== undefined ? edits.nama_ketua : (k.nama_ketua || '');
+      const wa = edits.no_wa_ketua !== undefined ? edits.no_wa_ketua : (k.no_wa_ketua || '');
+      const lat = edits.latitude !== undefined ? edits.latitude : (k.latitude || '');
+      const lon = edits.longitude !== undefined ? edits.longitude : (k.longitude || '');
+      const alm = edits.alamat_sekretariat !== undefined ? edits.alamat_sekretariat : (k.alamat_sekretariat || '');
+      return [
+        k.no_urut,
+        `"${(k.kecamatan || '').replace(/"/g, '""')}"`,
+        `"${(k.kelurahan || '').replace(/"/g, '""')}"`,
+        `"${(k.nama_kwt || '').replace(/"/g, '""')}"`,
+        `"${String(ketua).replace(/"/g, '""')}"`,
+        `"${String(wa).replace(/"/g, '""')}"`,
+        `"${String(alm).replace(/"/g, '""')}"`,
+        `"${(k.jenis_usaha || '').replace(/"/g, '""')}"`,
+        `"${(k.bantuan || '').replace(/"/g, '""')}"`,
+        `"${(k.keterangan || '').replace(/"/g, '""')}"`,
+        lat,
+        lon,
+        `"${(k.maps_link || '').replace(/"/g, '""')}"`
+      ].join(',');
+    });
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `data_kwt_cilegon_2026_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleCreateDocument = async (e: React.FormEvent) => {
@@ -1045,6 +1166,25 @@ export default function AdminPortalPage() {
           >
             <UploadCloud className="w-4 h-4" />
             <span>Upload & Ingestion</span>
+          </button>
+
+          {/* TAB BARU: KELOMPOK WANITA TANI (KWT) */}
+          <button
+            onClick={() => {
+              setActiveTab('KWT');
+              fetchKwtList();
+            }}
+            className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'KWT'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+            }`}
+          >
+            <Sprout className="w-4 h-4 text-emerald-400" />
+            <span className="flex-1 text-left">Kelompok Wanita Tani (KWT)</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 font-mono border border-emerald-800">
+              84 KWT
+            </span>
           </button>
 
           {/* TAB BARU: SINKRONISASI DATA & GIS */}
@@ -2733,6 +2873,301 @@ export default function AdminPortalPage() {
                       Dapat melihat siapa yang memilih, daftar pilihan, waktu, dan IP (untuk audit integritas &amp; transparansi tata kelola internal).
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 8: KELOMPOK WANITA TANI (KWT) */}
+          {activeTab === 'KWT' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Header Panel KWT */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-800">
+                      Basis Data Pertanian &amp; Ketahanan Pangan
+                    </span>
+                    <span className="text-xs text-slate-400">Total {kwtList.length} KWT Terdaftar</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-white mt-1 flex items-center gap-2">
+                    <Sprout className="w-5 h-5 text-emerald-400" />
+                    <span>Kelompok Wanita Tani (KWT) Kota Cilegon</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Data 84 KWT di 8 Kecamatan se-Kota Cilegon — Terintegrasi dengan Chatbot AI, Pin Peta GIS Spasial &amp; Google Maps.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={exportKwtToCsv}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ekspor CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fetchKwtList}
+                    disabled={kwtLoading}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-98 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${kwtLoading ? 'animate-spin' : ''}`} />
+                    <span>Muat Ulang</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter & Pencarian Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={kwtSearch}
+                    onChange={(e) => setKwtSearch(e.target.value)}
+                    placeholder="Cari nama KWT, kelurahan, alamat lingkungan, atau usaha..."
+                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                  {kwtSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setKwtSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                    <select
+                      value={kwtFilterKecamatan}
+                      onChange={(e) => setKwtFilterKecamatan(e.target.value)}
+                      className="px-2.5 py-2 text-xs rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="ALL">Semua Kecamatan (8)</option>
+                      <option value="CITANGKIL">Citangkil (15)</option>
+                      <option value="CIWANDAN">Ciwandan (19)</option>
+                      <option value="PULOMERAK">Pulomerak (10)</option>
+                      <option value="GROGOL">Grogol (9)</option>
+                      <option value="JOMBANG">Jombang (5)</option>
+                      <option value="PURWAKARTA">Purwakarta (8)</option>
+                      <option value="CIBEBER">Cibeber (14)</option>
+                      <option value="CILEGON">Cilegon (4)</option>
+                    </select>
+                  </div>
+
+                  <select
+                    value={kwtFilterStatus}
+                    onChange={(e) => setKwtFilterStatus(e.target.value)}
+                    className="px-2.5 py-2 text-xs rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="ALL">Semua Status</option>
+                    <option value="Aktif">Aktif</option>
+                    <option value="Fakum">Fakum</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* TABEL DATA KWT */}
+              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-3 w-12 text-center">No</th>
+                      <th className="py-3 px-4 min-w-[200px]">Kelompok Wanita Tani</th>
+                      <th className="py-3 px-4 min-w-[220px]">Alamat Sekretariat</th>
+                      <th className="py-3 px-4 min-w-[170px]">Nama Ketua (Placeholder)</th>
+                      <th className="py-3 px-4 min-w-[160px]">No WhatsApp (Placeholder)</th>
+                      <th className="py-3 px-4 min-w-[180px]">Koordinat GIS (Lat, Lon)</th>
+                      <th className="py-3 px-3 text-center w-24">Peta GIS</th>
+                      <th className="py-3 px-3 text-center w-24">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {kwtLoading ? (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
+                          <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin mx-auto mb-2" />
+                          <span>Memuat 84 data KWT...</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      kwtList
+                        .filter((k) => {
+                          const matchesSearch =
+                            !kwtSearch ||
+                            k.nama_kwt?.toLowerCase().includes(kwtSearch.toLowerCase()) ||
+                            k.kelurahan?.toLowerCase().includes(kwtSearch.toLowerCase()) ||
+                            k.kecamatan?.toLowerCase().includes(kwtSearch.toLowerCase()) ||
+                            k.alamat_sekretariat?.toLowerCase().includes(kwtSearch.toLowerCase()) ||
+                            k.jenis_usaha?.toLowerCase().includes(kwtSearch.toLowerCase());
+                          const matchesKec =
+                            kwtFilterKecamatan === 'ALL' ||
+                            k.kecamatan?.toUpperCase() === kwtFilterKecamatan.toUpperCase();
+                          const matchesStatus =
+                            kwtFilterStatus === 'ALL' ||
+                            k.keterangan?.toLowerCase() === kwtFilterStatus.toLowerCase();
+                          return matchesSearch && matchesKec && matchesStatus;
+                        })
+                        .map((item) => {
+                          const no = item.no_urut;
+                          const edits = kwtEdits[no] || {};
+                          const currKetua = edits.nama_ketua !== undefined ? edits.nama_ketua : (item.nama_ketua || '');
+                          const currWa = edits.no_wa_ketua !== undefined ? edits.no_wa_ketua : (item.no_wa_ketua || item.no_hp_ketua || '');
+                          const currLat = edits.latitude !== undefined ? edits.latitude : (item.latitude !== null && item.latitude !== undefined ? item.latitude : '');
+                          const currLon = edits.longitude !== undefined ? edits.longitude : (item.longitude !== null && item.longitude !== undefined ? item.longitude : '');
+                          const currAlm = edits.alamat_sekretariat !== undefined ? edits.alamat_sekretariat : (item.alamat_sekretariat || '');
+                          const isSaving = kwtSavingId === no;
+                          const isSaved = kwtSaveSuccess[no];
+                          const hasEdits = Object.keys(edits).length > 0;
+
+                          return (
+                            <tr key={`kwt-row-${no}`} className="hover:bg-slate-900/50 transition-colors">
+                              {/* No Urut */}
+                              <td className="py-3 px-3 text-center font-mono text-slate-400">
+                                {no}
+                              </td>
+
+                              {/* Nama & Wilayah */}
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                                  <span>🌱</span>
+                                  <span>{item.nama_kwt}</span>
+                                </div>
+                                <div className="text-[11px] text-emerald-400 mt-0.5">
+                                  Kel. {item.kelurahan}, Kec. {item.kecamatan}
+                                </div>
+                                {item.jenis_usaha && (
+                                  <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
+                                    🌾 {item.jenis_usaha}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Alamat Sekretariat */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={currAlm}
+                                  onChange={(e) => handleKwtInputChange(no, 'alamat_sekretariat', e.target.value)}
+                                  placeholder="Link. / Kampung / Alamat..."
+                                  className="w-full px-2.5 py-1.5 text-[11px] rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                                />
+                                {item.geocode_display && (
+                                  <div className="text-[9px] text-slate-500 mt-0.5 font-mono line-clamp-1" title={item.geocode_display}>
+                                    📍 Geocode: {item.geocode_display}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Nama Ketua (Placeholder) */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={currKetua}
+                                  onChange={(e) => handleKwtInputChange(no, 'nama_ketua', e.target.value)}
+                                  placeholder="Nama Ketua KWT..."
+                                  className="w-full px-2.5 py-1.5 text-[11px] rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+                                />
+                              </td>
+
+                              {/* No WA Ketua (Placeholder) */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={currWa}
+                                  onChange={(e) => handleKwtInputChange(no, 'no_wa_ketua', e.target.value)}
+                                  placeholder="Contoh: 08123456789..."
+                                  className="w-full px-2.5 py-1.5 text-[11px] font-mono rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                                />
+                              </td>
+
+                              {/* Koordinat GIS (Lat, Lon) */}
+                              <td className="py-3 px-4">
+                                <div className="flex gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={currLat}
+                                    onChange={(e) => handleKwtInputChange(no, 'latitude', e.target.value)}
+                                    placeholder="Latitude"
+                                    className="w-1/2 px-2 py-1.5 text-[10px] font-mono rounded-lg bg-slate-900 border border-slate-700 text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={currLon}
+                                    onChange={(e) => handleKwtInputChange(no, 'longitude', e.target.value)}
+                                    placeholder="Longitude"
+                                    className="w-1/2 px-2 py-1.5 text-[10px] font-mono rounded-lg bg-slate-900 border border-slate-700 text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Peta GIS / Maps Link */}
+                              <td className="py-3 px-3 text-center">
+                                {item.maps_link ? (
+                                  <a
+                                    href={item.maps_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 hover:text-emerald-200 text-[10px] font-bold border border-slate-700 transition-colors"
+                                    title="Lihat pin di Google Maps"
+                                  >
+                                    <MapPin className="w-3 h-3 text-rose-400" />
+                                    <span>Peta</span>
+                                    <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-slate-600">—</span>
+                                )}
+                              </td>
+
+                              {/* Tombol Simpan */}
+                              <td className="py-3 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveKwtRow(item)}
+                                  disabled={isSaving}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
+                                    isSaved
+                                      ? 'bg-emerald-600 text-white'
+                                      : hasEdits
+                                      ? 'bg-amber-600 hover:bg-amber-500 text-white animate-pulse'
+                                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                  }`}
+                                  title="Simpan perubahan baris ini"
+                                >
+                                  {isSaving ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : isSaved ? (
+                                    <Check className="w-3 h-3 text-white" />
+                                  ) : (
+                                    <Save className="w-3 h-3" />
+                                  )}
+                                  <span>{isSaving ? '...' : isSaved ? 'Tersimpan' : 'Simpan'}</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer Keterangan Tambahan */}
+              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-800/40 text-xs text-emerald-300 flex items-start gap-3">
+                <span className="text-lg shrink-0">💡</span>
+                <div className="space-y-1">
+                  <p className="font-bold">Informasi Integrasi Spasial KWT DKPP Cilegon:</p>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    Setiap perubahan nama ketua, nomor WhatsApp, alamat lingkungan, dan titik koordinat akan otomatis tersinkronisasi ke chatbot AI dan pin layer spasial GIS. Jika pengguna menanyakan keberadaan KWT melalui chatbot, sistem akan langsung menyajikan profil lengkap dan mengarahkan navigasi visual pada peta.
+                  </p>
                 </div>
               </div>
             </div>

@@ -28,6 +28,19 @@ const THEME_STYLES: Record<string, { bg: string; text: string; border: string }>
   lucu:        { bg: 'bg-[#FFF7ED]', text: 'text-[#9A3412]', border: 'border-[#FED7AA]' },
 };
 
+/**
+ * Palet warna fallback untuk tema kustom baru yang kodenya belum ada di THEME_STYLES.
+ * Akan dipilih berdasarkan urutan index tema.
+ */
+const FALLBACK_PALETTE = [
+  { bg: 'bg-[#F0FDF4]', text: 'text-[#166534]', border: 'border-[#BBF7D0]' },
+  { bg: 'bg-[#EFF6FF]', text: 'text-[#1E3A8A]', border: 'border-[#BFDBFE]' },
+  { bg: 'bg-[#FFF7ED]', text: 'text-[#9A3412]', border: 'border-[#FED7AA]' },
+  { bg: 'bg-[#FDF4FF]', text: 'text-[#6B21A8]', border: 'border-[#E9D5FF]' },
+  { bg: 'bg-[#F0FDFA]', text: 'text-[#134E4A]', border: 'border-[#99F6E4]' },
+  { bg: 'bg-[#FAFAFA]', text: 'text-[#374151]', border: 'border-[#E5E7EB]' },
+];
+
 export const ThemeCatalog: React.FC<ThemeCatalogProps> = ({
   themes,
   onSelectTheme,
@@ -35,7 +48,7 @@ export const ThemeCatalog: React.FC<ThemeCatalogProps> = ({
 }) => {
   return (
     <div className={`bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 ${className}`}>
-      {/* Header (Screen 7) */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="text-2xl shrink-0">🏆</div>
         <div>
@@ -48,34 +61,37 @@ export const ThemeCatalog: React.FC<ThemeCatalogProps> = ({
         </div>
       </div>
 
-      {/* 2-Column Pastel Cards (Screen 7) */}
+      {/* 2-Column Pastel Cards
+          WRAPTEXT: menggunakan whitespace-normal break-words leading-snug
+          bukan truncate, sehingga teks panjang tidak terpotong di layar mobile */}
       <div className="grid grid-cols-2 gap-2.5">
-        {themes.map((theme) => {
-          const style = THEME_STYLES[theme.code] || {
-            bg: 'bg-emerald-50',
-            text: 'text-emerald-900',
-            border: 'border-emerald-200'
-          };
+        {themes.map((theme, idx) => {
+          const style = THEME_STYLES[theme.code] || FALLBACK_PALETTE[idx % FALLBACK_PALETTE.length];
+          // Tampilkan short_label dinamis dari DB; fallback ke title jika kosong
+          const displayLabel = (theme.short_label && theme.short_label.trim())
+            ? theme.short_label
+            : theme.title;
 
           return (
             <button
               key={theme.code}
               type="button"
               onClick={() => onSelectTheme?.(theme.code)}
-              className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-xl border ${style.bg} ${style.border} hover:scale-[1.02] active:scale-[0.99] transition-all text-left shadow-xs cursor-pointer`}
+              className={`flex items-start gap-2 p-2.5 sm:p-3 rounded-xl border ${style.bg} ${style.border} hover:scale-[1.02] active:scale-[0.99] transition-all text-left shadow-xs cursor-pointer min-h-[52px]`}
             >
-              <span className="text-lg shrink-0 select-none">
+              <span className="text-lg shrink-0 select-none mt-0.5">
                 {theme.icon || '🏆'}
               </span>
-              <span className={`font-semibold text-xs sm:text-[13px] truncate ${style.text}`}>
-                {theme.short_label || theme.title}
+              {/* WRAPTEXT — tidak ada truncate, teks akan membungkus ke baris baru */}
+              <span className={`font-semibold text-xs sm:text-[13px] whitespace-normal break-words leading-snug ${style.text}`}>
+                {displayLabel}
               </span>
             </button>
           );
         })}
       </div>
 
-      {/* Footer Pill (Screen 7) */}
+      {/* Footer Pill */}
       <div className="pt-1 text-center">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
           <FiShield className="w-3.5 h-3.5 text-emerald-600" />

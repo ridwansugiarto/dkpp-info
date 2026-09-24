@@ -1,30 +1,71 @@
 import { PollIntentResult, PollTheme } from './types';
+import { OFFICIAL_POLL_THEMES } from './constants';
 
-interface RuleTheme {
-  category: string;
-  keywords: string[];
-  title: string;
-}
+/**
+ * SYNONYM_MAP — Peta sinonim semantik per kode tema (code-based, bukan title-based).
+ *
+ * TUJUAN: Menyimpan kata-kata yang TIDAK bisa di-generate secara mekanis dari judul/label tema,
+ *         namun secara semantik/kultural erat kaitannya dengan tema tersebut.
+ *
+ * ATURAN:
+ *   - Kunci = code tema (tidak berubah meski admin ganti judul)
+ *   - Isi  = kata-kata sinonim/kolokial yang user mungkin ketik di chat
+ *   - Kata yang bisa di-generate dari judul (mis: "sibuk" dari "Paling Sibuk") TIDAK perlu di sini
+ *   - Map ini TIDAK perlu di-update manual saat admin ganti judul
+ *
+ * Dengan struktur ini, admin bebas ganti judul kapan pun,
+ * dan SYNONYM_MAP tidak perlu diubah kecuali ada penambahan sinonim baru.
+ */
+const SYNONYM_MAP: Record<string, string[]> = {
+  // code: ganteng — sinonim maskulin yang tidak berasal dari judul
+  ganteng:      ['tampan', 'tertampan', 'cakep', 'tercakep', 'pria tertampan', 'cowok ganteng', 'macho'],
 
-const RULE_MAP: RuleTheme[] = [
-  { category: 'ganteng', keywords: ['ganteng', 'terganteng', 'tampan', 'tertampan', 'cakep', 'tercakep', 'pria tertampan', 'cowok ganteng'], title: 'Pegawai Paling Ganteng' },
-  { category: 'cantik', keywords: ['cantik', 'tercantik', 'anggun', 'teranggun', 'jelita', 'terjelita', 'manis', 'termanis', 'wanita tercantik', 'cewek cantik'], title: 'Pegawai Paling Cantik' },
-  { category: 'cerdas', keywords: ['cerdas', 'tercerdas', 'pintar', 'terpintar', 'genius', 'jenius', 'otak encer', 'solutif'], title: 'Pegawai Paling Cerdas' },
-  { category: 'rajin', keywords: ['rajin', 'terajin', 'disiplin', 'terdisiplin', 'ulet', 'tepat waktu', 'pekerja keras'], title: 'Pegawai Paling Rajin' },
-  { category: 'soleh', keywords: ['soleh', 'tersoleh', 'sholeh', 'tersholeh', 'alim', 'santun', 'ibadah', 'agamis', 'religius'], title: 'Pegawai Paling Soleh & Santun' },
-  { category: 'dermawan', keywords: ['dermawan', 'terdermawan', 'pemurah', 'suka berbagi', 'sedekah', 'ringan tangan', 'bersih', 'terbersih', 'paling bersih'], title: 'Pegawai Paling Dermawan' },
-  { category: 'royal', keywords: ['royal', 'ter-royal', 'traktir', 'suka traktir', 'jajanin', 'bayarin'], title: 'Pegawai Paling Royal' },
-  { category: 'baik', keywords: ['baik hati', 'paling baik', 'terbaik hati', 'tulus', 'teramah', 'penolong'], title: 'Pegawai Paling Baik Hati' },
-  { category: 'tahu_segala', keywords: ['tahu segala', 'paling tahu', 'kamus berjalan', 'serba tahu', 'wawasan luas', 'ramah', 'paling ramah', 'teramah', 'menyapa'], title: 'Pegawai Paling Tahu Segala' },
-  { category: 'update', keywords: ['terupdate', 'ter-update', 'paling update', 'up to date', 'pendiam', 'terpendiam', 'paling pendiam', 'diam'], title: 'Pegawai Paling Update' },
-  { category: 'gaptek', keywords: ['gaptek', 'tergaptek', 'gagap teknologi', 'bingung mouse', 'suka jajan', 'banyak jajan', 'jajan'], title: 'Pegawai Paling Gaptek' },
-  { category: 'murah_senyum', keywords: ['murah senyum', 'paling murah senyum', 'sumringah'], title: 'Pegawai Paling Murah Senyum' },
-  { category: 'cool', keywords: ['cool', 'tercool', 'paling cool', 'terkalem', 'karismatik', 'kharisma', 'nyantai', 'santai'], title: 'Pegawai Paling Cool & Tenang' },
-  { category: 'trendy', keywords: ['trendy', 'tertrendy', 'modis', 'termodis', 'stylish', 'fashionable', 'sibuk', 'tersibuk', 'paling sibuk'], title: 'Pegawai Paling Trendy' },
-  { category: 'lucu', keywords: ['terlucu', 'paling lucu', 'komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa'], title: 'Pegawai Paling Lucu' },
-];
+  // code: cantik — sinonim feminim
+  cantik:       ['anggun', 'teranggun', 'jelita', 'terjelita', 'manis', 'termanis', 'wanita tercantik', 'cewek cantik', 'ayu'],
 
+  // code: cerdas — sinonim intelektual
+  cerdas:       ['pintar', 'terpintar', 'genius', 'jenius', 'otak encer', 'solutif', 'brilian', 'wawasan luas', 'tahu segala', 'kamus berjalan'],
+
+  // code: rajin — sinonim etos kerja
+  rajin:        ['disiplin', 'terdisiplin', 'ulet', 'tepat waktu', 'pekerja keras', 'giat', 'tekun'],
+
+  // code: soleh — sinonim religius (kode tidak berubah meski judul diubah admin ke "Religius")
+  soleh:        ['sholeh', 'alim', 'ibadah', 'agamis', 'religius', 'taqwa', 'mushola', 'paling religius', 'ustaz', 'ustazah'],
+
+  // code: dermawan — sinonim kebersihan (kode tidak berubah meski judul diubah ke "Bersih")
+  dermawan:     ['bersih', 'terbersih', 'beberes', 'rajin bersih', 'menjaga kebersihan', 'bersih-bersih', 'rapi'],
+
+  // code: royal — sinonim sosial/traktir
+  royal:        ['traktir', 'suka traktir', 'jajanin', 'bayarin', 'ter-royal', 'sponsoran'],
+
+  // code: baik — sinonim empati
+  baik:         ['baik hati', 'tulus', 'penolong', 'pengertian', 'empati', 'penyabar'],
+
+  // code: tahu_segala — sinonim ramah (kode tidak berubah meski judul diubah ke "Ramah")
+  tahu_segala:  ['ramah', 'teramah', 'ramah tamah', 'menyapa', 'suka sapa', 'friendly', 'senyum sapa', 'sapaan'],
+
+  // code: update — sinonim pendiam (kode tidak berubah meski judul diubah ke "Pendiam")
+  update:       ['pendiam', 'terpendiam', 'diam', 'jarang bicara', 'pemalu', 'introvert', 'diam-diam menghanyutkan'],
+
+  // code: gaptek — sinonim jajan (kode tidak berubah meski judul diubah ke "Suka Jajan")
+  gaptek:       ['suka jajan', 'banyak jajan', 'doyan jajan', 'ngemil', 'cemilan', 'ke warung', 'jajanan'],
+
+  // code: murah_senyum — sinonim senyum
+  murah_senyum: ['sumringah', 'sumringgah', 'selalu senyum', 'ceria', 'riang'],
+
+  // code: cool — sinonim santai/kalem
+  cool:         ['nyantai', 'santai', 'kalem', 'terkalem', 'karismatik', 'kharisma', 'tidak panik', 'tenang'],
+
+  // code: trendy — sinonim sibuk (kode tidak berubah meski judul diubah ke "Sibuk")
+  trendy:       ['sibuk', 'tersibuk', 'sibuk terus', 'selalu sibuk', 'produktif', 'aktif terus', 'kerja terus', 'kesibukan'],
+
+  // code: lucu — sinonim humor
+  lucu:         ['komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa', 'kocak', 'pelawak'],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Topik resmi kedinasan/pertanian/pangan/perikanan yang BUKAN polling
+// ─────────────────────────────────────────────────────────────────────────────
 const FORMAL_GOV_TOPICS = [
   'panen', 'padi', 'sawah', 'pupuk', 'benih', 'bibit', 'kwt', 'poktan', 'gapoktan', 'kelompok tani',
   'jagung', 'singkong', 'cabai', 'bawang', 'sayur', 'sayuran', 'ternak', 'sapi', 'kambing', 'ayam', 'telur',
@@ -42,29 +83,41 @@ const EXPLICIT_POLL_PHRASES = [
   'live hasil polling', 'live hasil'
 ];
 
+// Stopwords yang dikecualikan dari keyword extraction
+const STOPWORDS = new Set([
+  'pegawai', 'paling', 'yang', 'dan', 'atau', 'di', 'dkpp', 'kota', 'cilegon', 'siapa', 'ini', 'itu',
+  'dengan', 'para', 'bisa', 'kolega', 'rekan', 'kerja', 'selalu', 'untuk', 'dari', 'juga', 'apa',
+]);
+
 /**
- * Ekstrak kata kunci dari tema polling kustom yang diedit admin
+ * buildRulesFromThemes — Bangun aturan deteksi intent sepenuhnya dari data DB.
+ *
+ * Strategi per tema:
+ *   1. Keyword dari code tema itu sendiri
+ *   2. Keyword dari title + short_label yang diedit admin di DB (DINAMIS)
+ *   3. Keyword sinonim semantik dari SYNONYM_MAP (code-based, tidak perlu update)
+ *
+ * Jika DB kosong/tidak tersedia → fallback ke OFFICIAL_POLL_THEMES (dari constants.ts)
  */
-function buildRulesFromThemes(themes?: PollTheme[]): RuleTheme[] {
-  if (!themes || themes.length === 0) {
-    return RULE_MAP;
-  }
+function buildRulesFromThemes(themes?: PollTheme[]): Array<{ category: string; keywords: string[]; title: string }> {
+  // Fallback: gunakan konstanta resmi jika DB tidak tersedia
+  const sourceThemes = (themes && themes.length > 0) ? themes : OFFICIAL_POLL_THEMES;
 
-  const stopwords = new Set([
-    'pegawai', 'paling', 'yang', 'dan', 'atau', 'di', 'dkpp', 'kota', 'cilegon', 'siapa', 'ini', 'itu',
-    'dengan', 'para', 'bisa', 'kolega', 'rekan', 'kerja', 'selalu'
-  ]);
-
-  const dynamicRules: RuleTheme[] = themes.map((theme) => {
+  return sourceThemes.map((theme) => {
     const kws = new Set<string>();
-    kws.add(theme.code.toLowerCase());
 
+    // 1. Code sebagai keyword dasar
+    kws.add(theme.code.toLowerCase().replace(/_/g, ' '));
+
+    // 2. Ekstraksi dinamis dari title & short_label (hasil edit admin di DB)
     const titleLower = (theme.title || '').toLowerCase();
     const shortLower = (theme.short_label || '').toLowerCase();
 
+    // Bersihkan prefix umum lalu tambahkan sebagai keyword frasa
     const cleanTitle = titleLower.replace(/^(pegawai|staf|kategori|tema)\s+/i, '').trim();
     if (cleanTitle) kws.add(cleanTitle);
 
+    // short_label tanpa "paling" prefix → kata inti + variasi prefiks
     const cleanShort = shortLower.replace(/^paling\s+/i, '').trim();
     if (cleanShort) {
       kws.add(cleanShort);
@@ -73,20 +126,25 @@ function buildRulesFromThemes(themes?: PollTheme[]): RuleTheme[] {
       kws.add(`ter-${cleanShort}`);
     }
 
-    // Ambil kata-kata penting
-    const tokens = `${titleLower} ${shortLower}`.split(/[^a-z0-9_-]+/).filter((w) => w.length >= 3 && !stopwords.has(w));
+    // Tokenisasi: ambil semua kata bermakna (≥3 huruf) dari title + short_label
+    const tokens = `${titleLower} ${shortLower}`
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+
     for (const tok of tokens) {
       kws.add(tok);
       kws.add(`paling ${tok}`);
       kws.add(`ter${tok}`);
-      kws.add(`ter-${tok}`);
     }
 
-    // Gabungkan dengan kata kunci dari RULE_MAP bawaan jika ada kecocokan kode
-    const existingRule = RULE_MAP.find((r) => r.category === theme.code);
-    if (existingRule) {
-      for (const ekw of existingRule.keywords) {
-        kws.add(ekw);
+    // 3. Sinonim semantik dari SYNONYM_MAP (code-based, tidak perlu update saat admin ganti judul)
+    const synonyms = SYNONYM_MAP[theme.code] || [];
+    for (const syn of synonyms) {
+      kws.add(syn);
+      // Tambahkan variasi prefiks untuk sinonim tunggal (bukan frasa)
+      if (!syn.includes(' ')) {
+        kws.add(`paling ${syn}`);
+        kws.add(`ter${syn}`);
       }
     }
 
@@ -96,14 +154,14 @@ function buildRulesFromThemes(themes?: PollTheme[]): RuleTheme[] {
       title: theme.title,
     };
   });
-
-  return dynamicRules;
 }
 
 /**
- * Deteksi maksud pengguna secara kontekstual:
- * Menghindari penafsiran membabi-buta terhadap kata seperti "baik", "cantik", "hasil", dsb.
- * yang berada dalam kalimat panjang atau konteks kedinasan formal.
+ * detectPollingIntent — Deteksi maksud pengguna secara kontekstual.
+ *
+ * Menerima customThemes dari DB (via getActivePollThemes) sehingga
+ * detection selalu sinkron dengan data terbaru yang admin edit.
+ * Tidak ada lagi RULE_MAP statis yang perlu di-sync manual.
  */
 export function detectPollingIntent(userMessage: string, customThemes?: PollTheme[]): PollIntentResult {
   if (!userMessage || typeof userMessage !== 'string') {
@@ -112,31 +170,32 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
 
   const raw = userMessage.trim();
   const text = raw.toLowerCase();
-  // Normalisasi typo umum: 'pooling' -> 'polling', 'carousell' -> 'carousel'
-  const normalized = text.replace(/pooling/g, 'polling').replace(/carousell/g, 'carousel');
+  // Normalisasi typo umum
+  const normalized = text
+    .replace(/pooling/g, 'polling')
+    .replace(/carousell/g, 'carousel');
   const words = normalized.split(/\s+/).filter(Boolean);
 
-  // 1. Cek apakah ada frasa eksplisit polling/voting
+  // 1. Cek frasa eksplisit polling/voting
   const hasExplicitPollPhrase = EXPLICIT_POLL_PHRASES.some((phrase) => normalized.includes(phrase));
 
-  // 2. Cek apakah pesan membahas topik resmi kedinasan/pertanian/pangan
+  // 2. Cek topik resmi kedinasan — jika ada dan bukan polling eksplisit, skip
   const hasFormalTopic = FORMAL_GOV_TOPICS.some((topic) => normalized.includes(topic));
-
-  // Jika pesan panjang atau mengandung topik resmi, DAN TIDAK secara eksplisit meminta polling,
-  // maka JANGAN PERNAH intersep sebagai polling pegawai!
   if (hasFormalTopic && !hasExplicitPollPhrase) {
     return { intent: 'GENERAL_CHAT', confidence: 0 };
   }
 
+  // 3. Bangun aturan dari DB themes (sepenuhnya dinamis)
   const activeRules = buildRulesFromThemes(customThemes);
 
-  // 3. Deteksi tema dari activeRules
+  // 4. Cari kecocokan tema
   let matchedTheme: string | null = null;
   let matchedTitle: string | null = null;
   for (const rule of activeRules) {
     if (rule.keywords.some((kw) => {
-      // Pastikan pencocokan kata utuh atau frasa jelas, bukan substring acak
-      const regex = new RegExp(`(^|\\b|\\s)${kw}(\\b|\\s|$)`, 'i');
+      // Pencocokan kata utuh / frasa, bukan substring acak
+      const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|\\b|\\s)${escaped}(\\b|\\s|$)`, 'i');
       return regex.test(normalized);
     })) {
       matchedTheme = rule.category;
@@ -145,16 +204,14 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     }
   }
 
-  // 4. Deteksi apakah pertanyaan menanyakan predikat pegawai (Superlative inquiry)
-  // Contoh: "siapa pegawai paling ganteng?", "siapa staf terajin?", "siapa yang paling soleh di dkpp?", "siapa paling pendiam"
-  const hasWho = /\b(siapa|siapakah)\b/i.test(normalized);
-  const hasSuperlative = /\b(paling|ter|ter-)\b/i.test(normalized);
-  const hasEmployeeContext = /\b(pegawai|staf|staff|asn|pejabat|karyawan|orang|cowok|cewek|pria|wanita|dkpp|kantor|dinas)\b/i.test(normalized);
-  const isEmployeeInquiry = (hasWho && hasSuperlative) || (hasEmployeeContext && hasSuperlative) || (hasWho && hasEmployeeContext);
+  // 5. Konteks superlative / kepegawaian
+  const hasWho            = /\b(siapa|siapakah)\b/i.test(normalized);
+  const hasSuperlative    = /\b(paling|ter)\b/i.test(normalized);
+  const hasEmployeeCtx    = /\b(pegawai|staf|staff|asn|pejabat|karyawan|orang|cowok|cewek|pria|wanita|dkpp|kantor|dinas)\b/i.test(normalized);
+  const isEmployeeInquiry = (hasWho && hasSuperlative) || (hasEmployeeCtx && hasSuperlative) || (hasWho && hasEmployeeCtx);
 
-  // 5. Periksa apakah query meminta Live Carousel Hasil Polling
-  // Disambiguasi: kata "hasil" HANYA dianggap polling jika bersama konteks polling/voting/live/carousel/suara
-  const isCarouselOrLiveRequest =
+  // 6. Deteksi permintaan Live Carousel
+  const isCarouselRequest =
     normalized.includes('carousel') ||
     normalized.includes('karosel') ||
     normalized.includes('live hasil') ||
@@ -164,31 +221,29 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     normalized.includes('hasil vote') ||
     normalized.includes('perolehan suara') ||
     normalized.includes('rekap suara') ||
-    (normalized.includes('peringkat') && hasEmployeeContext) ||
-    (normalized.includes('podium') && hasEmployeeContext);
+    (normalized.includes('peringkat') && hasEmployeeCtx) ||
+    (normalized.includes('podium') && hasEmployeeCtx);
 
-  // Jika query meminta carousel live hasil
-  if (isCarouselOrLiveRequest) {
+  if (isCarouselRequest) {
     const targetCode = matchedTheme || (customThemes?.[0]?.code || 'cantik');
     return {
       intent: 'EMPLOYEE_POLL',
       category: 'carousel',
-      poll_title: `Live Hasil Polling (Carousel 15 Tema - ${targetCode})`,
+      poll_title: `Live Hasil Polling (Carousel - ${targetCode})`,
       confidence: 0.99,
     };
   }
 
-  // 6. Jika query menyebut tema tertentu UNTUK voting / nominasi pegawai
-  // Hanya berlaku jika:
-  // a. Disertai konteks kepegawaian / pertanyaan "siapa paling..."
-  // b. Atau perintah pendek eksplisit (<= 5 kata, cth: "polling cantik", "vote pegawai ganteng", "pilih soleh", "siapa paling pendiam")
-  // c. Atau ada frasa eksplisit polling
+  // 7. Tema spesifik terdeteksi + konteks kepegawaian
   if (matchedTheme) {
-    const isShortDirectCommand =
+    const isShortCommand =
       words.length <= 5 &&
-      (normalized.includes('poll') || normalized.includes('vote') || normalized.includes('pilih') || isEmployeeInquiry);
+      (normalized.includes('poll') ||
+       normalized.includes('vote') ||
+       normalized.includes('pilih') ||
+       isEmployeeInquiry);
 
-    if (hasExplicitPollPhrase || isEmployeeInquiry || isShortDirectCommand) {
+    if (hasExplicitPollPhrase || isEmployeeInquiry || isShortCommand) {
       return {
         intent: 'EMPLOYEE_POLL',
         category: matchedTheme,
@@ -198,15 +253,18 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     }
   }
 
-  // 7. Jika query meminta katalog seluruh polling secara eksplisit
-  // (BUKAN hanya kata "menu", "semua", atau "daftar" biasa)
+  // 8. Permintaan katalog semua polling
   const isCatalogRequest =
     normalized.includes('katalog polling') ||
     normalized.includes('daftar polling') ||
     normalized.includes('menu polling') ||
     normalized.includes('semua polling') ||
     normalized.includes('list polling') ||
-    (normalized.includes('polling pegawai') && (normalized.includes('katalog') || normalized.includes('daftar') || normalized.includes('menu') || normalized.includes('semua')));
+    (normalized.includes('polling pegawai') &&
+      (normalized.includes('katalog') ||
+       normalized.includes('daftar') ||
+       normalized.includes('menu') ||
+       normalized.includes('semua')));
 
   if (isCatalogRequest) {
     return {
@@ -217,8 +275,6 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     };
   }
 
-  // 8. Default: Biarkan AI Gemini menjawab secara kontekstual dan menyeluruh
+  // 9. Default: serahkan ke Gemini
   return { intent: 'GENERAL_CHAT', confidence: 0 };
 }
-
-

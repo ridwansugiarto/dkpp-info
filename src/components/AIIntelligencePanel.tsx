@@ -495,6 +495,7 @@ export default function AIIntelligencePanel({
         if (isSawah) layers.push('sawah');
         if (queryLower.includes('nelayan') || queryLower.includes('pangkalan')) layers.push('nelayan');
         if (queryLower.includes('kolam') || queryLower.includes('budidaya')) layers.push('kolam');
+        if (queryLower.includes('kwt') || queryLower.includes('wanita tani')) layers.push('kwt', 'poktan');
 
         const prePin: MatchedPin = {
           lat: coord.lat,

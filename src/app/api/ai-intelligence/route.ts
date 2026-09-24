@@ -5,6 +5,7 @@ import { KELURAHAN_COORDINATES } from '@/lib/kamera-normatif';
 import { BASELINE_KELURAHAN_DATA } from '@/lib/thematic-indicators';
 import { DKPP_MASTER_PROMPT } from '@/lib/masterPrompt';
 import { reconstructContextualQuery } from '@/lib/conversationalContextEngine';
+import { getAllKwtPins, buildKwtPromptContext } from '@/lib/kwt/data';
 
 // Data Luas Sawah Resmi per Kelurahan (Ha) untuk GIS Intelligence Pin
 const KELURAHAN_SAWAH: Record<string, number> = {
@@ -991,7 +992,8 @@ ${homepageDbNarrative}
 
 ${spNarrative}
 
-${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
+${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}
+${buildKwtPromptContext(userMessage) ? `${buildKwtPromptContext(userMessage)}\n\n` : ''}`;
 
     // 5. Panggil Gemini API (dengan limit token hemat kuota)
     const contents = buildGeminiContents(history, userMessage, imageData);
@@ -1024,10 +1026,8 @@ ${knowledgeNarrative ? `${knowledgeNarrative}\n\n` : ''}`;
       { lat: -5.90874, lng: 106.00421, name: 'Pangkalan Nelayan Lebak Gede', category: 'nelayan', kelurahan: 'Lebakgede', kecamatan: 'Pulomerak' },
       { lat: -6.00891, lng: 105.97234, name: 'Pangkalan Nelayan Lelean', category: 'nelayan', kelurahan: 'Pesisir', kecamatan: 'Ciwandan' },
 
-      // ─── KWT & Poktan ───
-      { lat: -5.97323, lng: 106.03231, name: 'KWT Gerogol (Cabai)', category: 'kwt', kelurahan: 'Gerogol', kecamatan: 'Gerogol' },
-      { lat: -5.95625, lng: 106.03523, name: 'KWT Gerem (Sayuran Segar)', category: 'kwt', kelurahan: 'Gerem', kecamatan: 'Gerogol' },
-      { lat: -5.98912, lng: 106.04215, name: 'KWT Kotabumi', category: 'kwt', kelurahan: 'Kotabumi', kecamatan: 'Purwakarta' },
+      // ─── 84 KWT Resmi DKPP Cilegon ───
+      ...getAllKwtPins().map(k => ({ lat: k.lat, lng: k.lng, name: k.name, category: 'kwt', kelurahan: k.kelurahan, kecamatan: k.kecamatan })),
       { lat: -5.97323, lng: 106.03231, name: 'Poktan Gerogol', category: 'poktan', kelurahan: 'Gerogol', kecamatan: 'Gerogol' },
 
       // ─── Perikanan Budidaya (Kolam) ───

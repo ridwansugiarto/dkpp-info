@@ -21,6 +21,7 @@ import {
   isPegawaiProfileQuery,
   buildPegawaiDkppContext,
 } from '@/data/pegawai_dkpp';
+import { getAllKwtPins, buildKwtPromptContext } from '@/lib/kwt/data';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model chain: Gemini multi-model fallback (dari terbaru ke lama)
@@ -851,9 +852,7 @@ function buildMapActions(
     ...kolamPins.map(p => ({ ...p, category: 'kolam' as string })),
     ...poktanPins.map(p => ({ ...p, category: p.category as string })),
     ...ternakPins.map(p => ({ ...p, category: 'ternak' as string })),
-    { lat: -5.97323, lng: 106.03231, name: 'KWT Gerogol (Cabai)',        category: 'kwt',    kelurahan: 'Gerogol',  kecamatan: 'Gerogol'    },
-    { lat: -5.95625, lng: 106.03523, name: 'KWT Gerem (Sayuran Segar)',  category: 'kwt',    kelurahan: 'Gerem',    kecamatan: 'Gerogol'    },
-    { lat: -5.98912, lng: 106.04215, name: 'KWT Kotabumi',               category: 'kwt',    kelurahan: 'Kotabumi', kecamatan: 'Purwakarta' },
+    ...getAllKwtPins(),
     { lat: -6.02954, lng: 106.00843, name: 'Kolam Nurholis (Lele/Nila)', category: 'kolam',  kelurahan: 'Citangkil',kecamatan: 'Citangkil'  },
     { lat: -6.01145, lng: 106.05094, name: 'Kolam Budidaya Nila Masigit',category: 'kolam',  kelurahan: 'Masigit',  kecamatan: 'Jombang'    },
     { lat: -6.00723, lng: 106.05795, name: 'Peternakan Masigit',         category: 'ternak', kelurahan: 'Masigit',  kecamatan: 'Jombang'    },
@@ -1161,6 +1160,13 @@ ET0 rata-rata: 3,8-4,5 mm/hari. Resolusi piksel: 10m x 10m per petak.`;
 Secara fisik & kewilayahan, Kota Cilegon memiliki **9 Pangkalan Nelayan**. Jika pada beberapa rekapitulasi administratif hanya tercatat 8 pangkalan, hal itu dikarenakan nelayan di **Pangkalan Terate (Kec. Cibeber)** menjual produk hasil tangkapannya di luar wilayah Cilegon (**Nelayan Andon**), sehingga volume produksinya tidak dicatat oleh petugas pencatat Cilegon. Namun pangkalan, 18 nelayan, dan 5 perahunya tetap sah sebagai 1 dari 9 pangkalan di Kota Cilegon.`;
   }
 
+  if (q.includes('kwt') || q.includes('wanita tani') || q.includes('kelompok wanita tani')) {
+    const kwtCtx = buildKwtPromptContext(userQuery);
+    if (kwtCtx) {
+      return kwtCtx.replace(/### \[.*?\]\n?/g, '').trim();
+    }
+  }
+
   return `### ChatDKPP — Sistem Intelijen Ketahanan Pangan Kota Cilegon
 
 **Status Ketahanan Pangan: SANGAT TAHAN**
@@ -1355,9 +1361,11 @@ export async function generateChatResponse(params: {
     ? buildPegawaiDkppContext(activeQuery)
     : null;
 
+  const kwtContext = buildKwtPromptContext(activeQuery);
+
   // 3. Bangun system prompt komprehensif dengan isolasi ketat
   const systemPrompt = buildSystemPrompt(
-    dynamicDbContext + serumpunContext + ketapangContext + perikananContext,
+    dynamicDbContext + serumpunContext + ketapangContext + perikananContext + (kwtContext ? '\n' + kwtContext : ''),
     userRole,
     isVerified,
     userMemoryContext,
@@ -1368,6 +1376,14 @@ export async function generateChatResponse(params: {
     pegawaiProfileContext,
     renstraContext
   );
+
+  if (kwtContext) {
+    matchingDocSources.push({
+      type: 'KNOWLEDGE BASE',
+      title: 'Basis Data Resmi 84 KWT DKPP Kota Cilegon 2026',
+      detail: 'Profil KWT, Lokasi Geocoded Lingkungan/Kampung, Komoditas Olahan & Akses Pin Peta GIS',
+    });
+  }
 
   if (renstraContext && renstraContext.length > 50) {
     matchingDocSources.push({
