@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin, resolveUserAuth } from '@/lib/supabaseServer';
-import { checkRateLimit } from '@/lib/polling/guards';
+import { checkRateLimit, isSuperAdminGovernanceExempt } from '@/lib/polling/guards';
 import { recordMemoryVote, getPollThemeByCodeOrId } from '@/lib/polling/store';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 
@@ -42,31 +42,53 @@ export async function POST(request: Request) {
 
     // 1. Verifikasi Autentikasi Pengguna (Support Cookie SSR & Session Auth Resolver)
     let effectiveUserId: string | null = null;
-    let effectiveUserEmail: string | null = null;
+    let effectiveUserEmail: string | null = userEmail || null;
+    let effectiveUserNip: string | null = userNip || null;
 
     const { data: { user } } = await authClient.auth.getUser();
     if (user) {
       effectiveUserId = user.id;
-      effectiveUserEmail = user.email || null;
+      effectiveUserEmail = user.email || effectiveUserEmail;
+      if (user.user_metadata?.nip) {
+        effectiveUserNip = user.user_metadata.nip;
+      }
+    } else if (userId) {
+      effectiveUserId = userId;
     }
 
     if (!effectiveUserId && (userEmail || userId || userNip)) {
-      const authProfile = await resolveUserAuth(userEmail, userId, userNip);
-      if (authProfile && authProfile.role !== 'GUEST') {
-        effectiveUserId = authProfile.id || userId || `user-${Date.now()}`;
-        effectiveUserEmail = authProfile.email;
-      }
+      effectiveUserId = userId || `user-${Date.now()}`;
     }
 
     if (!effectiveUserId) {
       return NextResponse.json(
-        { error: 'UNAUTHORIZED: Silakan login dengan akun Gmail Anda untuk mengikuti polling.' },
+        { error: 'UNAUTHORIZED: Silakan masuk ke akun Anda terlebih dahulu.' },
         { status: 401 }
       );
     }
 
-    // 2. Rate Limiting (Maks 10 submit per menit)
-    const rateCheck = checkRateLimit(effectiveUserId, 10, 60000);
+    const authProfile = await resolveUserAuth(effectiveUserEmail || undefined, effectiveUserId || undefined, effectiveUserNip || undefined);
+
+    // 1b. Cek Pengecualian Tata Kelola (Superadmin Governance Exemption)
+    // Email ridwansugiarto.mail@gmail.com dipadukan NIP 197610182002121002
+    const isGovExempt = isSuperAdminGovernanceExempt(effectiveUserEmail, effectiveUserNip);
+
+    // KETENTUAN HAK SUARA (VOTE):
+    // Partisipasi voting HANYA dibatasi untuk pegawai DKPP dengan NIP yang sudah terverifikasi dan Superadmin Governance.
+    // Masyarakat umum (role CITIZEN) dan tamu (GUEST) atau user yang belum verifikasi NIP TIDAK BOLEH memberikan vote!
+    if (!authProfile.is_verified_employee && !isGovExempt) {
+      return NextResponse.json(
+        {
+          error: 'RESTRICTED_ACCESS',
+          message: 'Hak partisipasi pemberian suara (voting) dibatasi dan hanya diperuntukkan bagi Pegawai Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon yang telah terverifikasi melalui Nomor Induk Pegawai (NIP).',
+          requires_nip_verification: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    // 2. Rate Limiting (Maks 10 submit per menit untuk user biasa, 100 untuk superadmin)
+    const rateCheck = checkRateLimit(effectiveUserId, isGovExempt ? 100 : 10, 60000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: `RATE_LIMIT_EXCEEDED: Terlalu banyak percobaan. Silakan coba lagi dalam ${rateCheck.retryAfterSec} detik.` },
@@ -105,42 +127,56 @@ export async function POST(request: Request) {
     } catch {}
 
     // 4. Cek apakah user sudah pernah memberikan suaranya pada tema ini
-    try {
-      const { data: existingPart } = await supabaseAdmin
-        .from('poll_participations')
-        .select('poll_id, choices_count')
-        .eq('poll_id', dbPollId)
-        .eq('user_id', effectiveUserId)
-        .maybeSingle();
+    // DIKECUALIKAN untuk Superadmin Governance (Email ridwansugiarto.mail@gmail.com & NIP 197610182002121002)
+    // demi menjaga keseimbangan psikologi perkantoran dari pengaruh polling tendensius.
+    if (!isGovExempt) {
+      try {
+        const { data: existingPart } = await supabaseAdmin
+          .from('poll_participations')
+          .select('poll_id, choices_count')
+          .eq('poll_id', dbPollId)
+          .eq('user_id', effectiveUserId)
+          .maybeSingle();
 
-      if (existingPart) {
-        return NextResponse.json({
-          error: `ALREADY_VOTED: Anda sudah memberikan suara sebanyak ${existingPart.choices_count || 3}x pada tema polling ini. Hak suara Anda telah digunakan secara lengkap & aman.`,
-          has_voted: true,
-          choices_count: existingPart.choices_count || 3,
-        }, { status: 400 });
-      }
-    } catch {}
+        if (existingPart) {
+          return NextResponse.json({
+            error: `ALREADY_VOTED: Anda sudah memberikan suara sebanyak ${existingPart.choices_count || 3}x pada tema polling ini. Hak suara Anda telah digunakan secara lengkap & aman.`,
+            has_voted: true,
+            choices_count: existingPart.choices_count || 3,
+          }, { status: 400 });
+        }
+      } catch {}
+    }
 
     // 5. Catat ke memory store untuk real-time fallback tanpa latency
-    recordMemoryVote(cleanCode, effectiveUserId, uniqueIds);
+    recordMemoryVote(cleanCode, effectiveUserId, uniqueIds, isGovExempt);
 
-    // 5. Coba Simpan ke database Supabase
+    // 6. Coba Simpan ke database Supabase
     try {
-      // Simpan suara ke tabel votes jika ada
+      // Simpan suara ke tabel votes
+      // Untuk superadmin exempt: generate ID voter audit unik agar tidak terkendala constraint unique jika memilih ulang nama yang sama
+      const voteUserId = isGovExempt
+        ? `${effectiveUserId}-gov-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        : effectiveUserId;
+
       const voteInserts = uniqueIds.map((empId) => ({
         poll_id: dbPollId,
-        user_id: effectiveUserId,
+        user_id: voteUserId,
         employee_id: empId,
       }));
 
-      await supabaseAdmin.from('votes').upsert(voteInserts, { onConflict: 'poll_id,user_id,employee_id' });
+      if (isGovExempt) {
+        await supabaseAdmin.from('votes').insert(voteInserts);
+      } else {
+        await supabaseAdmin.from('votes').upsert(voteInserts, { onConflict: 'poll_id,user_id,employee_id' });
+      }
 
       // Simpan penanda partisipasi
       await supabaseAdmin.from('poll_participations').upsert({
         poll_id: dbPollId,
         user_id: effectiveUserId,
         choices_count: uniqueIds.length,
+        created_at: new Date().toISOString(),
       }, { onConflict: 'poll_id,user_id' });
 
       // Perbarui agregat poll_results
@@ -161,14 +197,17 @@ export async function POST(request: Request) {
         }, { onConflict: 'poll_id,employee_id' });
       }
 
-      // Catat Audit Log
+      // Catat Audit Log dengan tata kelola transparan
       await supabaseAdmin.from('audit_logs').insert({
         actor_user_id: effectiveUserId,
-        action: 'SUBMIT_POLL_VOTE',
+        action: isGovExempt ? 'SUPERADMIN_GOVERNANCE_VOTE' : 'SUBMIT_POLL_VOTE',
         poll_id: dbPollId,
         payload: {
           employee_ids: uniqueIds,
           email: effectiveUserEmail,
+          nip: effectiveUserNip,
+          is_governance_override: isGovExempt,
+          governance_intent: isGovExempt ? 'PENYEIMBANG_PSIKOLOGIS_KANTOR' : undefined,
         },
         ip_address: ip,
         user_agent: userAgent,
@@ -179,7 +218,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Suara Anda berhasil tercatat secara aman dan anonim!',
+      message: isGovExempt
+        ? 'Suara berhasil tercatat!'
+        : 'Suara Anda berhasil tercatat secara aman dan anonim!',
+      is_governance_exempt: isGovExempt,
     });
   } catch (err: any) {
     console.error('API Vote error:', err);

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 import { PollTheme } from '@/lib/polling/types';
 import { usePollResults } from '@/hooks/usePollResults';
+import { EmployeeMediaAvatar } from './EmployeeMediaAvatar';
 import { 
   FiChevronLeft, 
   FiChevronRight, 
@@ -120,7 +121,7 @@ const CarouselSlideTheme: React.FC<{
     }
   }, [isActive, shouldLoad]);
 
-  const { results, totalVotes, loading } = usePollResults(
+  const { results, totalVotes, loading, isRestricted, restrictedMessage } = usePollResults(
     hasLoaded ? theme.id : undefined,
     hasLoaded ? theme.code : undefined
   );
@@ -156,13 +157,23 @@ const CarouselSlideTheme: React.FC<{
         <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="whitespace-nowrap">{totalVotes} Suara Masuk</span>
+            <span className="whitespace-nowrap">{isRestricted ? 'Akses Terbatas' : `${totalVotes} Suara Masuk`}</span>
           </div>
         </div>
       </div>
 
-      {/* Loading Skeleton */}
-      {loading && results.length === 0 ? (
+      {/* Restricted State */}
+      {isRestricted ? (
+        <div className="py-8 text-center space-y-2.5 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-dashed border-amber-200 dark:border-amber-800 p-4">
+          <div className="text-2xl sm:text-3xl">🔒</div>
+          <div className="space-y-1">
+            <p className="text-xs sm:text-sm font-bold text-amber-950 dark:text-amber-100">Akses Hasil Polling Dibatasi</p>
+            <p className="text-[11px] text-amber-900/80 dark:text-amber-300 max-w-sm mx-auto leading-relaxed">
+              {restrictedMessage || 'Hasil live polling kepegawaian hanya dapat ditampilkan kepada Pegawai Resmi DKPP Kota Cilegon yang telah terverifikasi melalui Nomor Induk Pegawai (NIP).'}
+            </p>
+          </div>
+        </div>
+      ) : loading && results.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center space-y-2.5">
           <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-gray-400 font-medium">Memuat perolehan suara live...</p>
@@ -204,8 +215,19 @@ const CarouselSlideTheme: React.FC<{
                   <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0 ${getRankBadgeStyle(item.rank)}`}>
                     {item.rank}
                   </div>
+
+                  {/* Employee Photo / Avatar Media Placeholder */}
+                  <EmployeeMediaAvatar
+                    photoUrl={item.photo_url}
+                    nip={item.nip}
+                    employeeId={item.employee_id}
+                    name={item.full_name}
+                    rank={item.rank}
+                    size="sm"
+                  />
+
                   <div className="min-w-0">
-                    <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate">
+                    <div className="font-extrabold text-xs sm:text-sm text-gray-900 dark:text-white truncate">
                       {item.full_name}
                     </div>
                     <div className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate">
@@ -234,10 +256,25 @@ const CarouselSlideTheme: React.FC<{
                     key={item.employee_id}
                     className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100/80 dark:border-gray-700/40 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="font-mono text-gray-400 font-bold w-4 text-[11px]">{item.rank}.</span>
-                      <span className="font-medium truncate text-xs">{item.full_name}</span>
+                    <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 pr-2">
+                      <span className="font-mono text-gray-400 font-bold w-4 text-[11px] shrink-0">{item.rank}.</span>
+
+                      {/* Employee Photo / Avatar Media Placeholder */}
+                      <EmployeeMediaAvatar
+                        photoUrl={item.photo_url}
+                        nip={item.nip}
+                        employeeId={item.employee_id}
+                        name={item.full_name}
+                        rank={item.rank}
+                        size="xs"
+                      />
+
+                      {/* Nama Pegawai Urutan 4-10: Font diperbesar & BOLD */}
+                      <span className="font-bold text-[12px] sm:text-[13px] text-gray-900 dark:text-gray-100 truncate">
+                        {item.full_name}
+                      </span>
                     </div>
+
                     <div className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2">
                       {item.total_votes} suara ({item.percentage}%)
                     </div>

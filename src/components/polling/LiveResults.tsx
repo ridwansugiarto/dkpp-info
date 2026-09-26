@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PollResultItem, PollTheme } from '@/lib/polling/types';
 import { AnimatedPercentage } from './AnimatedPercentage';
+import { EmployeeMediaAvatar } from './EmployeeMediaAvatar';
 
 interface LiveResultsProps {
   poll: PollTheme;
@@ -10,6 +11,8 @@ interface LiveResultsProps {
   totalVotes: number;
   onExploreOther?: () => void;
   showExploreButton?: boolean;
+  isGovernanceExempt?: boolean;
+  onVoteAgain?: () => void;
 }
 
 export const LiveResults: React.FC<LiveResultsProps> = ({
@@ -17,6 +20,8 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
   results,
   totalVotes,
   onExploreOther,
+  isGovernanceExempt,
+  onVoteAgain,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -95,18 +100,19 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
                         {item.rank}
                       </div>
 
-                      {/* Employee Photo / Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">
-                        {item.photo_url ? (
-                          <img src={item.photo_url} alt={item.full_name} className="w-full h-full object-cover" />
-                        ) : (
-                          item.full_name.substring(0, 2).toUpperCase()
-                        )}
-                      </div>
+                      {/* Employee Photo / Avatar Media Placeholder */}
+                      <EmployeeMediaAvatar
+                        photoUrl={item.photo_url}
+                        nip={item.nip}
+                        employeeId={item.employee_id}
+                        name={item.full_name}
+                        rank={item.rank}
+                        size="md"
+                      />
 
-                      {/* Name & Position */}
+                      {/* Name & Position (Pemenang 1-3) */}
                       <div className="min-w-0 truncate">
-                        <p className="font-bold text-[#1e293b] text-xs sm:text-sm truncate">
+                        <p className="font-extrabold text-[#1e293b] text-sm sm:text-[15px] truncate">
                           {item.full_name}
                         </p>
                         <p className="text-[11px] text-gray-500 truncate">
@@ -129,7 +135,7 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
               })}
             </div>
 
-            {/* Section: Lainnya (Rank 4+) */}
+            {/* Section: Lainnya (Rank 4-10) */}
             {rest.length > 0 && (
               <div className="pt-2 border-t border-gray-100 space-y-2">
                 <span className="text-xs font-semibold text-gray-500 block mb-1">
@@ -139,17 +145,30 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
                   {rest.map((item) => (
                     <div
                       key={item.employee_id}
-                      className="flex items-center justify-between gap-2.5 text-xs text-gray-700 py-1 px-1"
+                      className="flex items-center justify-between gap-2 text-xs text-gray-700 py-1.5 px-1 hover:bg-slate-50/70 rounded-lg transition-colors"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <span className="w-4 text-center font-bold text-gray-400 shrink-0 text-xs">
                           {item.rank}
                         </span>
-                        <span className="font-medium text-gray-800 truncate max-w-[120px] sm:max-w-[160px]">
+
+                        {/* Employee Photo / Avatar Media Placeholder */}
+                        <EmployeeMediaAvatar
+                          photoUrl={item.photo_url}
+                          nip={item.nip}
+                          employeeId={item.employee_id}
+                          name={item.full_name}
+                          rank={item.rank}
+                          size="xs"
+                        />
+
+                        {/* Nama Pegawai Urutan 4-10: Font diperbesar & BOLD */}
+                        <span className="font-bold text-[#1e293b] text-xs sm:text-[13px] truncate max-w-[125px] sm:max-w-[165px]">
                           {item.full_name}
                         </span>
+
                         {/* Progress Bar (Screen 6) */}
-                        <div className="flex-1 max-w-[100px] sm:max-w-[140px] bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
+                        <div className="flex-1 max-w-[90px] sm:max-w-[130px] bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
                           <div
                             className="bg-[#38BDF8] h-full rounded-full transition-all duration-500"
                             style={{ width: `${Math.max(item.percentage, 5)}%` }}
@@ -158,7 +177,7 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
                       </div>
 
                       <div className="text-right shrink-0 text-[11px] text-gray-500">
-                        <strong className="text-gray-800">{item.percentage}%</strong> ({item.total_votes} suara)
+                        <strong className="text-gray-900 font-bold">{item.percentage}%</strong> ({item.total_votes} suara)
                       </div>
                     </div>
                   ))}
@@ -169,15 +188,41 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
         )}
 
         {/* Bottom Engagement Banner (Screen 6: Amber card with fire emoji) */}
-        <div className="mt-3 p-3 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-center space-y-0.5">
-          <p className="text-xs font-bold text-[#92400E] flex items-center justify-center gap-1.5">
+        <div className="mt-3 p-3 rounded-xl bg-[#FFFBEB] dark:bg-amber-950/40 border border-[#FDE68A] dark:border-amber-800 text-center space-y-0.5">
+          <p className="text-xs font-bold text-[#92400E] dark:text-amber-200 flex items-center justify-center gap-1.5">
             <span>🔥</span>
             <span>Masih ada suara lagi, yuk ikut voting!</span>
           </p>
-          <p className="text-[11px] text-[#B45309]">
+          <p className="text-[11px] text-[#B45309] dark:text-amber-300">
             Siapa favorit kamu selanjutnya? 😄
           </p>
         </div>
+
+        {/* Superadmin Governance Revote Action */}
+        {isGovernanceExempt && onVoteAgain && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onVoteAgain}
+              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 active:scale-[0.99] text-gray-700 dark:text-gray-200 font-semibold text-xs sm:text-sm rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Vote - mode admin</span>
+            </button>
+          </div>
+        )}
+
+        {/* Regular User Open Ballot Form Action (if hasn't voted yet) */}
+        {!isGovernanceExempt && onVoteAgain && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onVoteAgain}
+              className="w-full py-2.5 px-4 bg-[#007A55] hover:bg-[#006848] active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>🗳️ Ikut Memilih (Buka Formulir Voting)</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

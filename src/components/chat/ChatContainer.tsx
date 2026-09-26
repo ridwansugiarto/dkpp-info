@@ -578,6 +578,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         <div className="mt-3.5 pt-1 space-y-3">
                           <PollCard
                             poll={msg.poll_card.poll}
+                            defaultShowResults={msg.poll_card.default_show_results}
                             onExploreOther={() => onSendMessage?.('katalog semua polling')}
                           />
 

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useEmployeeSearch } from '@/hooks/useEmployeeSearch';
 import { Employee } from '@/lib/polling/types';
 import { FiSearch, FiCheck, FiX, FiInfo } from 'react-icons/fi';
+import { EmployeeMediaAvatar } from './EmployeeMediaAvatar';
 
 interface EmployeeAutocompleteProps {
   onSelect: (employee: Employee) => void;
@@ -158,14 +159,14 @@ export const EmployeeAutocomplete: React.FC<EmployeeAutocompleteProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
-                    {/* Circular Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
-                      {emp.photo_url ? (
-                        <img src={emp.photo_url} alt={emp.full_name} className="w-full h-full object-cover" />
-                      ) : (
-                        emp.full_name.substring(0, 2).toUpperCase()
-                      )}
-                    </div>
+                    {/* Circular Avatar / Media Placeholder */}
+                    <EmployeeMediaAvatar
+                      photoUrl={emp.photo_url}
+                      nip={emp.nip}
+                      employeeId={emp.id}
+                      name={emp.full_name}
+                      size="md"
+                    />
                     <div className="min-w-0 truncate">
                       <p className="text-xs sm:text-sm font-semibold text-[#1e293b] truncate">
                         {emp.full_name}

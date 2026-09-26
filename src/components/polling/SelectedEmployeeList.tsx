@@ -3,6 +3,7 @@
 import React from 'react';
 import { Employee } from '@/lib/polling/types';
 import { FiCheck, FiX } from 'react-icons/fi';
+import { EmployeeMediaAvatar } from './EmployeeMediaAvatar';
 
 interface SelectedEmployeeListProps {
   selected: Employee[];
@@ -32,14 +33,14 @@ export const SelectedEmployeeList: React.FC<SelectedEmployeeListProps> = ({
                 <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
               </div>
 
-              {/* Circular Avatar */}
-              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">
-                {emp.photo_url ? (
-                  <img src={emp.photo_url} alt={emp.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  emp.full_name.substring(0, 2).toUpperCase()
-                )}
-              </div>
+              {/* Circular Avatar / Media Placeholder */}
+              <EmployeeMediaAvatar
+                photoUrl={emp.photo_url}
+                nip={emp.nip}
+                employeeId={emp.id}
+                name={emp.full_name}
+                size="md"
+              />
 
               {/* Name & Position */}
               <div className="min-w-0 truncate">

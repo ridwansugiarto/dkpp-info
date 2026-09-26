@@ -92,6 +92,7 @@ export interface ChatMessage {
   poll_card?: {
     poll: import('@/lib/polling/types').PollTheme;
     available_themes?: import('@/lib/polling/types').PollTheme[];
+    default_show_results?: boolean;
   };
   poll_catalog?: {
     themes: import('@/lib/polling/types').PollTheme[];

@@ -13,11 +13,13 @@ Fitur **Polling Pegawai** adalah fitur keterlibatan internal berbasis voting mul
 2. **Multitematik:** 15 tema aktif (Paling Ganteng, Paling Cantik, Paling Rajin, Paling Cerdas, Paling Soleh, Paling Dermawan, Paling Royal, Paling Baik, Paling Tahu Segala, Paling Update, Paling Gaptek, Paling Murah Senyum, Paling Cool, Paling Sibuk, Paling Lucu).
 3. **Maksimal 3 Pilihan:** Dalam 1 tema, pemilih memilih 1 hingga maksimal 3 kandidat nama pegawai (tidak boleh 0 saat submit).
 4. **Tanpa Perangkingan Bobot:** Setiap nama yang dipilih mendapatkan bobot sama (+1 suara).
-5. **1 User = 1 Kali Vote per Tema:** Ditegakkan langsung di level database (`poll_participations` & RPC `submit_poll_vote`).
-6. **Pencegahan Self-Vote:** Konfigurasi default `allow_self_vote = false` mencegah user memilih diri sendiri.
-7. **Anonimitas Publik:** Tampilan untuk pegawai hanya menampilkan data agregat (nama, jabatan, persentase, total suara). Identitas pemilih disamarkan.
-8. **Audit Trail Admin:** Akses admin untuk membuka identitas pemilih dicatat otomatis di tabel `audit_logs` dengan aksi `ADMIN_VIEW_VOTER_IDENTITY`.
-9. **Real-time Engine:** Perubahan hasil suara langsung terdistribusi via Supabase Realtime Channel dengan fallback polling 15 detik.
+5. **1 User = 1 Kali Vote per Tema:** Ditegakkan langsung di level database (`poll_participations` & RPC `submit_poll_vote`) untuk seluruh user umum dan pegawai biasa.
+6. **Pengecualian Tata Kelola (Superadmin Governance Override):** Superadmin resmi dengan email `ridwansugiarto.mail@gmail.com` yang dipadukan NIP `197610182002121002` dikecualikan dari batasan 1x vote. Hak akses ini berfungsi sebagai penyeimbang psikologis perkantoran untuk memitigasi jika ada pergerakan voting yang tendensius atau tidak sehat. Setiap aksi voting penyeimbang dicatat pada audit log sebagai `SUPERADMIN_GOVERNANCE_VOTE`.
+7. **Pencegahan Self-Vote:** Konfigurasi default `allow_self_vote = false` mencegah user memilih diri sendiri.
+8. **Anonimitas Publik:** Tampilan untuk pegawai hanya menampilkan data agregat (nama, jabatan, persentase, total suara). Identitas pemilih disamarkan.
+9. **Audit Trail Admin:** Akses admin untuk membuka identitas pemilih dicatat otomatis di tabel `audit_logs` dengan aksi `ADMIN_VIEW_VOTER_IDENTITY`.
+10. **Real-time Engine:** Perubahan hasil suara langsung terdistribusi via Supabase Realtime Channel dengan fallback polling 15 detik.
+
 
 ---
 

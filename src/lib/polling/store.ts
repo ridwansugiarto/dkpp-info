@@ -104,17 +104,24 @@ export async function getPollThemeByCodeOrId(codeOrId: string): Promise<PollThem
   return found || themes[0] || OFFICIAL_POLL_THEMES[0];
 }
 
-export function recordMemoryVote(pollId: string, userId: string, employeeIds: string[]) {
+export function recordMemoryVote(
+  pollId: string,
+  userId: string,
+  employeeIds: string[],
+  isExempt = false
+) {
   // Normalize pollId
   const cleanPollId = pollId.replace(/^poll-/, '');
 
-  // Check if already voted
-  const alreadyVoted = memoryParticipations.some(
-    (p) => (p.poll_id === pollId || p.poll_id === cleanPollId) && p.user_id === userId
-  );
+  // Check if already voted (kecuali Superadmin Governance Exempt)
+  if (!isExempt) {
+    const alreadyVoted = memoryParticipations.some(
+      (p) => (p.poll_id === pollId || p.poll_id === cleanPollId) && p.user_id === userId
+    );
 
-  if (alreadyVoted) {
-    return { success: false, error: 'ALREADY_VOTED' };
+    if (alreadyVoted) {
+      return { success: false, error: 'ALREADY_VOTED' };
+    }
   }
 
   // Record participation

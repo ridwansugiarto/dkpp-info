@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseServer';
+import { supabaseAdmin, resolveUserAuth } from '@/lib/supabaseServer';
 import { OFFICIAL_DKPP_PEGAWAI } from '@/data/pegawai_dkpp';
 import { OFFICIAL_POLL_THEMES } from '@/lib/polling/constants';
 import { getMemoryResults, getPollThemeByCodeOrId } from '@/lib/polling/store';
 import { resolveEmployeeProfilesBatch } from '@/lib/polling/resolver';
+import { isSuperAdminGovernanceExempt } from '@/lib/polling/guards';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -36,6 +37,56 @@ export async function GET(
         targetPoll = { ...targetPoll, ...dbPoll };
       }
     } catch {}
+
+    // 1b. Verifikasi Hak Akses: HANYA PEGAWAI DENGAN NIP TERVERIFIKASI & SUPERADMIN YANG BISA MELIHAT HASIL
+    const url = new URL(request.url);
+    const queryUserId = url.searchParams.get('userId');
+    const queryUserEmail = url.searchParams.get('userEmail');
+    const queryUserNip = url.searchParams.get('userNip');
+
+    let resolvedUserId: string | null = null;
+    let resolvedUserEmail: string | null = queryUserEmail || null;
+    let resolvedUserNip: string | null = queryUserNip || null;
+
+    try {
+      const cookieStore = await cookies();
+      const authClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() { return cookieStore.getAll(); }
+          }
+        }
+      );
+      const { data: { user } } = await authClient.auth.getUser();
+      if (user) {
+        resolvedUserId = user.id;
+        resolvedUserEmail = user.email || resolvedUserEmail;
+        if (user.user_metadata?.nip) {
+          resolvedUserNip = user.user_metadata.nip;
+        }
+      } else if (queryUserId) {
+        resolvedUserId = queryUserId;
+      }
+    } catch {}
+
+    const authProfile = await resolveUserAuth(resolvedUserEmail || undefined, resolvedUserId || undefined, resolvedUserNip || undefined);
+    const isSuperAdmin = isSuperAdminGovernanceExempt(resolvedUserEmail, resolvedUserNip);
+
+    if (!authProfile.is_verified_employee && !isSuperAdmin) {
+      return NextResponse.json({
+        error: 'RESTRICTED_ACCESS',
+        message: 'Hasil live polling apresiasi kepegawaian bersifat terbatas (internal) dan hanya dapat ditampilkan kepada Pegawai Resmi DKPP Kota Cilegon yang telah terverifikasi melalui Nomor Induk Pegawai (NIP).',
+        is_restricted: true,
+        poll: {
+          id: targetPoll.id,
+          code: targetPoll.code,
+          title: targetPoll.title,
+          icon: targetPoll.icon,
+        }
+      }, { status: 403 });
+    }
 
     // 2. Ambil Suara dari Database Supabase (raw votes sebagai Ground Truth)
     const idSet = new Set<string>(
@@ -124,6 +175,7 @@ export async function GET(
       return {
         poll_id: targetPoll.id,
         employee_id: empId,
+        nip: profile?.nip || null,
         full_name: profile?.nama || empId,
         position: profile?.jabatan || 'Pegawai DKPP Kota Cilegon',
         unit: profile?.bidang || 'DKPP',
@@ -144,12 +196,20 @@ export async function GET(
 
     // 5. Cek status partisipasi user (dukung Cookie auth & query params session)
     let has_voted = false;
+    let has_voted_before = false;
     let choices_count = 0;
+    let is_governance_exempt = false;
+
     try {
       const url = new URL(request.url);
       const queryUserId = url.searchParams.get('userId');
+      const queryUserEmail = url.searchParams.get('userEmail');
+      const queryUserNip = url.searchParams.get('userNip');
 
       let resolvedUserId: string | null = null;
+      let resolvedUserEmail: string | null = queryUserEmail || null;
+      let resolvedUserNip: string | null = queryUserNip || null;
+
       const cookieStore = await cookies();
       const authClient = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -163,9 +223,16 @@ export async function GET(
       const { data: { user } } = await authClient.auth.getUser();
       if (user) {
         resolvedUserId = user.id;
+        resolvedUserEmail = user.email || resolvedUserEmail;
+        if (user.user_metadata?.nip) {
+          resolvedUserNip = user.user_metadata.nip;
+        }
       } else if (queryUserId) {
         resolvedUserId = queryUserId;
       }
+
+      // Cek apakah user adalah Superadmin yang dikecualikan (Governance Override)
+      is_governance_exempt = isSuperAdminGovernanceExempt(resolvedUserEmail, resolvedUserNip);
 
       if (resolvedUserId) {
         const { data: part } = await supabaseAdmin
@@ -176,8 +243,11 @@ export async function GET(
           .maybeSingle();
 
         if (part) {
-          has_voted = true;
+          has_voted_before = true;
           choices_count = part.choices_count || 3;
+          // Untuk user biasa, has_voted = true mengunci form
+          // Untuk superadmin, has_voted = false agar form tetap dapat dipilih berulang kali
+          has_voted = !is_governance_exempt;
         }
       }
     } catch {}
@@ -187,7 +257,9 @@ export async function GET(
       results: resultsList,
       total_votes: totalVotes,
       has_voted,
+      has_voted_before,
       choices_count,
+      is_governance_exempt,
     });
   } catch (err: any) {
     console.error('API Results error:', err);

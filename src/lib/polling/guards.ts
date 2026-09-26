@@ -40,6 +40,28 @@ export function validateThemeGovernance(title: string, description?: string): { 
   return { valid: true };
 }
 
+export const SUPERADMIN_GOVERNANCE_EMAIL = 'ridwansugiarto.mail@gmail.com';
+export const SUPERADMIN_GOVERNANCE_NIP = '197610182002121002';
+
+/**
+ * Validasi hak pengecualian tata kelola polling (Governance Override):
+ * Superadmin dengan email ridwansugiarto.mail@gmail.com yang dipadukan NIP 197610182002121002
+ * dapat memilih / vote polling pegawai tanpa batasan kuota 1x vote pada tema polling.
+ * Fitur ini berfungsi menjaga & mengatur tingkat pengaruh psikologi perkantoran
+ * jika ada pegawai / user umum yang memilih polling tertentu yang sifatnya tendensius.
+ */
+export function isSuperAdminGovernanceExempt(email?: string | null, nip?: string | null): boolean {
+  if (!email) return false;
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanNip = nip ? nip.trim().replace(/\s+/g, '') : '';
+
+  const isEmailMatch = cleanEmail === SUPERADMIN_GOVERNANCE_EMAIL.toLowerCase();
+  // Valid jika email cocok dan NIP cocok (atau jika NIP belum di-set di request tapi email superadmin)
+  const isNipMatch = !cleanNip || cleanNip === SUPERADMIN_GOVERNANCE_NIP;
+
+  return isEmailMatch && isNipMatch;
+}
+
 export function isAuthorizedAdmin(email?: string | null): boolean {
   if (!email) return false;
   const adminEmails = [
@@ -49,3 +71,4 @@ export function isAuthorizedAdmin(email?: string | null): boolean {
   ];
   return adminEmails.includes(email.trim().toLowerCase());
 }
+

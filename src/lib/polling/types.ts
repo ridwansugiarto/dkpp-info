@@ -31,6 +31,7 @@ export interface PollTheme {
 export interface PollResultItem {
   poll_id: string;
   employee_id: string;
+  nip?: string | null;
   full_name: string;
   position?: string | null;
   unit?: string | null;

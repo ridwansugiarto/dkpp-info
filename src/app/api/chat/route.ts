@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { resolveUserAuth, logAudit, supabaseAdmin } from '@/lib/supabaseServer';
 import { generateChatResponse } from '@/lib/gemini';
+import { isSuperAdminGovernanceExempt } from '@/lib/polling/guards';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().optional(),
@@ -129,26 +130,52 @@ export async function POST(req: NextRequest) {
     const pollIntent = detectPollingIntent(message, activeThemes);
 
     if (pollIntent.intent === 'EMPLOYEE_POLL' && pollIntent.category && (pollIntent.confidence ?? 0) >= 0.8) {
-      if (pollIntent.category === 'carousel') {
-        if (authProfile.role === 'GUEST') {
-          const guestNotice = `### 🔒 Akses Dibatasi — Live Hasil Polling DKPP\n\n` +
-            `Hasil **Live Polling Pegawai & Apresiasi Internal (${activeThemes.length} Tema)** di DKPP Kota Cilegon berkategori **INTERNAL**.\n\n` +
-            `Silakan **Masuk dengan Google (Gmail)** untuk memutar carousel hasil polling secara lengkap.`;
-          return NextResponse.json({
-            message: {
-              id: 'msg-poll-guest-' + Date.now(),
-              session_id: sessionId || 'temp',
-              role: 'assistant',
-              content: guestNotice,
-              type: 'auth_prompt',
-              auth_prompt: 'LOGIN_REQUIRED',
-              created_at: new Date().toISOString(),
-            },
-            userRole: authProfile.role,
-            isVerified: authProfile.is_verified_employee,
-          });
-        }
+      const isGovExempt = isSuperAdminGovernanceExempt(authProfile?.email, authProfile?.nip);
+      const isVerifiedEmployee = !!authProfile.is_verified_employee || isGovExempt;
 
+      // PEMBATASAN AKSES KETAT:
+      // Polling pegawai, hak voting, dan live hasil polling HANYA dapat diakses oleh pegawai dengan NIP terverifikasi & Superadmin.
+      // Masyarakat umum, tamu, atau user yang belum verifikasi NIP TIDAK BOLEH melihat hasil maupun memberikan suara!
+      if (!isVerifiedEmployee) {
+        const professionalRestrictedNotice =
+          `Yth. Bapak/Ibu Pengguna Layanan,\n\n` +
+          `Terima kasih atas perhatian dan apresiasi Anda terhadap keluarga besar Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon.\n\n` +
+          `Sehubungan dengan pertanyaan atau pencarian informasi Anda mengenai **Polling Pegawai & Hasil Suara Live**, kami informasikan bahwa fitur partisipasi pemberian suara (*voting*) serta tayangan perolehan hasil polling bersifat **terbatas (internal)** dan **hanya dapat ditampilkan kepada Pegawai Resmi DKPP Kota Cilegon yang telah terverifikasi melalui Nomor Induk Pegawai (NIP)**.\n\n` +
+          `Kebijakan ini diberlakukan demi menjunjung tinggi kode etik kepegawaian aparatur sipil negara, menjaga kerahasiaan dan privasi aparatur sipil, serta memastikan iklim kerja dan dinamika kepegawaian di lingkungan dinas senantiasa profesional, kondusif, dan berintegritas.\n\n` +
+          (authProfile.role === 'GUEST'
+            ? `🔐 **Petunjuk Akses Pegawai:**\nApabila Anda merupakan Pegawai Resmi DKPP Kota Cilegon, silakan masuk menggunakan akun Google Anda terlebih dahulu, kemudian lakukan verifikasi NIP pada profil akun untuk membuka akses fitur dan hasil polling secara penuh.\n\n`
+            : `🔐 **Petunjuk Verifikasi NIP:**\nAkun Anda saat ini tercatat sebagai pengguna umum dan belum memiliki verifikasi NIP kepegawaian. Apabila Anda merupakan aparatur sipil DKPP Kota Cilegon, silakan selesaikan proses **Verifikasi NIP** melalui profil akun Anda untuk membuka akses hasil dan hak partisipasi polling.\n\n`) +
+          `*Bagi masyarakat umum, Anda dipersilakan untuk memanfaatkan layanan informasi publik kami lainnya, seperti data ketahanan pangan daerah, informasi teknis pertanian & peternakan, serta pemantauan live harga pangan strategis harian.*`;
+
+        const promptType = authProfile.role === 'GUEST' ? 'LOGIN_REQUIRED' : 'NIP_REQUIRED';
+
+        const { userMsgId, assistantMsgId } = await persistMessages(
+          message,
+          professionalRestrictedNotice,
+          []
+        );
+
+        return NextResponse.json({
+          sessionId,
+          userMessageId: userMsgId,
+          assistantMessageId: assistantMsgId,
+          content: professionalRestrictedNotice,
+          type: 'auth_prompt',
+          message: {
+            id: assistantMsgId,
+            session_id: sessionId || 'temp',
+            role: 'assistant',
+            content: professionalRestrictedNotice,
+            type: 'auth_prompt',
+            auth_prompt: promptType,
+            created_at: new Date().toISOString(),
+          },
+          userRole: authProfile.role,
+          isVerified: false,
+        });
+      }
+
+      if (pollIntent.category === 'carousel') {
         const lowerMsg = message.toLowerCase();
         let initialCode = activeThemes[0]?.code || 'cantik';
         const foundTheme = activeThemes.find(t => 
@@ -160,7 +187,7 @@ export async function POST(req: NextRequest) {
           initialCode = foundTheme.code;
         }
 
-        const carouselText = `🎠 **Live Carousel Hasil Polling Pegawai (${activeThemes.length} Tema DKPP)**\n\nBerikut tampilan live perolehan suara ${activeThemes.length} tema polling apresiasi keluarga besar DKPP Kota Cilegon. Kamu bisa menggeser tema, menjeda putar otomatis (*auto-slide*), atau langsung memberikan suara!`;
+        const carouselText = `🎠 **Live Carousel Hasil Polling Pegawai (${activeThemes.length} Tema DKPP)**\n\nBerikut tampilan live perolehan suara ${activeThemes.length} tema polling apresiasi keluarga besar DKPP Kota Cilegon. Anda dapat menggeser tema, menjeda putar otomatis (*auto-slide*), atau langsung memberikan suara!`;
 
         const { userMsgId, assistantMsgId } = await persistMessages(
           message,
@@ -205,26 +232,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (pollIntent.category === 'all') {
-        if (authProfile.role === 'GUEST') {
-          const guestNotice = `### 🔒 Akses Dibatasi — Fitur Polling Pegawai DKPP\n\n` +
-            `Fitur **Polling Pegawai & Apresiasi Internal** di DKPP Kota Cilegon berkategori **INTERNAL** demi menjaga privasi dan keakraban keluarga besar dinas.\n\n` +
-            `Silakan **Masuk dengan Google (Gmail)** untuk berpartisipasi atau melihat statistik suara.`;
-          return NextResponse.json({
-            message: {
-              id: 'msg-poll-guest-' + Date.now(),
-              session_id: sessionId || 'temp',
-              role: 'assistant',
-              content: guestNotice,
-              type: 'auth_prompt',
-              auth_prompt: 'LOGIN_REQUIRED',
-              created_at: new Date().toISOString(),
-            },
-            userRole: authProfile.role,
-            isVerified: authProfile.is_verified_employee,
-          });
-        }
-
-        const responseText = `🏆 **Katalog ${activeThemes.length} Tema Polling Pegawai DKPP Kota Cilegon**\n\nPilih tema polling yang ingin kamu ikuti langsung di bawah ini! Kamu bisa memilih 1 hingga 3 nama rekan kerja per tema secara aman & 100% anonim.`;
+        const responseText = `🏆 **Katalog ${activeThemes.length} Tema Polling Pegawai DKPP Kota Cilegon**\n\nSilakan pilih tema polling yang ingin Anda ikuti di bawah ini. Anda dapat memilih 1 hingga 3 nama rekan kerja per tema secara aman & 100% anonim.`;
 
         const { userMsgId, assistantMsgId } = await persistMessages(
           message,
@@ -257,7 +265,6 @@ export async function POST(req: NextRequest) {
             poll_catalog: {
               themes: activeThemes,
             },
-            auth_prompt: !authProfile.is_verified_employee ? 'NIP_REQUIRED' : undefined,
             created_at: new Date().toISOString(),
           },
           userRole: authProfile.role,
@@ -284,65 +291,15 @@ export async function POST(req: NextRequest) {
         console.warn('Could not fetch poll from db:', err);
       }
 
-      // Case 1: Pengunjung Tamu (Belum Login Google)
-      if (authProfile.role === 'GUEST') {
-        const guestNotice = `### 🔒 Akses Dibatasi — Data Polling Internal DKPP\n\n` +
-          `Informasi mengenai **profil kepegawaian & polling (${activePoll.title})** di DKPP Kota Cilegon berkategori **INTERNAL / SENSITIF**.\n\n` +
-          `Fitur voting ini hanya dapat diakses oleh **Pegawai Resmi DKPP yang telah memverifikasi NIP**.\n\n` +
-          `👉 *Silakan **Masuk dengan Google (Gmail)** untuk melanjutkan.*`;
-        return NextResponse.json({
-          content: guestNotice,
-          type: 'auth_prompt',
-          auth_prompt: 'LOGIN_REQUIRED',
-          message: {
-            id: 'msg-poll-guest-' + Date.now(),
-            session_id: sessionId || 'temp',
-            role: 'assistant',
-            content: guestNotice,
-            type: 'auth_prompt',
-            auth_prompt: 'LOGIN_REQUIRED',
-            created_at: new Date().toISOString(),
-          },
-          userRole: authProfile.role,
-          isVerified: authProfile.is_verified_employee,
-        });
-      }
+      // Deteksi apakah pertanyaan berupa pertanyaan "siapa..." atau user menanyakan hasil
+      const lowerMsg = message.toLowerCase();
+      const isAskingWhoOrResults = /\b(siapa|siapakah|hasil|peringkat|podium|skor|perolehan|juara|nomor satu|urutan)\b/i.test(lowerMsg);
+      const shouldDirectlyShowResults = isAskingWhoOrResults || isGovExempt;
 
-      // Case 2: User Umum / Non-Pegawai (Sudah Login Gmail, tapi belum verifikasi NIP)
-      if (!authProfile.is_verified_employee && authProfile.role === 'CITIZEN') {
-        const citizenNotice = `### 🛡️ Verifikasi NIP Pegawai Diperlukan\n\n` +
-          `Akun Gmail Anda saat ini berstatus **User Umum (Non-Pegawai)**. Pemberian suara pada polling **${activePoll.title}** ${activePoll.icon || ''} dikhususkan untuk **Pegawai Resmi DKPP Kota Cilegon** demi menjaga keabsahan data.\n\n` +
-          `Jika Anda adalah pegawai aktif dinas, silakan verifikasi NIP Anda sekarang. Anda tetap dapat melihat hasil perolehan suara sementara di bawah ini.`;
-        return NextResponse.json({
-          content: citizenNotice,
-          type: 'poll_card',
-          auth_prompt: 'NIP_REQUIRED',
-          poll_card: {
-            poll: activePoll,
-            available_themes: activeThemes,
-          },
-          message: {
-            id: 'msg-poll-citizen-' + Date.now(),
-            session_id: sessionId || 'temp',
-            role: 'assistant',
-            content: citizenNotice,
-            type: 'poll_card',
-            auth_prompt: 'NIP_REQUIRED',
-            poll_card: {
-              poll: activePoll,
-              available_themes: activeThemes,
-            },
-            created_at: new Date().toISOString(),
-          },
-          userRole: authProfile.role,
-          isVerified: authProfile.is_verified_employee,
-        });
-      }
-
-      // Case 3: Pegawai Terverifikasi / Super Admin (Persis Sesuai Mockup Screen 1)
+      // Status voting untuk Pegawai Terverifikasi / Super Admin
       let userHasVoted = false;
       let userChoicesCount = 3;
-      if (authProfile?.id) {
+      if (authProfile?.id && !isGovExempt) {
         try {
           const { data: existingPart } = await supabaseAdmin
             .from('poll_participations')
@@ -358,11 +315,16 @@ export async function POST(req: NextRequest) {
         } catch {}
       }
 
+      // Kalimat respon bot untuk Pegawai Terverifikasi & Superadmin
       let botGreeting = '';
-      if (userHasVoted) {
+      if (isGovExempt) {
+        botGreeting = `**Mode Admin**\n\nHalo Pak Ridwan, hak akses aktif tanpa batasan kuota vote.\n\nBerikut hasil live sementara dan formulir untuk tema **"${activePoll.title}"** ${activePoll.icon || ''}:`;
+      } else if (isAskingWhoOrResults) {
+        botGreeting = `Halo rekan DKPP! Pertanyaan yang sangat menarik dan seru 😊✨\n\nDi lingkungan **DKPP Kota Cilegon**, seluruh rekan pegawai pria maupun wanita tentu memiliki pesona, kepribadian baik, serta dedikasi luar biasa dalam melayani masyarakat dengan sepenuh hati.\n\nSebagai pegawai resmi terverifikasi, berikut kami tampilkan **Hasil Polling Live Terkini** untuk tema **"${activePoll.title}"** ${activePoll.icon || ''} di bawah ini. Anda juga dapat memberikan suara jika belum memilih:`;
+      } else if (userHasVoted) {
         botGreeting = `ℹ️ **Pemberitahuan:** Anda sudah memberikan suara sebanyak **${userChoicesCount}x** pada tema **"${activePoll.title}"**.\n\nHak suara Anda untuk tema ini telah digunakan secara lengkap (${userChoicesCount} dari ${activePoll.max_choices || 3} pilihan). Seluruh pilihan Anda tersimpan secara **100% aman, anonim, dan terjamin kerahasiaannya**.\n\nBerikut perolehan suara live sementara atau Anda dapat memilih tema polling lainnya! 🗳️✨`;
       } else {
-        botGreeting = `Oke! Aku siap bantu. Berikut ini formulir polling "${activePoll.title}".\n\nKamu bisa memilih maksimal ${activePoll.max_choices || 3} orang rekan kerja favoritmu.\n\n🔒 *Catatan: Polling ini bersifat **100% anonim dan terjamin kerahasiaannya** demi kenyamanan bersama.*\n\nMulai ketik nama pegawai favoritmu pada formulir di bawah ini:`;
+        botGreeting = `Halo rekan DKPP! Berikut formulir polling tema **"${activePoll.title}"** ${activePoll.icon || ''}.\n\nAnda dapat memilih maksimal ${activePoll.max_choices || 3} orang rekan kerja favorit Anda secara **100% aman, rahasia, dan anonim**.\n\nSilakan tentukan pilihan Anda pada formulir di bawah ini:`;
       }
 
       const { userMsgId, assistantMsgId } = await persistMessages(
@@ -376,6 +338,7 @@ export async function POST(req: NextRequest) {
             args: {
               pollCode: activePoll.code,
               pollId: activePoll.id,
+              default_show_results: shouldDirectlyShowResults,
             },
           },
         ]
@@ -390,6 +353,7 @@ export async function POST(req: NextRequest) {
         poll_card: {
           poll: activePoll,
           available_themes: activeThemes,
+          default_show_results: shouldDirectlyShowResults,
         },
         message: {
           id: assistantMsgId,
@@ -400,6 +364,7 @@ export async function POST(req: NextRequest) {
           poll_card: {
             poll: activePoll,
             available_themes: activeThemes,
+            default_show_results: shouldDirectlyShowResults,
           },
           created_at: new Date().toISOString(),
         },
