@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   PanelLeft, 
+  ChevronRight,
   Grid, 
   Map as MapIcon, 
   MessageSquare, 
@@ -343,6 +344,10 @@ export const ChatDKPPApp: React.FC = () => {
 
   const handleNewChat = async () => {
     const newTitle = 'Percakapan Baru';
+    // Di mobile, otomatis tutup sidebar agar langsung ke mode chat
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
     try {
       const res = await fetch('/api/sessions', {
         method: 'POST',
@@ -656,9 +661,12 @@ export const ChatDKPPApp: React.FC = () => {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-gray-900 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors shadow-xs cursor-pointer"
-              title="Toggle Sidebar"
+              title={sidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
             >
-              <PanelLeft className="w-4 h-4" />
+              {/* Di mobile: panah chevron profesional minimalis ke arah kanan */}
+              <ChevronRight className="w-4 h-4 md:hidden text-gray-700" />
+              {/* Di desktop: ikon panel sidebar */}
+              <PanelLeft className="w-4 h-4 hidden md:block text-gray-700" />
             </button>
           </div>
 

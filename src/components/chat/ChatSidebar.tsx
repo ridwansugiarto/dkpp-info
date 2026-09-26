@@ -8,7 +8,7 @@ import {
   Trash2, 
   Edit3, 
   Search, 
-  PanelLeftClose,
+  ChevronLeft,
   Shield,
   ShieldCheck, 
   UserCheck, 
@@ -150,9 +150,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <button
               onClick={onToggleOpen}
               title="Tutup sidebar"
-              className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-md hover:bg-gray-200/60 dark:hover:bg-gray-800 md:hidden"
+              className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-md hover:bg-gray-200/60 dark:hover:bg-gray-800 md:hidden cursor-pointer"
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -160,8 +160,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {/* New Chat Button */}
         <div className="p-3">
           <button
-            onClick={onNewChat}
-            className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700 shadow-sm transition-all duration-150"
+            onClick={() => {
+              onNewChat();
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                onToggleOpen();
+              }
+            }}
+            className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700 shadow-sm transition-all duration-150 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>New chat</span>
