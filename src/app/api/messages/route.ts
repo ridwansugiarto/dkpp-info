@@ -144,7 +144,10 @@ export async function GET(req: NextRequest) {
       const isPollCardContent = typeof msg.content === 'string' && (
         msg.content.includes('Berikut ini formulir polling') ||
         msg.content.includes('Berikut ini polling') ||
-        msg.content.includes('formulir polling')
+        msg.content.includes('formulir polling') ||
+        msg.content.includes('Hasil Polling Live Terkini') ||
+        msg.content.includes('perolehan suara live') ||
+        msg.content.includes('hasil live sementara')
       );
 
       if (pollCardTool || isPollCardContent) {
@@ -157,12 +160,20 @@ export async function GET(req: NextRequest) {
           }
         }
         const foundTheme = activeThemes.find((t) => t.code === pollCode || t.id === pollCode) || activeThemes[0];
+        const defaultShowResults = pollCardTool?.args?.default_show_results ?? (
+          typeof msg.content === 'string' && (
+            msg.content.includes('Hasil Polling Live Terkini') ||
+            msg.content.includes('perolehan suara live') ||
+            msg.content.includes('hasil live sementara')
+          )
+        );
         return {
           ...msg,
           type: 'poll_card',
           poll_card: {
             poll: foundTheme,
             available_themes: activeThemes,
+            default_show_results: defaultShowResults,
           },
         };
       }

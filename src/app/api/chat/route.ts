@@ -291,9 +291,13 @@ export async function POST(req: NextRequest) {
         console.warn('Could not fetch poll from db:', err);
       }
 
-      // Deteksi apakah pertanyaan berupa pertanyaan "siapa..." atau user menanyakan hasil
+      // Deteksi apakah user menanyakan siapa, hasil/peringkat, atau menggunakan bentuk superlative (misal "siapa tercantik", "paling cantik", "terajin")
       const lowerMsg = message.toLowerCase();
-      const isAskingWhoOrResults = /\b(siapa|siapakah|hasil|peringkat|podium|skor|perolehan|juara|nomor satu|urutan)\b/i.test(lowerMsg);
+      const isAskingWhoOrResults =
+        /\b(siapa|siapakah|sapa|hasil|peringkat|ranking|podium|skor|perolehan|juara|pemenang|nomor satu|urutan|rekap|top|teratas)\b/i.test(lowerMsg) ||
+        /\b(ter[a-z]{3,}|paling\s+[a-z]+)\b/i.test(lowerMsg) ||
+        lowerMsg.includes('lihat hasil') ||
+        lowerMsg.includes('live hasil');
       const shouldDirectlyShowResults = isAskingWhoOrResults || isGovExempt;
 
       // Status voting untuk Pegawai Terverifikasi / Super Admin

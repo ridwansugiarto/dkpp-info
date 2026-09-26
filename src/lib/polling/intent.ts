@@ -18,50 +18,50 @@ import { OFFICIAL_POLL_THEMES } from './constants';
  */
 const SYNONYM_MAP: Record<string, string[]> = {
   // code: ganteng — sinonim maskulin yang tidak berasal dari judul
-  ganteng:      ['tampan', 'tertampan', 'cakep', 'tercakep', 'pria tertampan', 'cowok ganteng', 'macho'],
+  ganteng:      ['tampan', 'tertampan', 'cakep', 'tercakep', 'terganteng', 'pria tertampan', 'cowok ganteng', 'macho'],
 
   // code: cantik — sinonim feminim
-  cantik:       ['anggun', 'teranggun', 'jelita', 'terjelita', 'manis', 'termanis', 'wanita tercantik', 'cewek cantik', 'ayu'],
+  cantik:       ['tercantik', 'anggun', 'teranggun', 'jelita', 'terjelita', 'manis', 'termanis', 'wanita tercantik', 'cewek cantik', 'ayu', 'paling ayu'],
 
   // code: cerdas — sinonim intelektual
-  cerdas:       ['pintar', 'terpintar', 'genius', 'jenius', 'otak encer', 'solutif', 'brilian', 'wawasan luas', 'tahu segala', 'kamus berjalan'],
+  cerdas:       ['pintar', 'terpintar', 'tercerdas', 'genius', 'jenius', 'otak encer', 'solutif', 'brilian', 'wawasan luas', 'tahu segala', 'kamus berjalan'],
 
   // code: rajin — sinonim etos kerja
-  rajin:        ['disiplin', 'terdisiplin', 'ulet', 'tepat waktu', 'pekerja keras', 'giat', 'tekun'],
+  rajin:        ['terajin', 'disiplin', 'terdisiplin', 'ulet', 'terulet', 'tepat waktu', 'pekerja keras', 'giat', 'tergiat', 'tekun', 'tertekun'],
 
   // code: soleh — sinonim religius (kode tidak berubah meski judul diubah admin ke "Religius")
-  soleh:        ['sholeh', 'alim', 'ibadah', 'agamis', 'religius', 'taqwa', 'mushola', 'paling religius', 'ustaz', 'ustazah'],
+  soleh:        ['tersoleh', 'tersholeh', 'sholeh', 'alim', 'ibadah', 'agamis', 'religius', 'taqwa', 'mushola', 'paling religius', 'ustaz', 'ustazah'],
 
   // code: dermawan — sinonim kebersihan (kode tidak berubah meski judul diubah ke "Bersih")
-  dermawan:     ['bersih', 'terbersih', 'beberes', 'rajin bersih', 'menjaga kebersihan', 'bersih-bersih', 'rapi'],
+  dermawan:     ['terbersih', 'bersih', 'beberes', 'rajin bersih', 'menjaga kebersihan', 'bersih-bersih', 'rapi', 'terrapi'],
 
   // code: royal — sinonim sosial/traktir
-  royal:        ['traktir', 'suka traktir', 'jajanin', 'bayarin', 'ter-royal', 'sponsoran'],
+  royal:        ['ter-royal', 'terroyal', 'traktir', 'suka traktir', 'jajanin', 'bayarin', 'sponsoran'],
 
   // code: baik — sinonim empati
-  baik:         ['baik hati', 'tulus', 'penolong', 'pengertian', 'empati', 'penyabar'],
+  baik:         ['terbaik', 'baik hati', 'tulus', 'penolong', 'pengertian', 'empati', 'penyabar'],
 
   // code: tahu_segala — sinonim ramah (kode tidak berubah meski judul diubah ke "Ramah")
-  tahu_segala:  ['ramah', 'teramah', 'ramah tamah', 'menyapa', 'suka sapa', 'friendly', 'senyum sapa', 'sapaan'],
+  tahu_segala:  ['teramah', 'ramah', 'ramah tamah', 'menyapa', 'suka sapa', 'friendly', 'senyum sapa', 'sapaan'],
 
   // code: update — sinonim pendiam (kode tidak berubah meski judul diubah ke "Pendiam")
-  update:       ['pendiam', 'terpendiam', 'diam', 'jarang bicara', 'pemalu', 'introvert', 'diam-diam menghanyutkan'],
+  update:       ['terpendiam', 'pendiam', 'diam', 'jarang bicara', 'pemalu', 'introvert', 'diam-diam menghanyutkan'],
 
   // code: gaptek — sinonim jajan (kode tidak berubah meski judul diubah ke "Suka Jajan")
-  gaptek:       ['suka jajan', 'banyak jajan', 'doyan jajan', 'ngemil', 'cemilan', 'ke warung', 'jajanan'],
+  gaptek:       ['suka jajan', 'banyak jajan', 'doyan jajan', 'ngemil', 'cemilan', 'ke warung', 'jajanan', 'terjajan'],
 
   // code: murah_senyum — sinonim senyum
-  murah_senyum: ['sumringah', 'sumringgah', 'selalu senyum', 'ceria', 'riang'],
+  murah_senyum: ['termurah senyum', 'sumringah', 'sumringgah', 'selalu senyum', 'ceria', 'riang'],
 
   // code: cool — sinonim santai/kalem
-  cool:         ['nyantai', 'santai', 'kalem', 'terkalem', 'karismatik', 'kharisma', 'tidak panik', 'tenang'],
+  cool:         ['tercool', 'nyantai', 'santai', 'kalem', 'terkalem', 'karismatik', 'kharisma', 'tidak panik', 'tenang'],
 
   // code: trendy — sinonim "Paling Sibuk" (judul aktif DB). Slug 'trendy' dipertahankan karena sudah ada data votes.
   // Tambahkan sinonim kata-kata terkait kesibukan yang tidak bisa di-generate dari judul "Paling Sibuk"
-  trendy:       ['sibuk', 'tersibuk', 'sibuk terus', 'selalu sibuk', 'produktif', 'aktif terus', 'kerja terus', 'kesibukan', 'workaholic', 'overwork', 'super sibuk', 'nonstop kerja', 'multitasking'],
+  trendy:       ['tersibuk', 'sibuk', 'sibuk terus', 'selalu sibuk', 'produktif', 'aktif terus', 'kerja terus', 'kesibukan', 'workaholic', 'overwork', 'super sibuk', 'nonstop kerja', 'multitasking'],
 
   // code: lucu — sinonim humor
-  lucu:         ['komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa', 'kocak', 'pelawak'],
+  lucu:         ['terlucu', 'komika', 'lawak', 'ngelawak', 'humoris', 'terkocak', 'bikin ketawa', 'kocak', 'pelawak'],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,8 +118,13 @@ function buildRulesFromThemes(themes?: PollTheme[]): Array<{ category: string; k
     const cleanTitle = titleLower.replace(/^(pegawai|staf|kategori|tema)\s+/i, '').trim();
     if (cleanTitle) kws.add(cleanTitle);
 
-    // short_label tanpa "paling" prefix → kata inti + variasi prefiks
-    const cleanShort = shortLower.replace(/^paling\s+/i, '').trim();
+    // short_label tanpa "paling" prefix & bersih dari tanda kurung/simbol → kata inti + variasi prefiks
+    const cleanShort = shortLower
+      .replace(/^paling\s+/i, '')
+      .replace(/\(.*\)/g, '')
+      .replace(/&.*/g, '')
+      .trim();
+
     if (cleanShort) {
       kws.add(cleanShort);
       kws.add(`paling ${cleanShort}`);
@@ -129,6 +134,7 @@ function buildRulesFromThemes(themes?: PollTheme[]): Array<{ category: string; k
 
     // Tokenisasi: ambil semua kata bermakna (≥3 huruf) dari title + short_label
     const tokens = `${titleLower} ${shortLower}`
+      .replace(/[()&,]/g, ' ')
       .split(/[^a-z0-9]+/)
       .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
 
@@ -145,7 +151,9 @@ function buildRulesFromThemes(themes?: PollTheme[]): Array<{ category: string; k
       // Tambahkan variasi prefiks untuk sinonim tunggal (bukan frasa)
       if (!syn.includes(' ')) {
         kws.add(`paling ${syn}`);
-        kws.add(`ter${syn}`);
+        if (!syn.startsWith('ter')) {
+          kws.add(`ter${syn}`);
+        }
       }
     }
 
@@ -205,27 +213,29 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     }
   }
 
-  // 5. Konteks superlative / kepegawaian
-  const hasWho            = /\b(siapa|siapakah)\b/i.test(normalized);
-  const hasSuperlative    = /\b(paling|ter)\b/i.test(normalized);
+  // 5. Konteks superlative / kepegawaian / pertanyaan
+  const hasWho            = /\b(siapa|siapakah|sapa)\b/i.test(normalized);
+  const hasSuperlative    = /\b(paling|ter[a-z]{3,})\b/i.test(normalized) || /\b(paling|ter)\b/i.test(normalized);
   const hasEmployeeCtx    = /\b(pegawai|staf|staff|asn|pejabat|karyawan|orang|cowok|cewek|pria|wanita|dkpp|kantor|dinas)\b/i.test(normalized);
   const isEmployeeInquiry = (hasWho && hasSuperlative) || (hasEmployeeCtx && hasSuperlative) || (hasWho && hasEmployeeCtx);
 
   // 6. Deteksi permintaan Live Carousel
-  const isCarouselRequest =
-    normalized.includes('carousel') ||
-    normalized.includes('karosel') ||
-    normalized.includes('live hasil') ||
-    normalized.includes('live polling') ||
-    normalized.includes('hasil polling') ||
-    normalized.includes('hasil voting') ||
-    normalized.includes('hasil vote') ||
-    normalized.includes('perolehan suara') ||
-    normalized.includes('rekap suara') ||
-    (normalized.includes('peringkat') && hasEmployeeCtx) ||
-    (normalized.includes('podium') && hasEmployeeCtx);
+  // Jika user menyebutkan tema spesifik (misal "hasil polling cantik"), arahkan langsung ke tema tsb, bukan ke carousel umum
+  const isExplicitCarousel = normalized.includes('carousel') || normalized.includes('karosel') || normalized.includes('live carousel');
+  const isGenericLiveResults =
+    !matchedTheme && (
+      normalized.includes('live hasil') ||
+      normalized.includes('live polling') ||
+      normalized.includes('hasil polling') ||
+      normalized.includes('hasil voting') ||
+      normalized.includes('hasil vote') ||
+      normalized.includes('perolehan suara') ||
+      normalized.includes('rekap suara') ||
+      (normalized.includes('peringkat') && hasEmployeeCtx) ||
+      (normalized.includes('podium') && hasEmployeeCtx)
+    );
 
-  if (isCarouselRequest) {
+  if (isExplicitCarousel || isGenericLiveResults) {
     const targetCode = matchedTheme || (customThemes?.[0]?.code || 'cantik');
     return {
       intent: 'EMPLOYEE_POLL',
@@ -235,16 +245,21 @@ export function detectPollingIntent(userMessage: string, customThemes?: PollThem
     };
   }
 
-  // 7. Tema spesifik terdeteksi + konteks kepegawaian
+  // 7. Tema spesifik terdeteksi + konteks kepegawaian / pertanyaan polling
   if (matchedTheme) {
-    const isShortCommand =
-      words.length <= 5 &&
-      (normalized.includes('poll') ||
-       normalized.includes('vote') ||
-       normalized.includes('pilih') ||
-       isEmployeeInquiry);
+    const hasResultKeyword = /\b(hasil|peringkat|ranking|podium|skor|perolehan|juara|nomor satu|urutan|pemenang|suara|rekap|top|teratas)\b/i.test(normalized);
+    const hasActionKeyword = /\b(poll|polling|vote|voting|pilih|memilih|coblos|ikutan)\b/i.test(normalized);
 
-    if (hasExplicitPollPhrase || isEmployeeInquiry || isShortCommand) {
+    const isThemeInquiry =
+      hasWho || // "siapa tercantik", "siapa paling ganteng", "siapakah yang cantik"
+      hasSuperlative || // "tercantik", "paling tampan"
+      hasEmployeeCtx || // "pegawai cantik", "staf rajin"
+      hasResultKeyword || // "hasil tercantik", "juara ganteng"
+      hasActionKeyword || // "poll cantik", "vote rajin"
+      hasExplicitPollPhrase || // "polling pegawai cantik"
+      words.length <= 6; // query ringkas langsung menyebut tema, misal "tercantik", "paling cerdas", "cantik"
+
+    if (isThemeInquiry) {
       return {
         intent: 'EMPLOYEE_POLL',
         category: matchedTheme,

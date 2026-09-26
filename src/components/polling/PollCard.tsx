@@ -28,6 +28,12 @@ export const PollCard: React.FC<PollCardProps> = ({
   const [voteSubmitted, setVoteSubmitted] = useState(false);
   const [showLiveResults, setShowLiveResults] = useState(defaultShowResults);
 
+  React.useEffect(() => {
+    if (defaultShowResults) {
+      setShowLiveResults(true);
+    }
+  }, [defaultShowResults]);
+
   // Realtime results hook
   const { results, totalVotes, hasVoted, choicesCount, isGovernanceExempt, isRestricted, restrictedMessage, refresh } = usePollResults(poll.id, poll.code);
 
