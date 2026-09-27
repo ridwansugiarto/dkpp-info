@@ -57,7 +57,7 @@ export const LiveResults: React.FC<LiveResultsProps> = ({
             <h3 className="text-sm sm:text-base font-bold text-[#1e293b] leading-tight">
               Hasil Polling
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium">
+            <p className="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-200 mt-0.5 leading-tight">
               {poll.title}
             </p>
           </div>
