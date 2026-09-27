@@ -149,9 +149,16 @@ export async function POST(req: NextRequest) {
     const isExplicitKoperasiPegawai =
       !isExplicitNelayan && (
         koperasiNormMsg.includes('koperasi pegawai') ||
+        koperasiNormMsg.includes('koperasipegawai') ||
         koperasiNormMsg.includes('koperasi asn') ||
         koperasiNormMsg.includes('koperasi internal') ||
         koperasiNormMsg.includes('dashboard koperasi') ||
+        koperasiNormMsg.includes('link koperasi') ||
+        koperasiNormMsg.includes('link dashboard') ||
+        koperasiNormMsg.includes('tautan koperasi') ||
+        koperasiNormMsg.includes('tautan dashboard') ||
+        koperasiNormMsg.includes('url koperasi') ||
+        koperasiNormMsg.includes('url dashboard') ||
         koperasiNormMsg.includes('simpanan koperasi') ||
         koperasiNormMsg.includes('pinjaman koperasi') ||
         koperasiNormMsg.includes('cicilan koperasi') ||
@@ -181,7 +188,11 @@ export async function POST(req: NextRequest) {
           koperasiNormMsg.includes('tenor') ||
           koperasiNormMsg.includes('potong gaji') ||
           koperasiNormMsg.includes('pengurus') ||
-          koperasiNormMsg.includes('bendahara')
+          koperasiNormMsg.includes('bendahara') ||
+          koperasiNormMsg.includes('link') ||
+          koperasiNormMsg.includes('tautan') ||
+          koperasiNormMsg.includes('dashboard') ||
+          koperasiNormMsg.includes('url')
         ))
       );
 
@@ -234,7 +245,7 @@ export async function POST(req: NextRequest) {
         is_disambiguation: true,
       };
 
-      const msgContent = `Di lingkungan **Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon**, terdapat 2 (dua) jenis entitas koperasi yang berbeda. **Yang manakah yang Anda maksud?**\n\n1. 🐟 **Koperasi Nelayan & Kelembagaan Binaan DKPP** (Sektor Kelautan & Perikanan)\nWadah kelembagaan ekonomi nelayan tangkap, pembudidaya ikan, dan pengolah hasil perikanan binaan DKPP Kota Cilegon (3 Koperasi Nelayan, 58 KUB Nelayan, 28 Pokdakan, dan 17 Poklashar).\n\n2. 🏦 **Koperasi Pegawai DKPP Kota Cilegon (KSP Internal)**\nLayanan simpan pinjam internal bagi pegawai resmi DKPP Kota Cilegon (pemantauan simpanan, pengajuan pinjaman, dan pemotongan cicilan gaji/TPP).\n\n_Silakan pilih salah satu opsi di bawah ini untuk melihat data yang Anda tuju:_`;
+      const msgContent = `Di lingkungan **Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon**, terdapat 2 (dua) jenis entitas koperasi yang berbeda. **Yang manakah yang Anda maksud?**\n\n1. 🐟 **Koperasi Nelayan & Kelembagaan Binaan DKPP** (Sektor Kelautan & Perikanan)\nWadah kelembagaan ekonomi nelayan tangkap, pembudidaya ikan, dan pengolah hasil perikanan binaan DKPP Kota Cilegon (3 Koperasi Nelayan, 58 KUB Nelayan, 28 Pokdakan, dan 17 Poklashar).\n\n2. 🏦 **Koperasi Pegawai DKPP Kota Cilegon (KSP Internal)**\nLayanan simpan pinjam internal bagi pegawai resmi DKPP Kota Cilegon (pemantauan simpanan, pengajuan pinjaman, dan pemotongan cicilan gaji/TPP).\n👉 **Tautan Langsung**: [Buka Dashboard Koperasi Pegawai](/koperasi/anggota)\n\n_Silakan klik tautan di atas atau pilih salah satu kartu interaktif di bawah ini:_`;
 
       const { userMsgId, assistantMsgId } = await persistMessages(
         message, msgContent,
@@ -262,7 +273,7 @@ export async function POST(req: NextRequest) {
 
       // Jika belum login: minta login dulu
       if (isGuestUser2) {
-        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan Koperasi Pegawai DKPP, Anda perlu masuk terlebih dahulu menggunakan akun Google.\n\nLayanan yang tersedia:\n* 👤 **Dashboard Anggota** — Lihat simpanan, pinjaman, dan cicilan Anda\n* 🏦 **Dashboard Pengurus** — Manajemen koperasi dan monitoring keuangan`;
+        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan Koperasi Pegawai DKPP, Anda perlu masuk terlebih dahulu menggunakan akun Google.\n\nLayanan yang tersedia:\n* 👤 **[Dashboard Anggota Koperasi](/koperasi/anggota)** — Lihat simpanan, pinjaman, dan cicilan Anda\n* 🏦 **[Dashboard Pengurus Koperasi](/koperasi/pengurus)** — Manajemen koperasi dan monitoring keuangan`;
         const { userMsgId, assistantMsgId } = await persistMessages(message, msgContent, []);
         return NextResponse.json({
           sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
@@ -277,7 +288,7 @@ export async function POST(req: NextRequest) {
 
       // Jika sudah login tapi belum verifikasi NIP
       if (isCitizenUnverified) {
-        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan koperasi, Anda perlu memverifikasi NIP kepegawaian Anda terlebih dahulu.\n\nSetelah NIP terverifikasi, Anda dapat:\n* 👤 Melihat simpanan & pinjaman Anda\n* 📋 Mengajukan pinjaman\n* 📊 Memantau jadwal cicilan`;
+        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan koperasi, Anda perlu memverifikasi NIP kepegawaian Anda terlebih dahulu.\n\nSetelah NIP terverifikasi, Anda dapat mengakses:\n* 👤 **[Dashboard Anggota Koperasi](/koperasi/anggota)** — Melihat simpanan & pinjaman Anda\n* 📋 Mengajukan pinjaman online\n* 📊 Memantau jadwal cicilan gaji/TPP`;
         const { userMsgId, assistantMsgId } = await persistMessages(message, msgContent, []);
         return NextResponse.json({
           sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
@@ -328,7 +339,7 @@ export async function POST(req: NextRequest) {
         is_disambiguation: false,
       };
 
-      const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nSalam, **${authProfile.full_name}**! Silakan pilih layanan koperasi yang ingin Anda akses:\n\n* 👤 **Dashboard Anggota** — Simpanan, pinjaman, cicilan, dan pengajuan\n${panelData.is_officer ? '* 🏦 **Dashboard Pengurus** — Monitoring keuangan dan manajemen anggota\n* 💰 **Panel Bendahara** — Input data dan arus kas koperasi' : ''}\n\n_Data keuangan Anda terlindungi dan tidak ditampilkan di sini._`;
+      const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nSalam, **${authProfile.full_name}**! Berikut tautan langsung menuju dashboard layanan Koperasi Pegawai DKPP Kota Cilegon:\n\n* 👤 **[Dashboard Anggota Koperasi](/koperasi/anggota)** — Pantau simpanan pokok/wajib/sukarela, saldo pinjaman aktif, jadwal cicilan, dan formulir pengajuan pinjaman baru.\n${panelData.is_officer ? '* 🏦 **[Dashboard Pengurus Koperasi](/koperasi/pengurus)** — Ringkasan kas koperasi, persetujuan pengajuan pinjaman, monitoring kredit lancar/macet, dan verifikasi anggota.\n' : ''}${panelData.officer_role === 'bendahara' || panelData.officer_role === 'admin' ? '* 💰 **[Panel Bendahara Koperasi](/koperasi/bendahara)** — Input data manual/Excel, pencatatan angsuran, mutasi kas, dan konfigurasi bunga/plafon koperasi.\n' : ''}\n🔗 **Tautan Langsung:**\n* 👉 **[Buka Dashboard Anggota](/koperasi/anggota)**\n${panelData.is_officer ? '* 👉 **[Buka Dashboard Pengurus](/koperasi/pengurus)**\n' : ''}${panelData.officer_role === 'bendahara' || panelData.officer_role === 'admin' ? '* 👉 **[Buka Panel Bendahara](/koperasi/bendahara)**\n' : ''}\n_Data keuangan Anda terlindungi dan dapat diakses dengan mengeklik tautan di atas atau menggunakan panel interaktif di bawah ini._`;
 
       const { userMsgId, assistantMsgId } = await persistMessages(
         message, msgContent,

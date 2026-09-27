@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { 
   Sparkles, 
   MapPin, 
@@ -65,11 +66,43 @@ interface ChatContainerProps {
 
 // Suggestions removed per user request (Capture 1)
 
-// Helper: parse bold, italic, and code inlines
+// Helper: parse bold, italic, code, and markdown links inlines
 function parseInlineFormatting(text: string): React.ReactNode {
-  // Handle `code`, **bold**, and *italic*
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
+  // Split by markdown elements: link, code, bold, italic
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
   return parts.map((part, i) => {
+    // 1. Markdown link: [label](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const [, label, href] = linkMatch;
+      const isInternal = href.startsWith('/');
+      if (isInternal) {
+        return (
+          <Link
+            key={i}
+            href={href}
+            className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500 hover:text-emerald-950 dark:hover:text-emerald-200 transition-colors cursor-pointer"
+          >
+            <span>{label}</span>
+            <ExternalLink className="w-3 h-3 inline shrink-0 opacity-80" />
+          </Link>
+        );
+      }
+      return (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500 hover:text-emerald-950 dark:hover:text-emerald-200 transition-colors"
+        >
+          <span>{label}</span>
+          <ExternalLink className="w-3 h-3 inline shrink-0 opacity-80" />
+        </a>
+      );
+    }
+
+    // 2. Inline code: `code`
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
       return (
         <code key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
@@ -77,13 +110,25 @@ function parseInlineFormatting(text: string): React.ReactNode {
         </code>
       );
     }
+
+    // 3. Bold: **bold** (might contain inner [link](url))
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      const inner = part.slice(2, -2);
+      if (inner.includes('[') && inner.includes('](')) {
+        return (
+          <strong key={i} className="font-bold text-gray-950 dark:text-white">
+            {parseInlineFormatting(inner)}
+          </strong>
+        );
+      }
       return (
         <strong key={i} className="font-bold text-gray-950 dark:text-white">
-          {part.slice(2, -2)}
+          {inner}
         </strong>
       );
     }
+
+    // 4. Italic: *italic*
     if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**') && part.length > 2) {
       return (
         <em key={i} className="italic text-gray-700 dark:text-gray-300">
@@ -91,6 +136,7 @@ function parseInlineFormatting(text: string): React.ReactNode {
         </em>
       );
     }
+
     return part;
   });
 }

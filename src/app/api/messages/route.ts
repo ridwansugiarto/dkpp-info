@@ -268,6 +268,30 @@ export async function GET(req: NextRequest) {
         };
       }
 
+      // 10. Check for cooperative_panel
+      const coopTool = toolCalls.find((t: any) => t?.name === 'cooperative_panel');
+      const isCoopContent = typeof msg.content === 'string' && (
+        msg.content.includes('Koperasi Pegawai DKPP Kota Cilegon') ||
+        msg.content.includes('Pilih Lingkup Koperasi DKPP Kota Cilegon') ||
+        msg.content.includes('cooperative_panel')
+      );
+
+      if (coopTool || isCoopContent) {
+        const isDisambiguation = coopTool?.args?.is_disambiguation ?? (
+          typeof msg.content === 'string' && msg.content.includes('Pilih Lingkup Koperasi')
+        );
+        return {
+          ...msg,
+          type: 'cooperative_panel',
+          cooperative_panel: coopTool?.args || {
+            role: 'anggota',
+            is_verified_member: true,
+            is_officer: false,
+            is_disambiguation: isDisambiguation,
+          },
+        };
+      }
+
       return msg;
     });
 
