@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Koperasi Pegawai DKPP Kota Cilegon — TypeScript Types
 // ============================================================
 
@@ -140,6 +140,7 @@ export interface CooperativePanelData {
   role: 'anggota' | 'pengurus' | 'bendahara' | 'entry';
   user_nip?: string; is_verified_member: boolean;
   is_officer: boolean; officer_role?: OfficerRole; member_id?: string;
+  is_disambiguation?: boolean;
 }
 
 export interface ExcelMemberRow {

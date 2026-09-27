@@ -1,36 +1,145 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Building2, User, Wallet, AlertCircle, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  User,
+  Wallet,
+  AlertCircle,
+  ShieldCheck,
+  HelpCircle,
+  Waves,
+  Ship,
+  Sparkles,
+} from 'lucide-react';
 import type { CooperativePanelData } from '@/types/cooperative';
 
 interface KoperasiChatPanelProps {
   data: CooperativePanelData;
+  onSendMessage?: (msg: string) => void;
 }
 
-export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
-  const { is_officer, is_verified_member, officer_role } = data;
+export function KoperasiChatPanel({ data, onSendMessage }: KoperasiChatPanelProps) {
+  const { is_officer, is_verified_member, officer_role, is_disambiguation } = data;
   const isBendahara = officer_role === 'bendahara' || officer_role === 'admin';
 
+  // 1. Tampilan Mode Disambiguasi (Jika user bertanya "koperasi", "lihat koperasi", dsb secara umum)
+  if (is_disambiguation) {
+    return (
+      <div className="mt-3 w-full max-w-full animate-in fade-in duration-200">
+        <div className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs bg-white">
+          {/* Top gradient bar */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 via-blue-600 to-indigo-600" />
+
+          <div className="p-4 sm:p-5">
+            {/* Header Disambiguasi */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-900 to-indigo-800 flex items-center justify-center shadow-xs text-white shrink-0">
+                <HelpCircle className="w-5 h-5 text-blue-200" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                  Pilih Lingkup Koperasi DKPP Kota Cilegon
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Terdapat 2 jenis entitas koperasi, silakan pilih yang Anda tuju:
+                </p>
+              </div>
+            </div>
+
+            {/* Dua Pilihan Kartu Interaktif */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              {/* Pilihan 1: Koperasi Nelayan & Kelembagaan Pelaku Utama */}
+              <div
+                onClick={() => {
+                  if (onSendMessage) {
+                    onSendMessage('jelaskan data resmi koperasi nelayan dan kelembagaan binaan dkpp kota cilegon');
+                  }
+                }}
+                className="group p-4 rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/70 to-emerald-50/40 hover:border-teal-400 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center">
+                      <Waves className="w-4 h-4" />
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 uppercase">
+                      Publik & Nelayan
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-teal-900">
+                    1. Koperasi Nelayan &amp; Pelaku Utama
+                  </h4>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Data 3 Koperasi Nelayan resmi, 58 KUB Nelayan Tangkap, 28 Pokdakan, dan 17 Poklashar di 9 pangkalan nelayan Kota Cilegon.
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-teal-200/60 flex items-center justify-between text-xs font-bold text-teal-700 group-hover:text-teal-900">
+                  <span>Lihat Data Nelayan</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+
+              {/* Pilihan 2: Koperasi Pegawai DKPP (Internal) */}
+              <Link
+                href="/koperasi/anggota"
+                className="group p-4 rounded-xl border border-blue-200/90 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 hover:border-blue-400 hover:shadow-xs transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 uppercase">
+                      Internal Pegawai
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-900">
+                    2. Koperasi Pegawai DKPP (KSP)
+                  </h4>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Layanan simpan pinjam internal pegawai resmi DKPP, cek simpanan, pengajuan pinjaman, dan jadwal cicilan gaji/TPP.
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-blue-200/60 flex items-center justify-between text-xs font-bold text-blue-700 group-hover:text-blue-900">
+                  <span>Buka Dashboard Pegawai</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Link>
+            </div>
+
+            <p className="text-[10px] text-slate-400 text-center">
+              Klik salah satu pilihan di atas untuk menampilkan informasi yang sesuai.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Tampilan Mode Koperasi Pegawai DKPP Eksplisit
   return (
     <div className="mt-3 w-full max-w-full animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm bg-white">
+      <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-white">
         {/* Top gradient bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#0B1E41] via-blue-600 to-emerald-500" />
 
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B1E41] to-blue-700 flex items-center justify-center shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B1E41] to-blue-700 flex items-center justify-center shadow-xs shrink-0">
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 leading-tight">
-                Koperasi Pegawai DKPP
+                Koperasi Pegawai DKPP Kota Cilegon
               </h3>
-              <p className="text-[11px] text-slate-500">Kota Cilegon — Pilih layanan:</p>
+              <p className="text-[11px] text-slate-500">Layanan keuangan internal pegawai:</p>
             </div>
           </div>
 
@@ -49,7 +158,7 @@ export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
             <div className="mb-3 flex items-center gap-2 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200/60">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span className="text-[10.5px] font-medium text-emerald-800">
-                Terverifikasi sebagai Anggota Koperasi
+                Terverifikasi sebagai Anggota Koperasi Pegawai
               </span>
             </div>
           )}
@@ -70,7 +179,7 @@ export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
                     👤 Dashboard Anggota
                   </p>
                   <p className="text-[10px] text-slate-500 leading-tight">
-                    Simpanan, pinjaman, cicilan & pengajuan
+                    Simpanan, pinjaman, cicilan &amp; pengajuan
                   </p>
                 </div>
               </div>
@@ -92,7 +201,7 @@ export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
                       🏦 Dashboard Pengurus
                     </p>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      Monitoring keuangan & manajemen anggota
+                      Monitoring keuangan &amp; manajemen anggota
                     </p>
                   </div>
                 </div>
@@ -115,7 +224,7 @@ export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
                       💰 Panel Bendahara
                     </p>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      Input data, arus kas, & pengaturan koperasi
+                      Input data, arus kas, &amp; pengaturan koperasi
                     </p>
                   </div>
                 </div>
@@ -124,10 +233,21 @@ export function KoperasiChatPanel({ data }: KoperasiChatPanelProps) {
             )}
           </div>
 
-          {/* Footer disclaimer */}
-          <p className="mt-3 text-[10px] text-slate-400 leading-relaxed text-center">
-            Data keuangan hanya ditampilkan di halaman dashboard terautentikasi
-          </p>
+          {/* Quick link to Koperasi Nelayan */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Mencari data Koperasi Nelayan?</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onSendMessage) {
+                  onSendMessage('jelaskan data resmi koperasi nelayan dan kelembagaan binaan dkpp kota cilegon');
+                }
+              }}
+              className="text-teal-700 hover:text-teal-900 font-semibold hover:underline cursor-pointer"
+            >
+              Lihat Koperasi Nelayan →
+            </button>
+          </div>
         </div>
       </div>
     </div>

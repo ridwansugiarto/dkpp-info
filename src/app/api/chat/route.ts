@@ -123,28 +123,140 @@ export async function POST(req: NextRequest) {
       return { userMsgId, assistantMsgId };
     };
 
-    // 3b. Deteksi Maksud Koperasi (SEBELUM polling intent)
+    // 3b. Deteksi Maksud Koperasi (Disambiguasi Koperasi Nelayan vs Koperasi Pegawai DKPP)
     const koperasiNormMsg = (message || '').toLowerCase().trim();
-    const isKoperasiIntent =
-      koperasiNormMsg === 'koperasi' ||
-      koperasiNormMsg.includes('koperasi pegawai') ||
-      koperasiNormMsg.includes('dashboard koperasi') ||
-      koperasiNormMsg.includes('simpanan koperasi') ||
-      koperasiNormMsg.includes('pinjaman koperasi') ||
-      koperasiNormMsg.includes('cicilan koperasi') ||
-      koperasiNormMsg.includes('cek simpanan') ||
-      koperasiNormMsg.includes('cek pinjaman') ||
-      koperasiNormMsg.includes('cek cicilan') ||
-      koperasiNormMsg.includes('pengajuan pinjaman') ||
-      koperasiNormMsg.includes('ajukan pinjaman') ||
-      koperasiNormMsg.includes('sisa cicilan') ||
-      koperasiNormMsg.includes('sisa pinjaman') ||
-      koperasiNormMsg.includes('berapa simpanan') ||
-      koperasiNormMsg.includes('berapa cicilan') ||
-      (koperasiNormMsg.includes('pinjaman') && koperasiNormMsg.includes('koperasi')) ||
-      (koperasiNormMsg.includes('simpanan') && koperasiNormMsg.includes('koperasi'));
 
-    if (isKoperasiIntent) {
+    // 1) Explicit Koperasi Nelayan / Sektor Perikanan / Kelautan binaan DKPP
+    const isExplicitNelayan =
+      koperasiNormMsg.includes('koperasi nelayan') ||
+      koperasiNormMsg.includes('koperasi perikanan') ||
+      koperasiNormMsg.includes('koperasi kelautan') ||
+      koperasiNormMsg.includes('koperasi kub') ||
+      koperasiNormMsg.includes('koperasi pokdakan') ||
+      koperasiNormMsg.includes('koperasi poklashar') ||
+      (koperasiNormMsg.includes('koperasi') && (
+        koperasiNormMsg.includes('nelayan') ||
+        koperasiNormMsg.includes('ikan') ||
+        koperasiNormMsg.includes('tangkap') ||
+        koperasiNormMsg.includes('pembudidaya') ||
+        koperasiNormMsg.includes('kub') ||
+        koperasiNormMsg.includes('pokdakan') ||
+        koperasiNormMsg.includes('poklashar') ||
+        koperasiNormMsg.includes('pangkalan')
+      ));
+
+    // 2) Explicit Koperasi Pegawai DKPP (Internal KSP)
+    const isExplicitKoperasiPegawai =
+      !isExplicitNelayan && (
+        koperasiNormMsg.includes('koperasi pegawai') ||
+        koperasiNormMsg.includes('koperasi asn') ||
+        koperasiNormMsg.includes('koperasi internal') ||
+        koperasiNormMsg.includes('dashboard koperasi') ||
+        koperasiNormMsg.includes('simpanan koperasi') ||
+        koperasiNormMsg.includes('pinjaman koperasi') ||
+        koperasiNormMsg.includes('cicilan koperasi') ||
+        koperasiNormMsg.includes('cek simpanan') ||
+        koperasiNormMsg.includes('cek pinjaman') ||
+        koperasiNormMsg.includes('cek cicilan') ||
+        koperasiNormMsg.includes('pengajuan pinjaman') ||
+        koperasiNormMsg.includes('ajukan pinjaman') ||
+        koperasiNormMsg.includes('sisa cicilan') ||
+        koperasiNormMsg.includes('sisa pinjaman') ||
+        koperasiNormMsg.includes('berapa simpanan') ||
+        koperasiNormMsg.includes('berapa cicilan') ||
+        koperasiNormMsg.includes('ksp pegawai') ||
+        koperasiNormMsg.includes('koperasi ksp') ||
+        (koperasiNormMsg.includes('koperasi') && (
+          koperasiNormMsg.includes('pegawai') ||
+          koperasiNormMsg.includes('asn') ||
+          koperasiNormMsg.includes('pns') ||
+          koperasiNormMsg.includes('pppk') ||
+          koperasiNormMsg.includes('honorer') ||
+          koperasiNormMsg.includes('gaji') ||
+          koperasiNormMsg.includes('tpp') ||
+          koperasiNormMsg.includes('simpanan') ||
+          koperasiNormMsg.includes('pinjaman') ||
+          koperasiNormMsg.includes('cicilan') ||
+          koperasiNormMsg.includes('angsuran') ||
+          koperasiNormMsg.includes('tenor') ||
+          koperasiNormMsg.includes('potong gaji') ||
+          koperasiNormMsg.includes('pengurus') ||
+          koperasiNormMsg.includes('bendahara')
+        ))
+      );
+
+    // 3) General / Ambiguous Koperasi (e.g. "lihat koperasi", "koperasi", "data koperasi", "info koperasi")
+    const isGeneralKoperasi =
+      !isExplicitNelayan &&
+      !isExplicitKoperasiPegawai &&
+      (
+        koperasiNormMsg === 'koperasi' ||
+        koperasiNormMsg === 'koprasi' ||
+        koperasiNormMsg === 'koperas' ||
+        koperasiNormMsg.includes('koperasi') ||
+        koperasiNormMsg.includes('koprasi')
+      );
+
+    // Jalur A: Pertanyaan Umum/Ambigu Koperasi -> Tampilkan Disambiguasi (Nelayan vs Pegawai)
+    if (isGeneralKoperasi) {
+      const isAdmin = authProfile.email?.toLowerCase() === 'ridwansugiarto.mail@gmail.com';
+      const userNip = authProfile.nip;
+
+      let officerRole: string | null = null;
+      let memberId: string | null = null;
+
+      if (userNip) {
+        try {
+          const { data: officer } = await supabaseAdmin
+            .from('cooperative_officers')
+            .select('role')
+            .eq('nip', userNip)
+            .eq('is_active', true)
+            .maybeSingle();
+          if (officer) officerRole = officer.role;
+
+          const { data: member } = await supabaseAdmin
+            .from('cooperative_members')
+            .select('id')
+            .eq('nip', userNip)
+            .maybeSingle();
+          if (member) memberId = member.id;
+        } catch { /* ignore */ }
+      }
+
+      const panelData = {
+        role: ((isAdmin || officerRole) ? (officerRole || 'admin') : 'anggota') as 'anggota' | 'pengurus' | 'bendahara' | 'entry',
+        user_nip: userNip,
+        is_verified_member: !!memberId,
+        is_officer: !!(officerRole || isAdmin),
+        officer_role: (officerRole as any) || (isAdmin ? 'admin' : undefined),
+        member_id: memberId || undefined,
+        is_disambiguation: true,
+      };
+
+      const msgContent = `Di lingkungan **Dinas Ketahanan Pangan dan Pertanian (DKPP) Kota Cilegon**, terdapat 2 (dua) jenis entitas koperasi yang berbeda. **Yang manakah yang Anda maksud?**\n\n1. 🐟 **Koperasi Nelayan & Kelembagaan Binaan DKPP** (Sektor Kelautan & Perikanan)\nWadah kelembagaan ekonomi nelayan tangkap, pembudidaya ikan, dan pengolah hasil perikanan binaan DKPP Kota Cilegon (3 Koperasi Nelayan, 58 KUB Nelayan, 28 Pokdakan, dan 17 Poklashar).\n\n2. 🏦 **Koperasi Pegawai DKPP Kota Cilegon (KSP Internal)**\nLayanan simpan pinjam internal bagi pegawai resmi DKPP Kota Cilegon (pemantauan simpanan, pengajuan pinjaman, dan pemotongan cicilan gaji/TPP).\n\n_Silakan pilih salah satu opsi di bawah ini untuk melihat data yang Anda tuju:_`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message, msgContent,
+        [{ id: 'tool-koperasi-' + Date.now(), name: 'cooperative_panel', status: 'completed', args: panelData }]
+      );
+
+      return NextResponse.json({
+        sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
+        content: msgContent, type: 'cooperative_panel',
+        cooperative_panel: panelData,
+        message: {
+          id: assistantMsgId, session_id: sessionId || 'temp',
+          role: 'assistant', content: msgContent,
+          type: 'cooperative_panel', cooperative_panel: panelData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role, isVerified: authProfile.is_verified_employee,
+      });
+    }
+
+    // Jalur B: Eksplisit Koperasi Pegawai DKPP
+    if (isExplicitKoperasiPegawai) {
       const isGuestUser2 = authProfile.role === 'GUEST';
       const isCitizenUnverified = authProfile.role === 'CITIZEN' && !authProfile.is_verified_employee;
 
@@ -207,12 +319,13 @@ export async function POST(req: NextRequest) {
       }
 
       const panelData = {
-        role: (isAdmin || officerRole) ? (officerRole || 'admin') : 'anggota',
+        role: ((isAdmin || officerRole) ? (officerRole || 'admin') : 'anggota') as 'anggota' | 'pengurus' | 'bendahara' | 'entry',
         user_nip: userNip,
         is_verified_member: !!memberId,
         is_officer: !!(officerRole || isAdmin),
-        officer_role: officerRole || (isAdmin ? 'admin' : undefined),
-        member_id: memberId,
+        officer_role: (officerRole as any) || (isAdmin ? 'admin' : undefined),
+        member_id: memberId || undefined,
+        is_disambiguation: false,
       };
 
       const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nSalam, **${authProfile.full_name}**! Silakan pilih layanan koperasi yang ingin Anda akses:\n\n* 👤 **Dashboard Anggota** — Simpanan, pinjaman, cicilan, dan pengajuan\n${panelData.is_officer ? '* 🏦 **Dashboard Pengurus** — Monitoring keuangan dan manajemen anggota\n* 💰 **Panel Bendahara** — Input data dan arus kas koperasi' : ''}\n\n_Data keuangan Anda terlindungi dan tidak ditampilkan di sini._`;

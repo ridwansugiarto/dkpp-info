@@ -755,7 +755,10 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                       {/* 12. In-Chat Koperasi Pegawai DKPP Panel */}
                       {(msg.type === 'cooperative_panel' || msg.cooperative_panel) && msg.cooperative_panel && (
                         <div className="mt-2.5 w-full max-w-full overflow-visible">
-                          <KoperasiChatPanel data={msg.cooperative_panel} />
+                          <KoperasiChatPanel
+                            data={msg.cooperative_panel}
+                            onSendMessage={onSendMessage}
+                          />
                         </div>
                       )}
 
