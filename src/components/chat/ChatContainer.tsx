@@ -41,6 +41,7 @@ import { EwsChatPanel } from './EwsChatPanel';
 import { GkgChatPanel } from './GkgChatPanel';
 import { MapTematikChatCard } from './MapTematikChatCard';
 import { ChatInput } from './ChatInput';
+import { KoperasiChatPanel } from './KoperasiChatPanel';
 
 // Dynamic import ChatChart for interactive Recharts
 const ChatChart = dynamic(
@@ -748,6 +749,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                       {(msg.type === 'gkg_panel' || msg.gkg_panel) && msg.gkg_panel && (
                         <div className="mt-2.5 w-full max-w-full overflow-visible">
                           <GkgChatPanel data={msg.gkg_panel} />
+                        </div>
+                      )}
+
+                      {/* 12. In-Chat Koperasi Pegawai DKPP Panel */}
+                      {(msg.type === 'cooperative_panel' || msg.cooperative_panel) && msg.cooperative_panel && (
+                        <div className="mt-2.5 w-full max-w-full overflow-visible">
+                          <KoperasiChatPanel data={msg.cooperative_panel} />
                         </div>
                       )}
 

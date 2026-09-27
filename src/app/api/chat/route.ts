@@ -123,6 +123,119 @@ export async function POST(req: NextRequest) {
       return { userMsgId, assistantMsgId };
     };
 
+    // 3b. Deteksi Maksud Koperasi (SEBELUM polling intent)
+    const koperasiNormMsg = (message || '').toLowerCase().trim();
+    const isKoperasiIntent =
+      koperasiNormMsg === 'koperasi' ||
+      koperasiNormMsg.includes('koperasi pegawai') ||
+      koperasiNormMsg.includes('dashboard koperasi') ||
+      koperasiNormMsg.includes('simpanan koperasi') ||
+      koperasiNormMsg.includes('pinjaman koperasi') ||
+      koperasiNormMsg.includes('cicilan koperasi') ||
+      koperasiNormMsg.includes('cek simpanan') ||
+      koperasiNormMsg.includes('cek pinjaman') ||
+      koperasiNormMsg.includes('cek cicilan') ||
+      koperasiNormMsg.includes('pengajuan pinjaman') ||
+      koperasiNormMsg.includes('ajukan pinjaman') ||
+      koperasiNormMsg.includes('sisa cicilan') ||
+      koperasiNormMsg.includes('sisa pinjaman') ||
+      koperasiNormMsg.includes('berapa simpanan') ||
+      koperasiNormMsg.includes('berapa cicilan') ||
+      (koperasiNormMsg.includes('pinjaman') && koperasiNormMsg.includes('koperasi')) ||
+      (koperasiNormMsg.includes('simpanan') && koperasiNormMsg.includes('koperasi'));
+
+    if (isKoperasiIntent) {
+      const isGuestUser2 = authProfile.role === 'GUEST';
+      const isCitizenUnverified = authProfile.role === 'CITIZEN' && !authProfile.is_verified_employee;
+
+      // Jika belum login: minta login dulu
+      if (isGuestUser2) {
+        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan Koperasi Pegawai DKPP, Anda perlu masuk terlebih dahulu menggunakan akun Google.\n\nLayanan yang tersedia:\n* 👤 **Dashboard Anggota** — Lihat simpanan, pinjaman, dan cicilan Anda\n* 🏦 **Dashboard Pengurus** — Manajemen koperasi dan monitoring keuangan`;
+        const { userMsgId, assistantMsgId } = await persistMessages(message, msgContent, []);
+        return NextResponse.json({
+          sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
+          content: msgContent, type: 'auth_prompt',
+          message: {
+            id: assistantMsgId, session_id: sessionId || 'temp',
+            role: 'assistant', content: msgContent, type: 'auth_prompt',
+            auth_prompt: 'LOGIN_REQUIRED', created_at: new Date().toISOString(),
+          },
+        });
+      }
+
+      // Jika sudah login tapi belum verifikasi NIP
+      if (isCitizenUnverified) {
+        const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nUntuk mengakses layanan koperasi, Anda perlu memverifikasi NIP kepegawaian Anda terlebih dahulu.\n\nSetelah NIP terverifikasi, Anda dapat:\n* 👤 Melihat simpanan & pinjaman Anda\n* 📋 Mengajukan pinjaman\n* 📊 Memantau jadwal cicilan`;
+        const { userMsgId, assistantMsgId } = await persistMessages(message, msgContent, []);
+        return NextResponse.json({
+          sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
+          content: msgContent, type: 'auth_prompt',
+          message: {
+            id: assistantMsgId, session_id: sessionId || 'temp',
+            role: 'assistant', content: msgContent, type: 'auth_prompt',
+            auth_prompt: 'NIP_REQUIRED', created_at: new Date().toISOString(),
+          },
+        });
+      }
+
+      // User sudah terverifikasi — cek apakah officer atau anggota biasa
+      const isAdmin = authProfile.email?.toLowerCase() === 'ridwansugiarto.mail@gmail.com';
+      const userNip = authProfile.nip;
+
+      let officerRole: string | null = null;
+      let memberId: string | null = null;
+
+      if (userNip) {
+        try {
+          // Cek apakah pengurus
+          const { data: officer } = await supabaseAdmin
+            .from('cooperative_officers')
+            .select('role')
+            .eq('nip', userNip)
+            .eq('is_active', true)
+            .maybeSingle();
+          if (officer) officerRole = officer.role;
+
+          // Ambil member_id
+          const { data: member } = await supabaseAdmin
+            .from('cooperative_members')
+            .select('id')
+            .eq('nip', userNip)
+            .maybeSingle();
+          if (member) memberId = member.id;
+        } catch { /* ignore */ }
+      }
+
+      const panelData = {
+        role: (isAdmin || officerRole) ? (officerRole || 'admin') : 'anggota',
+        user_nip: userNip,
+        is_verified_member: !!memberId,
+        is_officer: !!(officerRole || isAdmin),
+        officer_role: officerRole || (isAdmin ? 'admin' : undefined),
+        member_id: memberId,
+      };
+
+      const msgContent = `🏦 **Koperasi Pegawai DKPP Kota Cilegon**\n\nSalam, **${authProfile.full_name}**! Silakan pilih layanan koperasi yang ingin Anda akses:\n\n* 👤 **Dashboard Anggota** — Simpanan, pinjaman, cicilan, dan pengajuan\n${panelData.is_officer ? '* 🏦 **Dashboard Pengurus** — Monitoring keuangan dan manajemen anggota\n* 💰 **Panel Bendahara** — Input data dan arus kas koperasi' : ''}\n\n_Data keuangan Anda terlindungi dan tidak ditampilkan di sini._`;
+
+      const { userMsgId, assistantMsgId } = await persistMessages(
+        message, msgContent,
+        [{ id: 'tool-koperasi-' + Date.now(), name: 'cooperative_panel', status: 'completed', args: panelData }]
+      );
+
+      return NextResponse.json({
+        sessionId, userMessageId: userMsgId, assistantMessageId: assistantMsgId,
+        content: msgContent, type: 'cooperative_panel',
+        cooperative_panel: panelData,
+        message: {
+          id: assistantMsgId, session_id: sessionId || 'temp',
+          role: 'assistant', content: msgContent,
+          type: 'cooperative_panel', cooperative_panel: panelData,
+          created_at: new Date().toISOString(),
+        },
+        userRole: authProfile.role, isVerified: authProfile.is_verified_employee,
+      });
+    }
+
     // 4. Deteksi Maksud Polling Pegawai (AI Intent Detection)
     const { detectPollingIntent } = await import('@/lib/polling/intent');
     const { getActivePollThemes } = await import('@/lib/polling/store');
@@ -130,6 +243,7 @@ export async function POST(req: NextRequest) {
     const pollIntent = detectPollingIntent(message, activeThemes);
 
     if (pollIntent.intent === 'EMPLOYEE_POLL' && pollIntent.category && (pollIntent.confidence ?? 0) >= 0.8) {
+
       const isGovExempt = isSuperAdminGovernanceExempt(authProfile?.email, authProfile?.nip);
       const isVerifiedEmployee = !!authProfile.is_verified_employee || isGovExempt;
 
