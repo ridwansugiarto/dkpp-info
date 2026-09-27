@@ -68,13 +68,93 @@ export function KoperasiMemberDashboard({
     return s ? parseInt(s.value, 10) : 24;
   }, [settings]);
 
+  // Max loan plafond: (Gaji + TPP) * 30% * 24 bulan
+  const maxLoanPlafond = useMemo(() => {
+    const gaji = Number(memberData?.gaji) || 0;
+    const tpp = Number(memberData?.tpp) || 0;
+    const total = Number(memberData?.total_pendapatan) || (gaji + tpp);
+    if (total > 0) {
+      return Math.round(total * 0.30 * 24);
+    }
+    return 50000000;
+  }, [memberData]);
+
   // Simulation state
   const [simAmount, setSimAmount] = useState<number>(5000000);
   const [simTenor, setSimTenor] = useState<number>(12);
+  const [amountInputText, setAmountInputText] = useState<string>('');
+  const [isAmountFocused, setIsAmountFocused] = useState<boolean>(false);
+  const [tenorInputText, setTenorInputText] = useState<string>('');
+  const [isTenorFocused, setIsTenorFocused] = useState<boolean>(false);
   const [simSource, setSimSource] = useState<'gaji' | 'tpp' | 'gaji_tpp'>('gaji');
   const [simNotes, setSimNotes] = useState<string>('');
   const [isSubmittingApp, setIsSubmittingApp] = useState<boolean>(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Handler input manual jumlah pinjaman
+  const handleAmountFocus = () => {
+    setIsAmountFocused(true);
+    setAmountInputText(''); // Teks dalam kotak otomatis hilang saat diklik
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (!raw) {
+      setAmountInputText('');
+      return;
+    }
+    let num = Number(raw);
+    if (num > maxLoanPlafond) {
+      num = maxLoanPlafond; // dibatasi maksimal (gaji+tpp) * 30% * 24
+    }
+    setAmountInputText(String(num));
+    setSimAmount(num);
+  };
+
+  const handleAmountBlur = () => {
+    setIsAmountFocused(false);
+    if (!amountInputText || Number(amountInputText) < 500000) {
+      setAmountInputText('');
+    } else {
+      const num = Math.min(Number(amountInputText), maxLoanPlafond);
+      setSimAmount(num);
+      setAmountInputText(formatRupiah(num));
+    }
+  };
+
+  // Handler input manual tenor bulan (maksimal 24)
+  const handleTenorFocus = () => {
+    setIsTenorFocused(true);
+    setTenorInputText(''); // Teks dalam kotak otomatis hilang saat diklik
+  };
+
+  const handleTenorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (!raw) {
+      setTenorInputText('');
+      return;
+    }
+    let num = Number(raw);
+    // Untuk tenor maksimal angka yaitu 24, lebih dari 24 tidak bisa / capped at 24
+    if (num > 24) {
+      num = 24;
+    }
+    setTenorInputText(String(num));
+    if (num >= 1) {
+      setSimTenor(num);
+    }
+  };
+
+  const handleTenorBlur = () => {
+    setIsTenorFocused(false);
+    if (!tenorInputText || Number(tenorInputText) < 1) {
+      setTenorInputText('');
+    } else {
+      const num = Math.min(24, Math.max(1, Number(tenorInputText)));
+      setSimTenor(num);
+      setTenorInputText(`${num} Bulan`);
+    }
+  };
 
   // Calculate live simulation
   const simCalc = useMemo(() => {
@@ -763,51 +843,95 @@ export function KoperasiMemberDashboard({
               {/* Jumlah Pinjaman */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Jumlah Pinjaman (Plafon)</label>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">Jumlah Pinjaman (Plafon)</label>
+                    <p className="text-[10.5px] text-slate-400">
+                      Maksimal: <span className="font-semibold text-emerald-700">{formatRupiah(maxLoanPlafond)}</span> (30% x Pendapatan x 24 bln)
+                    </p>
+                  </div>
                   <span className="text-sm font-black text-blue-600">{formatRupiah(simAmount)}</span>
                 </div>
                 <input
                   type="range"
                   min={1000000}
-                  max={50000000}
+                  max={maxLoanPlafond}
                   step={500000}
                   value={simAmount}
-                  onChange={(e) => setSimAmount(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSimAmount(val);
+                    setAmountInputText('');
+                    setIsAmountFocused(false);
+                  }}
                   className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
                 />
-                {/* Quick chip amounts */}
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {[2000000, 5000000, 10000000, 20000000, 30000000, 50000000].map((amt) => (
-                    <button
-                      type="button"
-                      key={amt}
-                      onClick={() => setSimAmount(amt)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                        simAmount === amt
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                {/* Quick chip amounts + Kotak Input Manual */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  {[2000000, 5000000, 10000000, 20000000, 30000000, 50000000]
+                    .filter((amt) => amt <= maxLoanPlafond)
+                    .map((amt) => (
+                      <button
+                        type="button"
+                        key={amt}
+                        onClick={() => {
+                          setSimAmount(amt);
+                          setAmountInputText('');
+                          setIsAmountFocused(false);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                          simAmount === amt && !isAmountFocused && amountInputText === ''
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {formatRupiah(amt)}
+                      </button>
+                    ))}
+
+                  {/* KOTAK INPUT MANUAL PLAFON */}
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type={isAmountFocused ? 'number' : 'text'}
+                      inputMode="numeric"
+                      min={500000}
+                      max={maxLoanPlafond}
+                      step={500000}
+                      placeholder="Input manual"
+                      value={isAmountFocused ? amountInputText : (amountInputText || (amountInputText === '' && ![2000000, 5000000, 10000000, 20000000, 30000000, 50000000].includes(simAmount) ? formatRupiah(simAmount) : ''))}
+                      onFocus={handleAmountFocus}
+                      onChange={handleAmountChange}
+                      onBlur={handleAmountBlur}
+                      className={`h-7 px-3 text-[11px] font-bold rounded-lg border transition-all focus:outline-none ${
+                        isAmountFocused || (amountInputText !== '' && ![2000000, 5000000, 10000000, 20000000, 30000000, 50000000].includes(simAmount))
+                          ? 'border-emerald-500 bg-white text-emerald-900 ring-2 ring-emerald-500/20 w-36 shadow-xs'
+                          : 'border-emerald-400 bg-emerald-50/80 text-emerald-800 placeholder:text-emerald-700/80 hover:border-emerald-500 w-28'
                       }`}
-                    >
-                      {formatRupiah(amt)}
-                    </button>
-                  ))}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Tenor */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Jangka Waktu (Tenor)</label>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">Jangka Waktu (Tenor)</label>
+                    <p className="text-[10.5px] text-slate-400">Maksimal: <span className="font-semibold text-slate-700">24 Bulan</span></p>
+                  </div>
                   <span className="text-sm font-black text-slate-900">{simTenor} Bulan</span>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {[6, 12, 18, 24].map((t) => (
                     <button
                       type="button"
                       key={t}
-                      onClick={() => setSimTenor(t)}
+                      onClick={() => {
+                        setSimTenor(t);
+                        setTenorInputText('');
+                        setIsTenorFocused(false);
+                      }}
                       className={`p-3 rounded-xl border text-center transition-all ${
-                        simTenor === t
+                        simTenor === t && !isTenorFocused && tenorInputText === ''
                           ? 'border-blue-600 bg-blue-50 text-blue-800 font-bold shadow-xs'
                           : 'border-slate-200 text-slate-600 hover:border-slate-300'
                       }`}
@@ -816,6 +940,29 @@ export function KoperasiMemberDashboard({
                       <span className="text-[10px] text-slate-400">Bulan</span>
                     </button>
                   ))}
+
+                  {/* KOTAK INPUT MANUAL TENOR (MAKSIMAL 24) */}
+                  <div
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col justify-center items-center cursor-pointer ${
+                      isTenorFocused || (tenorInputText !== '' && ![6, 12, 18, 24].includes(simTenor))
+                        ? 'border-emerald-500 bg-white ring-2 ring-emerald-500/20 shadow-xs'
+                        : 'border-emerald-400 bg-emerald-50/80 hover:border-emerald-500'
+                    }`}
+                  >
+                    <input
+                      type={isTenorFocused ? 'number' : 'text'}
+                      inputMode="numeric"
+                      min={1}
+                      max={24}
+                      placeholder="Input manual"
+                      value={isTenorFocused ? tenorInputText : (tenorInputText || (tenorInputText === '' && ![6, 12, 18, 24].includes(simTenor) ? `${simTenor} Bulan` : ''))}
+                      onFocus={handleTenorFocus}
+                      onChange={handleTenorChange}
+                      onBlur={handleTenorBlur}
+                      className="w-full text-center text-sm font-bold bg-transparent text-emerald-950 placeholder:text-emerald-700/80 placeholder:text-xs placeholder:font-semibold focus:outline-none"
+                    />
+                    <span className="text-[10px] text-emerald-700 font-medium">Bulan (Maks. 24)</span>
+                  </div>
                 </div>
               </div>
 
