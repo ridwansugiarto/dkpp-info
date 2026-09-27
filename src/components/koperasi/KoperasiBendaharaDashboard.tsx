@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Save,
   Check,
+  Download,
 } from 'lucide-react';
 import { formatRupiah } from '@/lib/koperasi/calculations';
 
@@ -85,7 +86,7 @@ export function KoperasiBendaharaDashboard({
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Import state
-  const [importType, setImportType] = useState<'members' | 'savings'>('members');
+  const [importType, setImportType] = useState<'members' | 'savings' | 'loans'>('loans');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any | null>(null);
   const [importing, setImporting] = useState(false);
@@ -907,40 +908,90 @@ export function KoperasiBendaharaDashboard({
       {/* TAB 6: IMPORT EXCEL */}
       {activeTab === 'import' && (
         <div className="max-w-3xl bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs animate-in fade-in space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Import Massal Berkas Excel / CSV</h3>
-            <p className="text-xs text-slate-500">
-              Unggah file Excel untuk mendaftarkan banyak anggota atau mencatat mutasi simpanan secara kolektif.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 mb-0.5">Import & Update Massal Berkas Excel (.xlsx)</h3>
+              <p className="text-xs text-slate-500">
+                Unggah file Excel untuk mendaftarkan anggota, mutasi simpanan, atau mengupdate data pinjaman anggota koperasi.
+              </p>
+            </div>
+            <a
+              href={`/api/koperasi/template?type=${importType}`}
+              download
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-2xs whitespace-nowrap self-start sm:self-auto hover:shadow-xs active:scale-[0.98]"
+              title="Download Template Format Excel (.xlsx)"
+            >
+              <Download className="w-4 h-4 text-amber-700" />
+              <span>Download Template XLSX ({importType === 'loans' ? 'Pinjaman' : importType === 'savings' ? 'Simpanan' : 'Anggota'})</span>
+            </a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
             <button
-              onClick={() => setImportType('members')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-                importType === 'members'
-                  ? 'bg-amber-700 text-white'
+              onClick={() => {
+                setImportType('loans');
+                setImportPreview(null);
+                setImportFile(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                importType === 'loans'
+                  ? 'bg-amber-800 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Import Data Anggota
+              📊 Data Pinjaman Anggota
             </button>
             <button
-              onClick={() => setImportType('savings')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-                importType === 'savings'
-                  ? 'bg-amber-700 text-white'
+              onClick={() => {
+                setImportType('members');
+                setImportPreview(null);
+                setImportFile(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                importType === 'members'
+                  ? 'bg-amber-800 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Import Setoran Simpanan
+              👥 Data Anggota Koperasi
+            </button>
+            <button
+              onClick={() => {
+                setImportType('savings');
+                setImportPreview(null);
+                setImportFile(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                importType === 'savings'
+                  ? 'bg-amber-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              💰 Setoran Simpanan Wajib/Sukarela
             </button>
           </div>
+
+          {/* Context tip for loans */}
+          {importType === 'loans' && (
+            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                Ketentuan Import Data Pinjaman:
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-slate-600 space-y-0.5 ml-1">
+                <li>Kolom yang tersedia: <strong>NIP, Nama, Jumlah Pinjaman, Tenor (Bulan), Suku Bunga (% per thn), Sisa Pokok Pinjaman, Tanggal Pencairan, Status</strong>.</li>
+                <li>Jika anggota sudah memiliki pinjaman aktif, sistem akan meng-<strong>update</strong> sisa pokok dan tenor pinjamannya.</li>
+                <li>Jika belum ada pinjaman aktif, pinjaman baru akan dibuat dan jadwal angsuran dihitung otomatis.</li>
+              </ul>
+            </div>
+          )}
 
           <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-amber-500 transition-colors">
             <UploadCloud className="w-10 h-10 text-slate-400 mx-auto mb-2" />
             <p className="text-xs font-semibold text-slate-700">Pilih berkas Excel (.xlsx) atau CSV</p>
-            <p className="text-[11px] text-slate-400 mt-1">Kolom format akan divalidasi secara otomatis</p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Pastikan berkas sesuai dengan format yang telah disediakan pada tombol Download Template di atas.
+            </p>
             <input
               type="file"
               accept=".xlsx,.xls,.csv"

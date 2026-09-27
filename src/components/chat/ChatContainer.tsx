@@ -68,9 +68,26 @@ interface ChatContainerProps {
 
 // Helper: parse bold, italic, code, and markdown links inlines
 function parseInlineFormatting(text: string): React.ReactNode {
-  // Split by markdown elements: link, code, bold, italic
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
+  // Split by markdown elements: image, link, code, bold, italic
+  const parts = text.split(/(!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
   return parts.map((part, i) => {
+    // 0. Markdown image: ![alt](url)
+    const imgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imgMatch) {
+      const [, alt, src] = imgMatch;
+      return (
+        <span key={i} className="inline-block my-2 text-left">
+          <img
+            src={src}
+            alt={alt || 'Foto Pegawai'}
+            className="max-h-72 max-w-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md object-cover hover:scale-[1.02] transition-transform duration-200"
+            loading="lazy"
+          />
+          {alt && <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-1 italic font-medium">{alt}</span>}
+        </span>
+      );
+    }
+
     // 1. Markdown link: [label](url)
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
@@ -380,7 +397,36 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         continue;
       }
 
-      // 7. Empty lines
+      // 7. Standalone Image Block (![alt](url))
+      const blockImgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (blockImgMatch) {
+        const [, alt, src] = blockImgMatch;
+        elements.push(
+          <div key={i} className="my-3 flex flex-col items-start animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm max-w-xs sm:max-w-sm">
+              <div className="overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 max-h-80">
+                <img
+                  src={src}
+                  alt={alt || 'Foto Pegawai DKPP'}
+                  className="w-full h-auto max-h-80 object-cover object-top rounded-xl hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+              </div>
+              {alt && (
+                <div className="p-2 text-center">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {alt}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+        i++;
+        continue;
+      }
+
+      // 8. Empty lines
       if (trimmed === '') {
         elements.push(<div key={i} className="h-1" />);
         i++;

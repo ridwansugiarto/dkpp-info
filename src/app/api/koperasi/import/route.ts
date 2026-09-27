@@ -221,6 +221,219 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (type === 'loans') {
+      const validRows: any[] = [];
+      const errorRows: any[] = [];
+
+      // Pre-fetch all members map by nip
+      const { data: allMembers } = await supabaseAdmin
+        .from('cooperative_members')
+        .select('id, nip, nama');
+      const memberMap = new Map((allMembers || []).map((m) => [m.nip, m]));
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const nip = String(row.nip || row.NIP || '').trim().replace(/\s+/g, '');
+        const member = memberMap.get(nip);
+
+        if (!member) {
+          errorRows.push({ row: i + 1, nip, reason: `Anggota dengan NIP ${nip} tidak ditemukan di database` });
+          continue;
+        }
+
+        const jumlahPinjaman = Number(
+          row.jumlah_pinjaman || row['Jumlah Pinjaman'] || row.nominal || row.Nominal || 0
+        );
+        const tenorBulan = Number(
+          row.tenor_bulan || row['Tenor (Bulan)'] || row.tenor || row.Tenor || 12
+        );
+        let jasaRate = Number(
+          row.jasa_rate || row['Jasa Bulanan (%)'] || row.jasa || 2
+        );
+        // If entered as percentage e.g. 2 -> 0.02
+        if (jasaRate > 0.5) jasaRate = jasaRate / 100;
+        if (jasaRate <= 0) jasaRate = 0.02;
+
+        if (jumlahPinjaman <= 0) {
+          errorRows.push({ row: i + 1, nip, reason: 'Jumlah pinjaman harus lebih dari 0' });
+          continue;
+        }
+
+        if (tenorBulan <= 0 || tenorBulan > 60) {
+          errorRows.push({ row: i + 1, nip, reason: 'Tenor harus antara 1 sampai 60 bulan' });
+          continue;
+        }
+
+        let jenis = String(row.jenis_pinjaman || row['Jenis Pinjaman'] || 'reguler').toLowerCase().trim();
+        if (!['reguler', 'tempo'].includes(jenis)) jenis = 'reguler';
+
+        let sumber = String(row.sumber_pembayaran || row['Sumber Pembayaran'] || 'gaji').toLowerCase().trim();
+        if (!['gaji', 'tpp', 'gaji_tpp'].includes(sumber)) sumber = 'gaji';
+
+        let status = String(row.status || row['Status Pinjaman'] || 'aktif').toLowerCase().trim();
+        if (!['aktif', 'lunas', 'macet', 'diajukan', 'disetujui'].includes(status)) status = 'aktif';
+
+        const tglMulai = row.tanggal_mulai_cicilan || row['Tanggal Mulai Cicilan'] || new Date().toISOString().split('T')[0];
+        const keterangan = String(row.keterangan || row.Keterangan || 'Import/Update Pinjaman Excel');
+
+        const totalJasa = Math.round(jumlahPinjaman * jasaRate * tenorBulan);
+        const totalKewajiban = jumlahPinjaman + totalJasa;
+        const angsuranPerBulan = Math.round(totalKewajiban / tenorBulan);
+
+        validRows.push({
+          member_id: member.id,
+          member_nama: member.nama,
+          nip,
+          jumlah_pinjaman: jumlahPinjaman,
+          tenor_bulan: tenorBulan,
+          jasa_rate: jasaRate,
+          jenis_pinjaman: jenis,
+          sumber_pembayaran: sumber,
+          total_jasa: totalJasa,
+          total_kewajiban: totalKewajiban,
+          angsuran_per_bulan: angsuranPerBulan,
+          status,
+          tanggal_mulai_cicilan: tglMulai,
+          tanggal_pengajuan: tglMulai,
+          tanggal_pencairan: tglMulai,
+          catatan_pengurus: keterangan,
+        });
+      }
+
+      if (mode === 'preview') {
+        return NextResponse.json({
+          mode: 'preview',
+          type,
+          total: rows.length,
+          valid_count: validRows.length,
+          error_count: errorRows.length,
+          preview_rows: validRows.slice(0, 10),
+          error_rows: errorRows.slice(0, 10),
+        });
+      }
+
+      // Commit: insert or update loans
+      let processed = 0;
+      for (const item of validRows) {
+        const { member_nama, nip: _, ...loanPayload } = item;
+
+        // Check if member already has an active loan to update
+        const { data: existingLoan } = await supabaseAdmin
+          .from('cooperative_loans')
+          .select('id, nomor_pinjaman')
+          .eq('member_id', loanPayload.member_id)
+          .eq('status', 'aktif')
+          .maybeSingle();
+
+        let loanId: string;
+
+        if (existingLoan) {
+          // Update existing active loan
+          const { data: updated, error: updErr } = await supabaseAdmin
+            .from('cooperative_loans')
+            .update({
+              jumlah_pinjaman: loanPayload.jumlah_pinjaman,
+              tenor_bulan: loanPayload.tenor_bulan,
+              jasa_rate: loanPayload.jasa_rate,
+              jenis_pinjaman: loanPayload.jenis_pinjaman,
+              sumber_pembayaran: loanPayload.sumber_pembayaran,
+              total_jasa: loanPayload.total_jasa,
+              total_kewajiban: loanPayload.total_kewajiban,
+              angsuran_per_bulan: loanPayload.angsuran_per_bulan,
+              status: loanPayload.status,
+              tanggal_mulai_cicilan: loanPayload.tanggal_mulai_cicilan,
+              catatan_pengurus: loanPayload.catatan_pengurus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingLoan.id)
+            .select()
+            .single();
+
+          if (!updErr && updated) {
+            loanId = updated.id;
+            processed++;
+          } else {
+            continue;
+          }
+        } else {
+          // Insert new loan
+          const loanNumber = `PINJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          const { data: inserted, error: insErr } = await supabaseAdmin
+            .from('cooperative_loans')
+            .insert({
+              ...loanPayload,
+              nomor_pinjaman: loanNumber,
+            })
+            .select()
+            .single();
+
+          if (!insErr && inserted) {
+            loanId = inserted.id;
+            processed++;
+          } else {
+            continue;
+          }
+        }
+
+        // Generate or re-generate installment schedule if active
+        if (loanPayload.status === 'aktif' && loanId) {
+          try {
+            await supabaseAdmin.rpc('rpc_generate_installment_schedule', {
+              p_loan_id: loanId,
+            });
+          } catch {
+            // Fallback manual installment generation if RPC is missing
+            const startDate = new Date(loanPayload.tanggal_mulai_cicilan);
+            const principalPerMonth = Math.round(loanPayload.jumlah_pinjaman / loanPayload.tenor_bulan);
+            const servicePerMonth = Math.round(loanPayload.total_jasa / loanPayload.tenor_bulan);
+
+            // Delete old unpaid installments if any
+            await supabaseAdmin
+              .from('cooperative_installments')
+              .delete()
+              .eq('loan_id', loanId)
+              .neq('status', 'dibayar');
+
+            const instList = [];
+            for (let m = 1; m <= loanPayload.tenor_bulan; m++) {
+              const d = new Date(startDate);
+              d.setMonth(d.getMonth() + m);
+              instList.push({
+                loan_id: loanId,
+                member_id: loanPayload.member_id,
+                installment_number: m,
+                due_date: d.toISOString().split('T')[0],
+                principal_amount: principalPerMonth,
+                service_fee_amount: servicePerMonth,
+                total_amount: loanPayload.angsuran_per_bulan,
+                paid_amount: 0,
+                status: 'belum_jatuh_tempo',
+                payment_source: loanPayload.sumber_pembayaran,
+                keterangan: `Cicilan ke-${m} (${loanPayload.tenor_bulan} bln)`,
+              });
+            }
+            await supabaseAdmin.from('cooperative_installments').insert(instList);
+          }
+        }
+      }
+
+      await createCoopAuditLog({
+        userId: bendaharaCheck.profile?.id,
+        userName: bendaharaCheck.profile?.full_name,
+        userRole: bendaharaCheck.role,
+        action: 'IMPORT_LOANS',
+        resourceType: 'cooperative_loans',
+        description: `Import/Update massal data pinjaman: ${processed} berhasil dari total ${rows.length}`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        total: rows.length,
+        imported: processed,
+        message: `Berhasil mengimpor dan memperbarui ${processed} data pinjaman anggota.`,
+      });
+    }
+
     return NextResponse.json({ error: 'Tipe impor tidak didukung' }, { status: 400 });
   } catch (err: any) {
     console.error('Import POST error:', err);

@@ -561,6 +561,13 @@ Jika diminta grafik/chart/tren, sertakan blok JSON:
 \`\`\`
 Type tersedia: "line", "bar", "area", "pie". Gunakan data riil dari konteks.
 
+## INSTRUKSI FOTO PEGAWAI RESMI DKPP KOTA CILEGON:
+- Jika pengguna menanyakan foto pegawai resmi atau meminta menampilkan potret/foto staf/pejabat DKPP:
+  * Foto resmi pegawai tersimpan di Supabase Storage container \`foto_pegawai\` dengan format nama file NIP pegawai (contoh: \`197002211999032002.jpg\`).
+  * Format URL publik foto: https://fnhrdwfmwhglbrnzlxxv.supabase.co/storage/v1/object/public/foto_pegawai/<nip>.jpg
+  * Sajikan foto menggunakan format Markdown Image: \`![Foto Resmi <Nama Pegawai>](https://fnhrdwfmwhglbrnzlxxv.supabase.co/storage/v1/object/public/foto_pegawai/<nip>.jpg)\` diikuti ringkasan profil faktual (Nama, NIP, Jabatan, Bidang, Status).
+  * Jika foto belum tersedia di storage, sampaikan data profil faktualnya dan jelaskan bahwa foto resmi dapat diunggah melalui menu Tatakelola NIP Pegawai di Panel Superadmin.
+
 ## INSTRUKSI TAG WILAYAH INTERAKTIF:
 Saat menyebut wilayah yang perlu di-highlight pada peta: [KELURAHAN:NamaKelurahan] atau [KECAMATAN:NamaKecamatan].
 

@@ -1090,6 +1090,93 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 11b. Deteksi Maksud Pertanyaan Foto Pegawai Resmi DKPP (Container Storage: foto_pegawai)
+    const { isPegawaiPhotoQuery, resolvePegawaiPhoto } = await import('@/lib/pegawaiFoto');
+    if (isPegawaiPhotoQuery(message)) {
+      const photoResult = await resolvePegawaiPhoto(message);
+      if (photoResult.isPhotoQuery) {
+        let photoMsg = '';
+        if (photoResult.matchedPegawai) {
+          const p = photoResult.matchedPegawai;
+          if (photoResult.hasPhoto && photoResult.photoUrl) {
+            photoMsg =
+              `Berikut foto resmi dan data profil pegawai DKPP Kota Cilegon yang tersimpan di sistem:\n\n` +
+              `![Foto Resmi ${p.nama}](${photoResult.photoUrl})\n\n` +
+              `### 👤 Profil Pegawai DKPP Kota Cilegon\n` +
+              `* **Nama Pegawai:** ${p.nama}\n` +
+              `* **NIP:** \`${p.nip}\`\n` +
+              `* **Jabatan:** ${p.jabatan}\n` +
+              `* **Bidang:** ${p.bidang}\n` +
+              `* **Status Kepegawaian:** ${p.status_pegawai || 'PNS'}\n` +
+              (p.golongan ? `* **Golongan / Pangkat:** ${p.golongan}\n` : '') +
+              `\n📁 _Foto resmi bersumber langsung dari Supabase Storage container \`foto_pegawai/${photoResult.storageFilename}\`._`;
+          } else {
+            photoMsg =
+              `Data pegawai atas nama **${p.nama}** (NIP: \`${p.nip}\`) berhasil ditemukan dalam database kepegawaian resmi DKPP Kota Cilegon:\n\n` +
+              `### 👤 Data Pegawai Terdaftar\n` +
+              `* **Nama Pegawai:** ${p.nama}\n` +
+              `* **NIP:** \`${p.nip}\`\n` +
+              `* **Jabatan:** ${p.jabatan}\n` +
+              `* **Bidang:** ${p.bidang}\n` +
+              `* **Status:** ${p.status_pegawai || 'PNS'}\n\n` +
+              `ℹ️ **Status Foto:** Berkas foto resmi untuk NIP \`${p.nip}\` belum diunggah oleh Administrator ke Supabase Storage container \`foto_pegawai\` (format nama file yang diharapkan: \`${p.nip}.jpg\` atau \`.png\`).\n` +
+              `Administrator dapat mengunggah berkas foto pegawai kapan saja melalui menu **Tatakelola NIP Pegawai** di Panel Superadmin.`;
+          }
+        } else if (photoResult.isGeneralPhotoList) {
+          photoMsg =
+            `Sistem terhubung langsung dengan Supabase Storage container **\`foto_pegawai\`** untuk menampilkan foto profil resmi seluruh ASN/Pegawai DKPP Kota Cilegon.\n\n` +
+            `Saat ini terdapat **${photoResult.photoCount} berkas foto** pegawai yang tersimpan di storage.\n\n` +
+            `Untuk menampilkan foto pegawai tertentu, silakan tanyakan dengan menyebutkan nama atau NIP, misalnya:\n` +
+            `* *"Foto Bu Kadis"* (Ibu Efa Sarifah, ST, MT)\n` +
+            `* *"Foto Pak Ridwan"* (NIP: 197610182002121002)\n` +
+            `* *"Tampilkan foto pegawai NIP 1985..."*`;
+        }
+
+        if (photoMsg) {
+          const { userMsgId, assistantMsgId } = await persistMessages(
+            message,
+            photoMsg,
+            [
+              {
+                id: 'tool-photo-' + Date.now(),
+                name: 'pegawai_photo_lookup',
+                status: 'completed',
+                args: {
+                  nip: photoResult.matchedPegawai?.nip,
+                  nama: photoResult.matchedPegawai?.nama,
+                  hasPhoto: photoResult.hasPhoto,
+                },
+              },
+            ]
+          );
+
+          return NextResponse.json({
+            sessionId,
+            userMessageId: userMsgId,
+            assistantMessageId: assistantMsgId,
+            content: photoMsg,
+            type: 'pegawai_photo',
+            pegawai_photo: {
+              nip: photoResult.matchedPegawai?.nip,
+              nama: photoResult.matchedPegawai?.nama,
+              photoUrl: photoResult.photoUrl,
+              hasPhoto: photoResult.hasPhoto,
+            },
+            message: {
+              id: assistantMsgId,
+              session_id: sessionId || 'temp',
+              role: 'assistant',
+              content: photoMsg,
+              type: 'pegawai_photo',
+              created_at: new Date().toISOString(),
+            },
+            userRole: authProfile.role,
+            isVerified: authProfile.is_verified_employee,
+          });
+        }
+      }
+    }
+
     // 11. Generate AI Response via Gemini with Tool Execution and Sensitive Guardrails
     const currentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
       ...conversationHistory,

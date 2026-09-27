@@ -42,7 +42,9 @@ import {
   Sprout,
   MapPin,
   ExternalLink,
-  Save
+  Save,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { DocumentItem, DocumentFolder, DocumentVisibility } from '@/types/dkpp';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -152,6 +154,13 @@ export default function AdminPortalPage() {
   const [newNipJabatan, setNewNipJabatan] = useState('');
   const [newNipBidang, setNewNipBidang] = useState('Ketahanan Pangan');
 
+  // Photo Pegawai Storage States (Container: foto_pegawai)
+  const [pegawaiPhotos, setPegawaiPhotos] = useState<Record<string, { filename: string; publicUrl: string; size: number }>>({});
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoActionMsg, setPhotoActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ nip: string; nama: string; publicUrl: string } | null>(null);
+
   // Sync Data & GIS States
   const [syncStatusData, setSyncStatusData] = useState<any>(null);
   const [syncLoading, setSyncLoading] = useState(false);
@@ -180,6 +189,7 @@ export default function AdminPortalPage() {
       fetchDocuments();
       fetchAuditLogs();
       fetchNips();
+      fetchPegawaiPhotos();
       fetchSyncStatus();
       fetchPollThemes();
       fetchPollData(selectedPollThemeCode);
@@ -376,6 +386,76 @@ export default function AdminPortalPage() {
       fetchNips();
     } catch (e) {
       console.error('Failed to toggle NIP status:', e);
+    }
+  };
+
+  const fetchPegawaiPhotos = async () => {
+    try {
+      setPhotoLoading(true);
+      const res = await fetch(`/api/admin/pegawai-foto?list=true&userEmail=${AUTHORIZED_ADMIN_EMAIL}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPegawaiPhotos(data.photos || {});
+      }
+    } catch (e) {
+      console.error('Failed to fetch photos:', e);
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handleUploadPegawaiPhotos = async (files: FileList | null, explicitNip?: string) => {
+    if (!files || files.length === 0) return;
+    setPhotoUploading(true);
+    setPhotoActionMsg(null);
+    try {
+      const formData = new FormData();
+      formData.append('userEmail', AUTHORIZED_ADMIN_EMAIL);
+      if (explicitNip) {
+        formData.append('nip', explicitNip);
+      }
+      for (let i = 0; i < files.length; i++) {
+        formData.append(`file_${i}`, files[i]);
+      }
+
+      const res = await fetch('/api/admin/pegawai-foto', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setPhotoActionMsg({ type: 'error', text: json.error || 'Gagal mengunggah foto.' });
+        return;
+      }
+
+      setPhotoActionMsg({
+        type: 'success',
+        text: json.message || `Berhasil mengunggah berkas foto ke storage foto_pegawai!`,
+      });
+      fetchPegawaiPhotos();
+    } catch (err: any) {
+      setPhotoActionMsg({ type: 'error', text: err.message || 'Terjadi kesalahan upload berkas foto.' });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeletePegawaiPhoto = async (nip: string, filename: string) => {
+    if (!confirm(`Hapus foto untuk NIP ${nip} (${filename}) dari storage container foto_pegawai?`)) return;
+    try {
+      const res = await fetch(
+        `/api/admin/pegawai-foto?nip=${encodeURIComponent(nip)}&filename=${encodeURIComponent(
+          filename
+        )}&userEmail=${AUTHORIZED_ADMIN_EMAIL}`,
+        { method: 'DELETE' }
+      );
+      if (res.ok) {
+        setPhotoActionMsg({ type: 'success', text: `Foto ${filename} berhasil dihapus dari storage.` });
+        fetchPegawaiPhotos();
+      }
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus foto.');
     }
   };
 
@@ -1780,6 +1860,70 @@ export default function AdminPortalPage() {
                 </form>
               </div>
 
+              {/* Panel Upload Foto Pegawai (Nama File = NIP) */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Camera className="w-4 h-4" />
+                      <span>Upload Foto Pegawai (Nama File: NIP)</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Unggah foto pegawai resmi dengan nama file NIP (contoh: <code className="text-emerald-400 font-mono">197610182002121002.jpg</code> atau <code className="text-emerald-400 font-mono">.png</code>). Berkas tersimpan di Supabase Storage <code className="text-emerald-400 font-mono">foto_pegawai</code> dan otomatis terhubung ke Chatbot AI & Profil.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-bold">
+                      {Object.keys(pegawaiPhotos).length} Foto di Storage
+                    </span>
+                    <button
+                      onClick={fetchPegawaiPhotos}
+                      disabled={photoLoading}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer"
+                      title="Segarkan Daftar Foto"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${photoLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {photoActionMsg && (
+                  <div className={`p-2.5 rounded-xl text-xs flex items-center justify-between animate-in fade-in ${
+                    photoActionMsg.type === 'success'
+                      ? 'bg-emerald-950/80 border border-emerald-800 text-emerald-200'
+                      : 'bg-rose-950/80 border border-rose-800 text-rose-200'
+                  }`}>
+                    <span>{photoActionMsg.text}</span>
+                    <button onClick={() => setPhotoActionMsg(null)} className="text-slate-400 hover:text-white ml-2 cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="border border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-4 text-center transition-colors bg-slate-900/40">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <div className="flex items-center gap-2 text-slate-300 text-xs">
+                      <UploadCloud className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <span className="text-left font-medium">
+                        Pilih satu atau banyak berkas foto sekaligus (format nama: <code className="text-emerald-400 font-mono">NIP.jpg</code>):
+                      </span>
+                    </div>
+                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer transition-all shadow-sm shrink-0 active:scale-98">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{photoUploading ? 'Mengunggah Foto...' : 'Pilih Berkas Foto Pegawai'}</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".jpg,.jpeg,.png,.webp,image/*"
+                        disabled={photoUploading}
+                        onChange={(e) => handleUploadPegawaiPhotos(e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               {/* Pencarian NIP */}
               <div className="flex items-center justify-between gap-4">
                 <div className="relative flex-1 max-w-sm">
@@ -1802,6 +1946,7 @@ export default function AdminPortalPage() {
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
+                      <th className="py-3 px-3 text-center">Foto</th>
                       <th className="py-3 px-4">NIP (18 Digit)</th>
                       <th className="py-3 px-4">Nama Pegawai</th>
                       <th className="py-3 px-4">NPWP</th>
@@ -1823,6 +1968,31 @@ export default function AdminPortalPage() {
                     ) : (
                       filteredNips.map((item) => (
                         <tr key={item.nip} className="hover:bg-slate-900/50 transition-colors">
+                          <td className="py-2.5 px-3 text-center">
+                            {pegawaiPhotos[item.nip] ? (
+                              <div className="relative group inline-block">
+                                <img
+                                  src={pegawaiPhotos[item.nip].publicUrl}
+                                  alt={item.nama}
+                                  onClick={() => setPreviewPhoto({ nip: item.nip, nama: item.nama, publicUrl: pegawaiPhotos[item.nip].publicUrl })}
+                                  className="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 cursor-pointer hover:scale-110 transition-transform shadow-xs"
+                                  title="Klik untuk melihat foto"
+                                />
+                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-950 rounded-full" title="Foto Tersimpan" />
+                              </div>
+                            ) : (
+                              <label className="cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 hover:bg-slate-800 transition-colors text-slate-500 hover:text-emerald-400" title={`Upload foto untuk ${item.nama} (${item.nip})`}>
+                                <Camera className="w-3.5 h-3.5" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={photoUploading}
+                                  className="hidden"
+                                  onChange={(e) => handleUploadPegawaiPhotos(e.target.files, item.nip)}
+                                />
+                              </label>
+                            )}
+                          </td>
                           <td className="py-3 px-4 font-mono font-bold text-emerald-400">
                             {item.nip}
                           </td>
@@ -3693,6 +3863,61 @@ export default function AdminPortalPage() {
                   <span>{isDeletingTheme ? 'Menghapus...' : 'Ya, Hapus Tema Ini'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Preview Foto Pegawai */}
+      {previewPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs animate-in fade-in" onClick={() => setPreviewPhoto(null)}>
+          <div className="relative max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center space-y-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="overflow-hidden rounded-xl bg-slate-950 max-h-80 flex items-center justify-center border border-slate-800">
+              <img
+                src={previewPhoto.publicUrl}
+                alt={previewPhoto.nama}
+                className="max-h-80 w-auto object-contain rounded-xl"
+              />
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm">{previewPhoto.nama}</h4>
+              <p className="text-xs font-mono text-emerald-400 mt-0.5">NIP: {previewPhoto.nip}</p>
+            </div>
+            <div className="pt-1 flex items-center justify-center gap-2">
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer">
+                <Camera className="w-3.5 h-3.5" />
+                <span>Ganti Foto</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={photoUploading}
+                  className="hidden"
+                  onChange={(e) => {
+                    handleUploadPegawaiPhotos(e.target.files, previewPhoto.nip);
+                    setPreviewPhoto(null);
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const photoItem = pegawaiPhotos[previewPhoto.nip];
+                  if (photoItem) {
+                    handleDeletePegawaiPhoto(previewPhoto.nip, photoItem.filename);
+                    setPreviewPhoto(null);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-800 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Foto</span>
+              </button>
             </div>
           </div>
         </div>
